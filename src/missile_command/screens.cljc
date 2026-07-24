@@ -2,6 +2,7 @@
 
 (def title :title)
 (def playing :playing)
+(def paused :paused)
 (def the-end :the-end)
 
 (def title-game-name "Missile Command")
@@ -18,6 +19,10 @@
 (defn playing?
   [state]
   (= playing (of state)))
+
+(defn paused?
+  [state]
+  (= paused (of state)))
 
 (defn the-end?
   [state]
