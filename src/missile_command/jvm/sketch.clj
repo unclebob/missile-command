@@ -247,9 +247,16 @@
               :aim (apply-handle state (input/aim-command (:x ev) (:y ev)))
               :start (apply-handle state {:type :start})
               :confirm (apply-handle state {:type :confirm})
+              :pause (apply-handle state {:type :pause})
+              :resume (apply-handle state {:type :resume})
               :key (cond
                      (input/key-char->command (:ch ev))
                      (apply-handle state (input/key-char->command (:ch ev)))
+                     (or (= \p (:ch ev)) (= \P (:ch ev)))
+                     (cond
+                       (core/playing? state) (apply-handle state {:type :pause})
+                       (core/paused? state) (apply-handle state {:type :resume})
+                       :else state)
                      (or (= \newline (:ch ev)) (= \return (:ch ev)))
                      (cond
                        (core/title? state) (apply-handle state {:type :start})
@@ -303,7 +310,17 @@
   (let [ch (q/raw-key)]
     (cond
       (input/escape-key? ch)
-      (do (q/exit) state)
+      (cond
+        (core/playing? state) (apply-handle state {:type :pause})
+        (core/paused? state) (apply-handle state {:type :resume})
+        (core/title? state) (do (q/exit) state)
+        :else (do (q/exit) state))
+
+      (or (= \p ch) (= \P ch))
+      (cond
+        (core/playing? state) (apply-handle state {:type :pause})
+        (core/paused? state) (apply-handle state {:type :resume})
+        :else state)
 
       (or (= \newline ch) (= \return ch) (= (int 10) (int ch)))
       (cond

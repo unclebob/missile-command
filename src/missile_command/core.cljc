@@ -21,6 +21,7 @@
 (def target-starts-destroyed? wave-flag-off)
 (def screen-title :title)
 (def screen-playing :playing)
+(def screen-paused :paused)
 (def screen-the-end :the-end)
 (def end-message-text "THE END")
 (def wrong-end-message-text "Game Over")
@@ -185,10 +186,28 @@
   [state]
   (= screen-playing (screen state)))
 
+(defn paused?
+  [state]
+  (= screen-paused (screen state)))
+
 (defn the-end?
   "True when the run has entered THE END."
   [state]
   (= screen-the-end (screen state)))
+
+(defn pause-game
+  "Enter paused from playing only; ignore on title/end/already paused."
+  [state]
+  (if (playing? state)
+    (assoc state :screen screen-paused)
+    state))
+
+(defn resume-game
+  "Return from paused to playing; no-op otherwise."
+  [state]
+  (if (paused? state)
+    (assoc state :screen screen-playing)
+    state))
 
 (defn title-game-name-of
   [state]
@@ -675,13 +694,15 @@
   (case (:type command)
     :aim (aim state (:x command) (:y command))
     :fire (fire-battery state (:battery command))
-    :click (if (title? state)
-             (no-events (start-game state))
-             (if (the-end? state)
-               (no-events (confirm-end-screen state))
-               (click-fire state (:x command) (:y command))))
+    :click (cond
+             (title? state) (no-events (start-game state))
+             (the-end? state) (no-events (confirm-end-screen state))
+             (paused? state) (no-events state)
+             :else (click-fire state (:x command) (:y command)))
     :start (no-events (start-game state))
     :confirm (no-events (confirm-end-screen state))
+    :pause (no-events (pause-game state))
+    :resume (no-events (resume-game state))
     (throw (ex-info (str "unsupported command: " (:type command))
                     {:command command}))))
 
@@ -1246,12 +1267,19 @@
   "Advance simulation by dt seconds (clamped). Returns {:state s :events [...]}."
   [state dt]
   (let [applied (missiles/clamp-dt dt)]
-    (if (the-end? state)
+    (cond
+      (paused? state)
+      {:state (assoc state :last-applied-dt 0.0)
+       :events []}
+
+      (the-end? state)
       {:state (-> state
                   (assoc :last-applied-dt applied)
                   (update :sim-time (fnil + 0.0) applied)
                   (tick-end-fireball applied))
        :events []}
+
+      :else
       (let [state (-> state
                       (assoc :last-applied-dt applied)
                       (update :sim-time (fnil + 0.0) applied)

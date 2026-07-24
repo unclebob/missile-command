@@ -515,6 +515,39 @@
       (should= 25 (core/score after-kill))
       (should= 25 (core/score after-aim)))))
 
+(describe "pause and resume"
+  (it "pauses from playing and freezes simulation"
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+                    (core/spawn-enemy-targeting-city 0))
+          advanced (:state (core/tick state 0.1))
+          progress (double (:progress (first (core/enemy-missiles advanced))))
+          paused (core/pause-game advanced)
+          held (:state (core/tick paused 0.5))]
+      (should (core/paused? paused))
+      (should= progress (double (:progress (first (core/enemy-missiles held)))))))
+
+  (it "blocks fire while paused"
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+                    core/pause-game)
+          after (:state (core/handle state {:type :fire :battery :center}))]
+      (should (core/paused? after))
+      (should (empty? (core/defensive-missiles after)))))
+
+  (it "resumes and continues enemy progress"
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+                    (core/spawn-enemy-targeting-city 0))
+          advanced (:state (core/tick state 0.1))
+          progress (double (:progress (first (core/enemy-missiles advanced))))
+          resumed (-> advanced core/pause-game core/resume-game)
+          after (:state (core/tick resumed 0.1))]
+      (should (core/playing? resumed))
+      (should (< progress (double (:progress (first (core/enemy-missiles after))))))))
+
+  (it "ignores pause on the title screen"
+    (let [state (core/new-game {:width 800 :height 600})
+          after (core/pause-game state)]
+      (should (core/title? after)))))
+
 (describe "wave enemy battery targets"
   (it "schedules enemies against cities and batteries"
     (let [state (core/set-wave-enemies-active

@@ -479,6 +479,8 @@
    "fireball" (fn [a _] {:type :fireball :spec (parse-fireball-spec a)})
    "start" (fn [_ _] {:type :start})
    "confirm" (fn [_ _] {:type :confirm})
+   "pause" (fn [_ _] {:type :pause})
+   "resume" (fn [_ _] {:type :resume})
    "quit" (fn [_ _] {:type :quit})})
 
 (defn parse-qa-event-line
