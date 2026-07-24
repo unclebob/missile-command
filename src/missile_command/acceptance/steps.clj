@@ -270,6 +270,52 @@
                                      :y (support/example-int example y-param "y")})]
             (assoc world :state (:state result))))}
 
+   {:pattern #"^the player clicks at <([A-Za-z0-9_]+)> <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ x-param y-param] example]
+          (let [result (core/handle (:state world)
+                                    {:type :click
+                                     :x (support/example-int example x-param "x")
+                                     :y (support/example-int example y-param "y")})]
+            (assoc world :state (:state result))))}
+
+   {:pattern #"^the click must fall back to the <([A-Za-z0-9_]+)> battery because earlier batteries are empty$"
+    :fn (fn [world [_ battery-param] example]
+          (let [state (:state world)
+                x (support/example-int example "x" "x")
+                target (support/example-battery example battery-param)
+                zone (core/click-zone (core/playfield-width state) x)
+                order (core/click-fallback-order zone)
+                earlier (take-while #(not= % target) order)]
+            (when-not (some #{target} order)
+              (support/fail! (str "battery " target " not in fallback for zone " zone)))
+            (assoc world :state
+                   (reduce (fn [s id] (core/set-battery-ammo s id 0))
+                           state
+                           earlier))))}
+
+   {:pattern #"^the click must fall back to the <([A-Za-z0-9_]+)> battery because earlier batteries are destroyed$"
+    :fn (fn [world [_ battery-param] example]
+          (let [state (:state world)
+                x (support/example-int example "x" "x")
+                target (support/example-battery example battery-param)
+                zone (core/click-zone (core/playfield-width state) x)
+                order (core/click-fallback-order zone)
+                earlier (take-while #(not= % target) order)]
+            (when-not (some #{target} order)
+              (support/fail! (str "battery " target " not in fallback for zone " zone)))
+            (assoc world :state
+                   (reduce (fn [s id] (core/destroy-battery s id))
+                           state
+                           earlier))))}
+
+   {:pattern #"^no battery can fire$"
+    :fn (fn [world _ _]
+          (assoc world :state
+                 (-> (:state world)
+                     (core/set-battery-ammo :left 0)
+                     (core/set-battery-ammo :center 0)
+                     (core/set-battery-ammo :right 0))))}
+
    {:pattern #"^the crosshair is at <([A-Za-z0-9_]+)> <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ x-param y-param] example]
           (let [expected-x (support/example-int example x-param "x")

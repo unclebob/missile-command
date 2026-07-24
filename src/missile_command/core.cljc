@@ -134,11 +134,43 @@
                               x y))
    :events []})
 
+(defn click-zone
+  "Horizontal third for a playfield x coordinate: :left, :center, or :right."
+  [width x]
+  (let [third (/ (double width) 3.0)]
+    (cond
+      (< x third) :left
+      (< x (* 2.0 third)) :center
+      :else :right)))
+
+(defn click-fallback-order
+  "Battery preference order for a click zone, preferred first."
+  [zone]
+  (case zone
+    :left [:left :center :right]
+    :center [:center :left :right]
+    :right [:right :center :left]))
+
+(defn- first-fireable
+  [state battery-ids]
+  (first (filter #(can-fire? (battery state %)) battery-ids)))
+
+(defn- click-fire
+  "Aim at the click point, then fire preferred zone battery with adjacent fallback."
+  [state x y]
+  (let [aimed (:state (aim state x y))
+        zone (click-zone (playfield-width aimed) (:x (crosshair aimed)))
+        battery-id (first-fireable aimed (click-fallback-order zone))]
+    (if battery-id
+      (fire-battery aimed battery-id)
+      {:state aimed :events []})))
+
 (defn handle
   "Apply a player command. Returns {:state s :events [...]}."
   [state command]
   (case (:type command)
     :aim (aim state (:x command) (:y command))
     :fire (fire-battery state (:battery command))
+    :click (click-fire state (:x command) (:y command))
     (throw (ex-info (str "unsupported command: " (:type command))
                     {:command command}))))
