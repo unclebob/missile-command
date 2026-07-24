@@ -9,6 +9,7 @@ Feature: Bonus cities
 
 Background:
   Given a new game with width <width> and height <height>
+  And the player starts the game
   And the bonus city threshold is <threshold>
 
 Scenario: Bonus cities 01 new game has empty bonus city reserve

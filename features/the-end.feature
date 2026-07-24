@@ -12,6 +12,7 @@ Feature: THE END
 
 Background:
   Given a new game with width <width> and height <height>
+  And the player starts the game
 
 Scenario: THE END 01 a new game is not at THE END
   Then the playfield width is <expected_width>

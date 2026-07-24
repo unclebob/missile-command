@@ -3,6 +3,7 @@
   (:require [quil.core :as q]
             [missile-command.core :as core]
             [missile-command.jvm.render-end :as render-end]
+            [missile-command.jvm.render-title :as render-title]
             [missile-command.jvm.render-scenery :as scenery]
             [missile-command.world :as world]))
 
@@ -86,22 +87,27 @@
   (let [w (core/playfield-width state)
         h (core/playfield-height state)]
     (scenery/sky! w h)
-    (when-not (core/the-end? state)
-      (enemies! state)
-      (missiles! state)
-      (targets! state)
-      (scenery/ground! state)
-      (scenery/cities! state)
-      (scenery/batteries! state)
-      ;; Fireballs last among world so city/battery impacts draw on top of scenery.
-      (fireballs! state)
-      (hud! state))
-    (when (core/the-end? state)
-      (scenery/ground! state)
-      (render-end/overlay! state)
-      (hud! state))))
+    (cond
+      (core/title? state)
+      (do (scenery/ground! state)
+          (render-title/overlay! state))
 
-(defn draw-state!
+      (core/the-end? state)
+      (do (scenery/ground! state)
+          (render-end/overlay! state)
+          (hud! state))
+
+      :else
+      (do (enemies! state)
+          (missiles! state)
+          (targets! state)
+          (scenery/ground! state)
+          (scenery/cities! state)
+          (scenery/batteries! state)
+          (fireballs! state)
+          (hud! state)))))
+
+(defn draw-state!(defn draw-state!
   ([state]
    (let [ch (core/crosshair state)]
      (draw-state! state (:x ch) (:y ch))))

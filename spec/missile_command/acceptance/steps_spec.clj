@@ -5,7 +5,7 @@
             [missile-command.core :as core]))
 (defn- fresh-world
   ([] (fresh-world 800 600))
-  ([w h] {:state (core/new-game {:width w :height h})}))
+  ([w h] {:state (assoc (core/new-game {:width w :height h}) :screen :playing)}))
 
 (defn- dispatch
   [world text example]
@@ -196,7 +196,7 @@
       (should= {:x 100 :y 200} (core/crosshair (:state aimed)))))
 
   (it "asserts the crosshair position"
-    (let [world {:state (:state (core/handle (core/new-game {:width 800 :height 600})
+    (let [world {:state (:state (core/handle (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                                              {:type :aim :x 100 :y 200}))}]
       (should= world
                (dispatch world "the crosshair is at <expected_x> <expected_y>"
@@ -364,7 +364,7 @@
                (dispatch wave "the enemy missiles use more than one distinct origin x" {}))))
 
   (it "classifies fireball peak shrink and radius thresholds on synthetic state"
-    (let [cap (core/max-fireball-radius (core/new-game {:width 800 :height 600}))
+    (let [cap (core/max-fireball-radius (assoc (core/new-game {:width 800 :height 600}) :screen :playing))
           below (assoc-in (fresh-world) [:state :fireballs]
                           [{:id 1 :x 0 :y 0 :radius (* 0.5 cap)}])
           at-peak (assoc-in (fresh-world) [:state :fireballs]

@@ -276,8 +276,11 @@
               (str "multiplier=" (core/multiplier state))
               (str "bonus_cities=" (core/bonus-cities state))
               (str "bonus_city_earned_events=" (core/bonus-city-earned-events state))
+              (str "screen=" (name (core/screen state)))
               (str "the_end=" (boolean (core/the-end? state)))
               (str "end_message=" (or (core/end-message state) "none"))
+              (str "title_game_name="
+                   (str/replace (core/title-game-name-of state) #"\s+" "_"))
               (str "end_fireball_radius="
                    (double (or (:radius (core/end-fireball state)) 0.0)))
               (str "end_message_reveal=" (core/end-message-reveal state))
@@ -493,6 +496,8 @@
    "wait" (fn [a _] {:type :wait :seconds (parse-float-token a)})
    "enemy" (fn [a _] {:type :enemy :spec (parse-enemy-spec a)})
    "fireball" (fn [a _] {:type :fireball :spec (parse-fireball-spec a)})
+   "start" (fn [_ _] {:type :start})
+   "confirm" (fn [_ _] {:type :confirm})
    "quit" (fn [_ _] {:type :quit})})
 
 (defn parse-qa-event-line
