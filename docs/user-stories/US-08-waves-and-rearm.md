@@ -1,6 +1,6 @@
 # US-08 — Waves complete and batteries rearm
 
-**Status:** in-implementation  
+**Status:** done  
 **Depends on:** US-07  
 **Design:** §5.4, §5.5
 

@@ -1,6 +1,6 @@
 # US-06 — Defensive missiles and fireballs
 
-**Status:** in-implementation  
+**Status:** done  
 **Depends on:** US-04  
 **Design:** §5.2, §5.4
 
