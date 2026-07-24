@@ -1,5 +1,6 @@
 (ns missile-command.core
   (:require [missile-command.batteries :as batteries]
+            [missile-command.cities :as cities]
             [missile-command.input :as input]
             [missile-command.missiles :as missiles]
             [missile-command.world :as world]))
@@ -78,7 +79,7 @@
 
 (defn living-cities
   [state]
-  (filterv :alive? (cities state)))
+  (cities/living (cities state)))
 
 (defn batteries
   [state]
@@ -127,7 +128,7 @@
 
 (defn city
   [state city-id]
-  (first (filter #(= city-id (:id %)) (cities state))))
+  (cities/by-id (cities state) city-id))
 
 (defn living-city?
   [state city-id]
@@ -164,17 +165,11 @@
 
 (defn- update-city
   [state city-id f]
-  (update state :cities
-          (fn [cs]
-            (mapv (fn [c]
-                    (if (= city-id (:id c))
-                      (f c)
-                      c))
-                  cs))))
+  (update state :cities #(cities/update-city % city-id f)))
 
 (defn destroy-city
   [state city-id]
-  (update-city state city-id #(assoc % :alive? false)))
+  (update-city state city-id cities/destroy))
 
 (defn spawn-enemy-at
   "Spawn an enemy missile from origin toward a target point."
