@@ -164,6 +164,8 @@ bb play --qa --qa-speed 10 --qa-scenario tmp/wave-rearm-depleted.edn --qa-events
 | `:cities` | `:destroyed` and/or `:alive` vectors of city indices `0`–`5`; layout positions follow normal world layout |
 | `:enemies` | Scripted enemies at start; each `:target` is `[:city n]` or `[:battery :left|:center|:right]`; optional `:origin [x y]` for angled sky entry (`y` is top of sky, typically `0`) |
 | `:targets` | Optional destroyable test targets at playfield coordinates |
+| `:high-score-capacity` | Max table length (default 10) |
+| `:high-scores` | Seed table vector of `{:initials "AAA" :score 1000}` (replaces loaded table when present) |
 
 Examples for common setups:
 
@@ -211,9 +213,24 @@ quit
 | `key <name>` | Key fire / UI key (`z`, `1`, `x`, `2`, `c`, `3`, …) |
 | `wait <n>` | Wait `n` **wall-clock** seconds (sim advances `n * qa-speed`) |
 | `start` | Leave title and begin a fresh playing run |
-| `confirm` | Confirm THE END and return to title (when no high-score entry) |
+| `confirm` | Confirm THE END → high-score-entry if score qualifies, else title |
+| `open-high-scores` / `close-high-scores` | View table from title / return to title (`H` also toggles) |
+| `initials ABC` | Submit 3-char initials on high-score-entry (normalized A–Z/0–9) |
 | `pause` / `resume` | Pause/resume play (`P` / Esc also toggle while playing) |
 | `quit` | Exit cleanly |
+
+#### High-score persistence
+
+Default file: `~/.missile-command/scores.edn`  
+Override for QA: `--scores-file path` (isolated EDN load/save).
+
+Host loads the table at startup; after a successful initials submit, the host
+rewrites the file. Shape:
+
+```edn
+{:high-scores [{:initials "AAA" :score 1000} {:initials "BOB" :score 500}]
+ :high-score-capacity 10}
+```
 
 #### Telemetry (stdout when `--qa`)
 
@@ -250,7 +267,7 @@ qa-sim t=1.5 missiles_in_flight=0 fireballs=1 enemy_missiles=1 center_x=200 cent
 | `final_score=` | Score frozen at THE END (else current score) |
 | `multiplier=` | Score multiplier for the current wave (1–6) |
 | `bonus_cities=` | Usable bonus-city reserve |
-| `screen=` | `title`, `playing`, `paused`, or `the-end` |
+| `screen=` | `title`, `playing`, `paused`, `the-end`, `high-score-entry`, or `high-scores` |
 | `title_game_name=` | Title copy token (e.g. `Missile_Command`) |
 | `hud_score=` / `hud_wave=` / `hud_multiplier=` | HUD projection of score/wave/mult |
 | `hud_living_cities=` / `hud_bonus_cities=` | HUD living/bonus city counts |
@@ -259,6 +276,11 @@ qa-sim t=1.5 missiles_in_flight=0 fireballs=1 enemy_missiles=1 center_x=200 cent
 | `end_message=` | End copy as one token (`THE_END` or `none`); never `Game_Over` |
 | `end_fireball_radius=` | Screen-fill end blast radius (0 when not in THE END) |
 | `end_message_reveal=` | 0–1 reveal fraction for THE END lettering |
+| `high_score_count=` / `high_score_capacity=` | Table length and max N |
+| `pending_high_score=` | Score awaiting initials (`none` if not on entry) |
+| `submitted_initials=` | Last submitted initials (`none` if none) |
+| `initials_draft=` | Host typing buffer while entering (`none` if empty) |
+| `hs_rankN_initials=` / `hs_rankN_score=` | Ranked rows 1–10 when present |
 | Destroyable targets | position and `destroyed=true\|false` |
 
 Fireball phase order for one blast: `start.t` ≤ `max.t` ≤ `shrink.t` ≤ `end.t`.
