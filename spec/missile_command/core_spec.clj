@@ -515,6 +515,90 @@
       (should= 25 (core/score after-kill))
       (should= 25 (core/score after-aim)))))
 
+(describe "HUD"
+  (it "exposes full playing fields while playing"
+    (let [state (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+          hud (core/hud state)]
+      (should (:full-playing-hud? hud))
+      (should= 0 (:score hud))
+      (should= 1 (:wave hud))
+      (should= 1 (:multiplier hud))
+      (should= 10 (:left-ammo hud))
+      (should= 10 (:center-ammo hud))
+      (should= 10 (:right-ammo hud))
+      (should= 6 (:living-cities hud))
+      (should= 0 (:bonus-cities hud))))
+
+  (it "matches core after score fire and city loss"
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+                    (core/set-score 2500)
+                    (core/set-wave 3)
+                    (core/destroy-city 0)
+                    (core/set-bonus-city-reserve 2)
+                    (#(:state (core/handle % {:type :fire :battery :left}))))
+          hud (core/hud state)]
+      (should= (core/score state) (:score hud))
+      (should= (core/wave state) (:wave hud))
+      (should= (core/multiplier state) (:multiplier hud))
+      (should= 9 (:left-ammo hud))
+      (should= (count (core/living-cities state)) (:living-cities hud))
+      (should= (core/bonus-cities state) (:bonus-cities hud))))
+
+  (it "remains available while paused and not on title"
+    (let [playing (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+          paused (core/pause-game (core/set-score playing 500))
+          title (core/new-game {:width 800 :height 600})]
+      (should (:full-playing-hud? (core/hud paused)))
+      (should= 500 (:score (core/hud paused)))
+      (should-not (:full-playing-hud? (core/hud title))))))
+
+(describe "pause and resume"
+  (it "pauses from playing and freezes simulation"
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+                    (core/spawn-enemy-targeting-city 0))
+          advanced (:state (core/tick state 0.1))
+          progress (double (:progress (first (core/enemy-missiles advanced))))
+          paused (core/pause-game advanced)
+          held (:state (core/tick paused 0.5))]
+      (should (core/paused? paused))
+      (should= progress (double (:progress (first (core/enemy-missiles held)))))))
+
+  (it "blocks fire while paused"
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+                    core/pause-game)
+          after (:state (core/handle state {:type :fire :battery :center}))]
+      (should (core/paused? after))
+      (should (empty? (core/defensive-missiles after)))))
+
+  (it "blocks click fire while paused"
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+                    core/pause-game)
+          after (:state (core/handle state {:type :click :x 400 :y 200}))]
+      (should (core/paused? after))
+      (should (empty? (core/defensive-missiles after)))))
+
+  (it "pauses and resumes via handle commands"
+    (let [playing (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+          paused (:state (core/handle playing {:type :pause}))
+          resumed (:state (core/handle paused {:type :resume}))]
+      (should (core/paused? paused))
+      (should (core/playing? resumed))))
+
+  (it "resumes and continues enemy progress"
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+                    (core/spawn-enemy-targeting-city 0))
+          advanced (:state (core/tick state 0.1))
+          progress (double (:progress (first (core/enemy-missiles advanced))))
+          resumed (-> advanced core/pause-game core/resume-game)
+          after (:state (core/tick resumed 0.1))]
+      (should (core/playing? resumed))
+      (should (< progress (double (:progress (first (core/enemy-missiles after))))))))
+
+  (it "ignores pause on the title screen"
+    (let [state (core/new-game {:width 800 :height 600})
+          after (core/pause-game state)]
+      (should (core/title? after)))))
+
 (describe "wave enemy battery targets"
   (it "schedules enemies against cities and batteries"
     (let [state (core/set-wave-enemies-active
