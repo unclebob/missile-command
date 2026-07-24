@@ -46,6 +46,10 @@
           :score initial-score
           :crosshair (center-crosshair width height)
           :defensive-missiles []
+          :fireballs []
+          :destroyable-targets []
+          :sim-time 0.0
+          :last-applied-dt 0.0
           :next-entity-id initial-entity-id}
          (world/apply-layout width height)))
 
@@ -103,6 +107,26 @@
   [state]
   (or (:defensive-missiles state) []))
 
+(defn fireballs
+  [state]
+  (or (:fireballs state) []))
+
+(defn destroyable-targets
+  [state]
+  (or (:destroyable-targets state) []))
+
+(defn sim-time
+  [state]
+  (double (or (:sim-time state) 0.0)))
+
+(defn last-applied-dt
+  [state]
+  (double (or (:last-applied-dt state) 0.0)))
+
+(defn max-fireball-radius
+  [_]
+  missiles/fireball-max-radius)
+
 (defn set-battery-ammo
   "Test/setup helper: set remaining missiles for a battery."
   [state battery-id ammo]
@@ -112,6 +136,13 @@
   "Test/setup helper: mark a battery destroyed."
   [state battery-id]
   (update-battery state battery-id batteries/destroy))
+
+(defn add-destroyable-target
+  "Test/setup helper: place a fireball-vulnerable stub at x,y."
+  [state x y]
+  (let [[id state] (next-entity-id state)
+        target {:id id :x x :y y :destroyed? false}]
+    (update state :destroyable-targets (fnil conj []) target)))
 
 (defn- fire-battery
   [state battery-id]
@@ -165,3 +196,58 @@
     :click (click-fire state (:x command) (:y command))
     (throw (ex-info (str "unsupported command: " (:type command))
                     {:command command}))))
+
+(defn- spawn-fireball-from-missile
+  [state missile]
+  (let [[fid state] (next-entity-id state)
+        fireball (missiles/make-fireball fid (:x1 missile) (:y1 missile))]
+    (update state :fireballs (fnil conj []) fireball)))
+
+(defn- tick-defensive-missiles
+  [state dt]
+  (reduce (fn [s missile]
+            (let [result (missiles/advance-defensive missile dt)]
+              (if (= missiles/arrived result)
+                (spawn-fireball-from-missile s missile)
+                (update s :defensive-missiles (fnil conj []) result))))
+          (assoc state :defensive-missiles [])
+          (defensive-missiles state)))
+
+(defn- tick-fireballs
+  [state dt]
+  (reduce (fn [s fireball]
+            (let [result (missiles/advance-fireball fireball dt)]
+              (if (= missiles/expired result)
+                s
+                (update s :fireballs (fnil conj []) result))))
+          (assoc state :fireballs [])
+          (fireballs state)))
+
+(defn- target-hit-by-fireball?
+  [target fireballs]
+  (some #(missiles/point-in-fireball? % (:x target) (:y target)) fireballs))
+
+(defn- destroy-targets-in-fireballs
+  [state]
+  (let [fbs (fireballs state)]
+    (update state :destroyable-targets
+            (fn [targets]
+              (mapv (fn [target]
+                      (if (or (:destroyed? target)
+                              (target-hit-by-fireball? target fbs))
+                        (assoc target :destroyed? true)
+                        target))
+                    (or targets []))))))
+
+(defn tick
+  "Advance simulation by dt seconds (clamped). Returns {:state s :events [...]}."
+  [state dt]
+  (let [applied (missiles/clamp-dt dt)
+        state (-> state
+                  (assoc :last-applied-dt applied)
+                  (update :sim-time (fnil + 0.0) applied)
+                  (tick-defensive-missiles applied)
+                  (tick-fireballs applied)
+                  (destroy-targets-in-fireballs))]
+    {:state state :events []}))
+
