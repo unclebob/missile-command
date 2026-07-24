@@ -8,6 +8,7 @@
             [missile-command.acceptance.city-steps :as city-steps]
             [missile-command.acceptance.defensive-steps :as defensive-steps]
             [missile-command.acceptance.title-steps :as title-steps]
+            [missile-command.acceptance.pause-steps :as pause-steps]
             [missile-command.core :as core]))
 
 (defn- assert-playfield-dimension
@@ -422,7 +423,6 @@
                  (reduce core/destroy-city
                          (:state world)
                          (map :id (core/cities (:state world))))))}
-
 
    {:pattern #"^the player fires the (left|center|right) battery$"
     :fn (fn [world [_ battery-name] _]
@@ -1018,7 +1018,8 @@
         fireball-steps/handlers
         city-steps/handlers
         defensive-steps/handlers
-        title-steps/handlers)))
+        title-steps/handlers
+        pause-steps/handlers)))
 
 (defn- match-handler
   [text]
