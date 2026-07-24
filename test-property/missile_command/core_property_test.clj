@@ -405,10 +405,96 @@
           target (first (core/destroyable-targets after))]
       (= inside? (boolean (:destroyed? target))))))
 
+(def city-index-gen
+  (gen/large-integer* {:min 0 :max 5}))
+
+(defn- spawn-enemy-to-city
+  [state city-id]
+  (core/spawn-enemy-targeting-city state city-id))
+
+(defn- advance-enemies-until-gone
+  [state]
+  (loop [s state n 0]
+    (cond
+      (> n 10000) s
+      (empty? (core/enemy-missiles s)) s
+      :else (recur (:state (core/tick s 0.05)) (inc n)))))
+
+(defspec unintercepted-enemy-destroys-city
+  30
+  (for-all [city-id city-index-gen]
+    (let [before (spawn-enemy-to-city (core/new-game {:width 800 :height 600}) city-id)
+          after (advance-enemies-until-gone before)]
+      (and (not (core/living-city? after city-id))
+           (= 5 (count (core/living-cities after)))
+           (empty? (core/enemy-missiles after))
+           (= :impact (core/last-enemy-fate after))))))
+
+(defspec unintercepted-enemy-destroys-battery
+  20
+  (for-all [battery-id battery-id-gen]
+    (let [before (core/spawn-enemy-targeting-battery
+                  (core/new-game {:width 800 :height 600}) battery-id)
+          after (advance-enemies-until-gone before)
+          bat (core/battery after battery-id)]
+      (and (:destroyed? bat)
+           (empty? (core/enemy-missiles after))
+           (= :impact (core/last-enemy-fate after))
+           (zero? (count (core/defensive-missiles
+                          (:state (fire after battery-id)))))))))
+
+(defspec enemy-in-fireball-is-destroyed-without-impact
+  20
+  (for-all [city-id city-index-gen]
+    (let [state (core/new-game {:width 800 :height 600})
+          city (core/city state city-id)
+          mid-y (long (/ (:y city) 2.0))
+          before (-> state
+                     (spawn-enemy-to-city city-id)
+                     (core/add-static-fireball (:x city) mid-y 80.0)
+                     (core/route-enemy-through-point (:x city) mid-y))
+          after (advance-enemies-until-gone before)]
+      (and (core/living-city? after city-id)
+           (= 6 (count (core/living-cities after)))
+           (empty? (core/enemy-missiles after))
+           (= :fireball (core/last-enemy-fate after))))))
+
+(defspec enemy-outside-fireball-still-impacts
+  15
+  (for-all [city-id city-index-gen]
+    (let [state (core/new-game {:width 800 :height 600})
+          before (-> state
+                     (spawn-enemy-to-city city-id)
+                     (core/add-static-fireball 50 50 15.0))
+          after (advance-enemies-until-gone before)]
+      (and (not (core/living-city? after city-id))
+           (= 5 (count (core/living-cities after)))
+           (= :impact (core/last-enemy-fate after))))))
+
+(defspec multiple-enemies-destroy-distinct-cities
+  15
+  (for-all [n (gen/elements [2 3])]
+    (let [before (core/spawn-enemies-targeting-distinct-cities
+                  (core/new-game {:width 800 :height 600}) n)
+          after (advance-enemies-until-gone before)]
+      (and (= (- 6 n) (count (core/living-cities after)))
+           (empty? (core/enemy-missiles after))))))
+
+(defspec enemy-missile-progresses-toward-target
+  30
+  (for-all [city-id city-index-gen]
+    (let [before (spawn-enemy-to-city (core/new-game {:width 800 :height 600}) city-id)
+          p0 (:progress (first (core/enemy-missiles before)))
+          after (:state (core/tick before 0.05))
+          enemies (core/enemy-missiles after)]
+      (and (= 1 (count enemies))
+           (> (:progress (first enemies)) p0)))))
+
 (deftest property-suite-loads
   (is (fn? core/new-game))
   (is (fn? core/resize))
   (is (fn? core/handle))
   (is (fn? core/tick))
+  (is (fn? core/spawn-enemy-targeting-city))
   (is (fn? core/on-ground?))
   (is (fn? input/click-zone)))

@@ -59,8 +59,11 @@
 
   (it "arrives when progress exceeds one"
     (let [m (missiles/make-defensive 1 :left {:x 0 :y 0 :missile-speed 1000.0}
-                                     {:x 10 :y 0})]
-      (should= missiles/arrived (missiles/advance-defensive m 1.0)))))
+                                     {:x 10 :y 0})
+          result (missiles/advance-defensive m 1.0)]
+      (should= missiles/arrived result)
+      (should (missiles/arrived? result))
+      (should-not (missiles/arrived? m)))))
 
 (describe "fireballs"
   (it "expands then contracts then expires"
@@ -104,4 +107,29 @@
       (should (missiles/point-in-fireball? fb 3 4))
       (should (missiles/point-in-fireball? fb 5 0))
       (should-not (missiles/point-in-fireball? fb 5.01 0))
-      (should-not (missiles/point-in-fireball? fb 20 0)))))
+      (should-not (missiles/point-in-fireball? fb 20 0))))
+
+  (it "keeps static fireballs fixed forever"
+    (let [fb (missiles/make-static-fireball 2 5 6 12.0)
+          later (missiles/advance-fireball fb 10.0)]
+      (should= 12.0 (:radius later))
+      (should= true (:static? later))
+      (should= missiles/static-fireball-flag (:static? fb))
+      (should= later fb))))
+
+(describe "enemy missiles"
+  (it "builds a ballistic enemy toward a target"
+    (let [m (missiles/make-enemy 9 {:x 1 :y 0} {:x 1 :y 100}
+                                 50.0 :city 2)]
+      (should= 9 (:id m))
+      (should= :city (:target-kind m))
+      (should= 2 (:target-id m))
+      (should= 0.0 (:progress m))
+      (should= 1.0 (double (:x m)))))
+
+  (it "advances or arrives like defensive missiles"
+    (let [m (missiles/make-enemy 1 {:x 0 :y 0} {:x 100 :y 0} 100.0 :city 0)
+          advanced (missiles/advance-enemy m 0.1)]
+      (should= 0.1 (:progress advanced))
+      (should= missiles/arrived
+               (missiles/advance-enemy m 2.0)))))

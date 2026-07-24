@@ -214,3 +214,12 @@ adapter (`clojure -M:acceptance-mutation-runner`).
 (core/playfield-width state)   ; => 800
 (core/playfield-height state)  ; => 600
 ```
+
+#### `--qa-enemy city:N` or `--qa-enemy battery:left|center|right`
+
+Spawn one enemy ballistic missile toward a city index or battery.
+
+```sh
+bb play --qa-telemetry --qa-enemy city:0
+bb play --qa-telemetry --qa-enemy battery:left
+```
