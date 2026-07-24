@@ -46,6 +46,10 @@
           :score initial-score
           :crosshair (center-crosshair width height)
           :defensive-missiles []
+          :fireballs []
+          :destroyable-targets []
+          :sim-time 0.0
+          :last-applied-dt 0.0
           :next-entity-id initial-entity-id}
          (world/apply-layout width height)))
 
@@ -103,6 +107,26 @@
   [state]
   (or (:defensive-missiles state) []))
 
+(defn fireballs
+  [state]
+  (or (:fireballs state) []))
+
+(defn destroyable-targets
+  [state]
+  (or (:destroyable-targets state) []))
+
+(defn sim-time
+  [state]
+  (double (or (:sim-time state) 0.0)))
+
+(defn last-applied-dt
+  [state]
+  (double (or (:last-applied-dt state) 0.0)))
+
+(defn max-fireball-radius
+  [_]
+  missiles/fireball-max-radius)
+
 (defn set-battery-ammo
   "Test/setup helper: set remaining missiles for a battery."
   [state battery-id ammo]
@@ -112,6 +136,13 @@
   "Test/setup helper: mark a battery destroyed."
   [state battery-id]
   (update-battery state battery-id batteries/destroy))
+
+(defn add-destroyable-target
+  "Test/setup helper: place a fireball-vulnerable stub at x,y."
+  [state x y]
+  (let [[id state] (next-entity-id state)
+        target {:id id :x x :y y :destroyed? false}]
+    (update state :destroyable-targets (fnil conj []) target)))
 
 (defn- fire-battery
   [state battery-id]
@@ -166,6 +197,60 @@
     (throw (ex-info (str "unsupported command: " (:type command))
                     {:command command}))))
 
+(defn- spawn-fireball-from-missile
+  [state missile]
+  (let [[fid state] (next-entity-id state)
+        fireball (missiles/make-fireball fid (:x1 missile) (:y1 missile))]
+    (update state :fireballs (fnil conj []) fireball)))
+
+(defn- tick-defensive-missiles
+  [state dt]
+  (reduce (fn [s missile]
+            (let [result (missiles/advance-defensive missile dt)]
+              (if (= missiles/arrived result)
+                (spawn-fireball-from-missile s missile)
+                (update s :defensive-missiles (fnil conj []) result))))
+          (assoc state :defensive-missiles [])
+          (defensive-missiles state)))
+
+(defn- tick-fireballs
+  [state dt]
+  (reduce (fn [s fireball]
+            (let [result (missiles/advance-fireball fireball dt)]
+              (if (= missiles/expired result)
+                s
+                (update s :fireballs (fnil conj []) result))))
+          (assoc state :fireballs [])
+          (fireballs state)))
+
+(defn- target-hit-by-fireball?
+  [target fireballs]
+  (some #(missiles/point-in-fireball? % (:x target) (:y target)) fireballs))
+
+(defn- destroy-targets-in-fireballs
+  [state]
+  (let [fbs (fireballs state)]
+    (update state :destroyable-targets
+            (fn [targets]
+              (mapv (fn [target]
+                      (if (or (:destroyed? target)
+                              (target-hit-by-fireball? target fbs))
+                        (assoc target :destroyed? true)
+                        target))
+                    (or targets []))))))
+
+(defn tick
+  "Advance simulation by dt seconds (clamped). Returns {:state s :events [...]}."
+  [state dt]
+  (let [applied (missiles/clamp-dt dt)
+        state (-> state
+                  (assoc :last-applied-dt applied)
+                  (update :sim-time (fnil + 0.0) applied)
+                  (tick-defensive-missiles applied)
+                  (tick-fireballs applied)
+                  (destroy-targets-in-fireballs))]
+    {:state state :events []}))
+
 ;; clj-mutate-manifest-begin
-;; {:version 1, :tested-at "2026-07-24T11:56:39.45099-05:00", :module-hash "-477247784", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 5, :hash "283709622"} {:id "def/initial-score", :kind "def", :line 7, :end-line 7, :hash "485183318"} {:id "def/initial-entity-id", :kind "def", :line 8, :end-line 8, :hash "-2006662704"} {:id "defn-/clamp", :kind "defn-", :line 10, :end-line 12, :hash "1680610514"} {:id "defn-/clamp-point", :kind "defn-", :line 14, :end-line 17, :hash "-1082243884"} {:id "defn-/center-crosshair", :kind "defn-", :line 19, :end-line 21, :hash "502710703"} {:id "defn-/reclamp-crosshair", :kind "defn-", :line 23, :end-line 26, :hash "-777862263"} {:id "defn-/update-battery", :kind "defn-", :line 28, :end-line 30, :hash "-630735181"} {:id "defn-/next-entity-id", :kind "defn-", :line 32, :end-line 35, :hash "-611923035"} {:id "defn-/no-events", :kind "defn-", :line 37, :end-line 39, :hash "652168329"} {:id "defn/new-game", :kind "defn", :line 41, :end-line 50, :hash "-2058566716"} {:id "defn/resize", :kind "defn", :line 52, :end-line 59, :hash "-1344415357"} {:id "defn/playfield-width", :kind "defn", :line 61, :end-line 63, :hash "-1043537513"} {:id "defn/playfield-height", :kind "defn", :line 65, :end-line 67, :hash "344252362"} {:id "defn/cities", :kind "defn", :line 69, :end-line 71, :hash "1240083502"} {:id "defn/living-cities", :kind "defn", :line 73, :end-line 75, :hash "-1556555524"} {:id "defn/batteries", :kind "defn", :line 77, :end-line 79, :hash "206298614"} {:id "defn/battery", :kind "defn", :line 81, :end-line 83, :hash "-1555624967"} {:id "defn/on-ground?", :kind "defn", :line 85, :end-line 88, :hash "1609612027"} {:id "defn/city-on-ground?", :kind "defn", :line 90, :end-line 92, :hash "-1878088970"} {:id "defn/crosshair", :kind "defn", :line 94, :end-line 96, :hash "-2027795649"} {:id "defn/score", :kind "defn", :line 98, :end-line 100, :hash "-1700557235"} {:id "defn/defensive-missiles", :kind "defn", :line 102, :end-line 104, :hash "-1457861839"} {:id "defn/set-battery-ammo", :kind "defn", :line 106, :end-line 109, :hash "975933252"} {:id "defn/destroy-battery", :kind "defn", :line 111, :end-line 114, :hash "674766162"} {:id "defn-/fire-battery", :kind "defn-", :line 116, :end-line 127, :hash "-618779090"} {:id "defn-/aim", :kind "defn-", :line 129, :end-line 135, :hash "242968114"} {:id "defn/click-zone", :kind "defn", :line 137, :end-line 140, :hash "943238228"} {:id "defn/click-fallback-order", :kind "defn", :line 142, :end-line 145, :hash "-1791151582"} {:id "defn-/click-fire", :kind "defn-", :line 147, :end-line 157, :hash "1116051741"} {:id "defn/handle", :kind "defn", :line 159, :end-line 167, :hash "-1723942109"}]}
+;; {:version 1, :tested-at "2026-07-24T12:29:01.104202-05:00", :module-hash "-2050609393", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 5, :hash "283709622"} {:id "def/initial-score", :kind "def", :line 7, :end-line 7, :hash "485183318"} {:id "def/initial-entity-id", :kind "def", :line 8, :end-line 8, :hash "-2006662704"} {:id "defn-/clamp", :kind "defn-", :line 10, :end-line 12, :hash "1680610514"} {:id "defn-/clamp-point", :kind "defn-", :line 14, :end-line 17, :hash "-1082243884"} {:id "defn-/center-crosshair", :kind "defn-", :line 19, :end-line 21, :hash "502710703"} {:id "defn-/reclamp-crosshair", :kind "defn-", :line 23, :end-line 26, :hash "-777862263"} {:id "defn-/update-battery", :kind "defn-", :line 28, :end-line 30, :hash "-630735181"} {:id "defn-/next-entity-id", :kind "defn-", :line 32, :end-line 35, :hash "-611923035"} {:id "defn-/no-events", :kind "defn-", :line 37, :end-line 39, :hash "652168329"} {:id "defn/new-game", :kind "defn", :line 41, :end-line 54, :hash "2092547892"} {:id "defn/resize", :kind "defn", :line 56, :end-line 63, :hash "-1344415357"} {:id "defn/playfield-width", :kind "defn", :line 65, :end-line 67, :hash "-1043537513"} {:id "defn/playfield-height", :kind "defn", :line 69, :end-line 71, :hash "344252362"} {:id "defn/cities", :kind "defn", :line 73, :end-line 75, :hash "1240083502"} {:id "defn/living-cities", :kind "defn", :line 77, :end-line 79, :hash "-1556555524"} {:id "defn/batteries", :kind "defn", :line 81, :end-line 83, :hash "206298614"} {:id "defn/battery", :kind "defn", :line 85, :end-line 87, :hash "-1555624967"} {:id "defn/on-ground?", :kind "defn", :line 89, :end-line 92, :hash "1609612027"} {:id "defn/city-on-ground?", :kind "defn", :line 94, :end-line 96, :hash "-1878088970"} {:id "defn/crosshair", :kind "defn", :line 98, :end-line 100, :hash "-2027795649"} {:id "defn/score", :kind "defn", :line 102, :end-line 104, :hash "-1700557235"} {:id "defn/defensive-missiles", :kind "defn", :line 106, :end-line 108, :hash "-1457861839"} {:id "defn/fireballs", :kind "defn", :line 110, :end-line 112, :hash "-47675919"} {:id "defn/destroyable-targets", :kind "defn", :line 114, :end-line 116, :hash "-2146081921"} {:id "defn/sim-time", :kind "defn", :line 118, :end-line 120, :hash "1526499425"} {:id "defn/last-applied-dt", :kind "defn", :line 122, :end-line 124, :hash "-1011651673"} {:id "defn/max-fireball-radius", :kind "defn", :line 126, :end-line 128, :hash "421742428"} {:id "defn/set-battery-ammo", :kind "defn", :line 130, :end-line 133, :hash "975933252"} {:id "defn/destroy-battery", :kind "defn", :line 135, :end-line 138, :hash "674766162"} {:id "defn/add-destroyable-target", :kind "defn", :line 140, :end-line 145, :hash "1896236082"} {:id "defn-/fire-battery", :kind "defn-", :line 147, :end-line 158, :hash "-618779090"} {:id "defn-/aim", :kind "defn-", :line 160, :end-line 166, :hash "242968114"} {:id "defn/click-zone", :kind "defn", :line 168, :end-line 171, :hash "943238228"} {:id "defn/click-fallback-order", :kind "defn", :line 173, :end-line 176, :hash "-1791151582"} {:id "defn-/click-fire", :kind "defn-", :line 178, :end-line 188, :hash "1116051741"} {:id "defn/handle", :kind "defn", :line 190, :end-line 198, :hash "-1723942109"} {:id "defn-/spawn-fireball-from-missile", :kind "defn-", :line 200, :end-line 204, :hash "1462937916"} {:id "defn-/tick-defensive-missiles", :kind "defn-", :line 206, :end-line 214, :hash "1898916742"} {:id "defn-/tick-fireballs", :kind "defn-", :line 216, :end-line 224, :hash "-1794535937"} {:id "defn-/target-hit-by-fireball?", :kind "defn-", :line 226, :end-line 228, :hash "1860880525"} {:id "defn-/destroy-targets-in-fireballs", :kind "defn-", :line 230, :end-line 240, :hash "-1920073096"} {:id "defn/tick", :kind "defn", :line 242, :end-line 252, :hash "-928740812"}]}
 ;; clj-mutate-manifest-end
