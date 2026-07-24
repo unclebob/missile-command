@@ -652,5 +652,5 @@
 ])
 
 ;; clj-mutate-manifest-begin
-;; {:version 1, :tested-at "2026-07-24T14:24:15.95308-05:00", :module-hash "-583711252", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 4, :hash "62993193"} {:id "defn/first-enemy-missile", :kind "defn", :line 6, :end-line 8, :hash "-301024911"} {:id "defn/between-endpoints?", :kind "defn", :line 10, :end-line 14, :hash "653045632"} {:id "def/handlers", :kind "def", :line 16, :end-line 259, :hash "1438327875"}]}
+;; {:version 1, :tested-at "2026-07-24T14:43:06.54693-05:00", :module-hash "-1943520011", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 4, :hash "62993193"} {:id "defn/first-enemy-missile", :kind "defn", :line 6, :end-line 8, :hash "-301024911"} {:id "defn/between-endpoints?", :kind "defn", :line 10, :end-line 14, :hash "653045632"} {:id "def/handlers", :kind "def", :line 16, :end-line 652, :hash "1506153657"}]}
 ;; clj-mutate-manifest-end

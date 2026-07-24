@@ -8,20 +8,35 @@
   (it "advances along the path and leaves at the end"
     (let [f (flyers/make 1 :bomber 0 80 100 80 100)
           mid (flyers/advance f 0.5)
-          done (flyers/advance f 2.0)]
+          done (flyers/advance f 2.0)
+          at-end (flyers/advance (assoc f :progress 0.999) 0.01)]
       (should= 0.5 (double (:progress mid)))
       (should= 50.0 (double (:x mid)))
       (should= 80.0 (double (:y mid)))
-      (should= :left done)))
+      (should= :left done)
+      (should= :left at-end)))
 
-  (it "reports pending drops by progress"
+  (it "measures diagonal path length with both axes from nonzero origin"
+    (let [f (flyers/make 1 :bomber 1 2 4 6 10)]
+      (should= 5.0 (flyers/path-length f))
+      (let [mid (flyers/position-at f 0.5)]
+        (should= 2.5 (double (:x mid)))
+        (should= 4.0 (double (:y mid))))
+      (let [exact (flyers/advance (assoc f :progress 1.0 :x 4.0 :y 6.0) 0.0)]
+        (should= :left exact))))
+
+  (it "reports pending drops by progress including exact threshold"
     (let [f (assoc (flyers/make 1 :bomber 0 80 100 80 100)
                    :drops [{:id 0 :at-progress 0.3 :target [:city 0]}
-                           {:id 1 :at-progress 0.8 :target [:city 1]}]
+                           {:id 1 :at-progress 0.8 :target [:city 1]}
+                           {:id 2 :at-progress 0.5 :target [:city 2]}]
                    :drops-fired #{0})
-          pending (flyers/pending-drops f 0.9)]
-      (should= 1 (count pending))
-      (should= 1 (:id (first pending))))))
+          pending (flyers/pending-drops f 0.9)
+          exact (flyers/pending-drops (assoc f :drops-fired #{}) 0.5)]
+      (should= 2 (count pending))
+      (should= #{1 2} (set (map :id pending)))
+      (should= 2 (count exact))
+      (should= #{0 2} (set (map :id exact))))))
 
 (describe "core flyers"
   (it "spawns and ticks a bomber that drops a city-bound missile"
