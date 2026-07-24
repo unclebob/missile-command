@@ -195,6 +195,28 @@
       (should= :left (:battery (first (core/defensive-missiles after)))))))
 
 (describe "enemy missiles"
+  (it "spawns city-bound enemies from the top of the sky"
+    (let [state (core/spawn-enemy-targeting-city
+                 (core/new-game {:width 800 :height 600}) 0)
+          m (first (core/enemy-missiles state))]
+      (should= 0.0 (double (:y0 m)))
+      (should= 0.0 (double (:y m)))
+      (should= 0 (:id (first (filter #(= 0 (:id %)) (core/cities state)))))))
+
+  (it "spawns battery-bound enemies from the top of the sky"
+    (let [state (core/spawn-enemy-targeting-battery
+                 (core/new-game {:width 800 :height 600}) :left)
+          m (first (core/enemy-missiles state))]
+      (should= 0.0 (double (:y0 m)))
+      (should= 0.0 (double (:y m)))
+      (should= :battery (:target-kind m))
+      (should= :left (:target-id m))))
+
+  (it "route-enemy-through-point is a no-op without enemies"
+    (let [state (core/new-game {:width 800 :height 600})
+          after (core/route-enemy-through-point state 10 20)]
+      (should= [] (core/enemy-missiles after))))
+
   (it "destroys a city on impact"
     (let [state (-> (core/new-game {:width 800 :height 600})
                     (core/spawn-enemy-targeting-city 0))
