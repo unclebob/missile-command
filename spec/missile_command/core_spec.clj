@@ -503,6 +503,55 @@
       (should= 25 (core/score after-kill))
       (should= 25 (core/score after-aim)))))
 
+(describe "THE END"
+  (it "does not end a new game"
+    (let [state (core/new-game {:width 800 :height 600})]
+      (should-not (core/the-end? state))
+      (should-not (core/the-end? (core/evaluate-game-over state)))))
+
+  (it "enters THE END when all cities are gone and reserve is empty"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (#(reduce core/destroy-city % (map :id (core/cities %))))
+                    (core/set-bonus-city-reserve 0)
+                    core/evaluate-game-over)]
+      (should (core/the-end? state))
+      (should= "THE END" (core/end-message state))
+      (should-not= "Game Over" (core/end-message state))
+      (should (core/end-fireball-centered? state))
+      (should= 0 (core/final-score state))))
+
+  (it "restores from reserve instead of ending"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (#(reduce core/destroy-city % (map :id (core/cities %))))
+                    (core/set-bonus-city-reserve 2)
+                    core/evaluate-game-over)]
+      (should-not (core/the-end? state))
+      (should= 2 (count (core/living-cities state)))
+      (should= 0 (core/bonus-cities state))))
+
+  (it "blocks firing after THE END"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (#(reduce core/destroy-city % (map :id (core/cities %))))
+                    (core/set-bonus-city-reserve 0)
+                    core/evaluate-game-over)
+          after (:state (core/handle state {:type :fire :battery :center}))]
+      (should (core/the-end? after))
+      (should (empty? (core/defensive-missiles after)))))
+
+  (it "expands the end fireball to fill the playfield"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (#(reduce core/destroy-city % (map :id (core/cities %))))
+                    (core/set-bonus-city-reserve 0)
+                    core/evaluate-game-over)
+          maxed (loop [s state n 0]
+                  (if (or (core/end-fireball-fills-playfield? s) (> n 5000))
+                    s
+                    (recur (:state (core/tick s 0.05)) (inc n))))]
+      (should (core/end-fireball-fills-playfield? maxed))
+      (should (core/end-message-fills-max-expanse? maxed))
+      (should (core/end-message-centered? maxed))
+      (should (< 0.99 (core/end-message-reveal maxed))))))
+
 (describe "smart bombs"
   (it "advances toward its city target"
     (let [state (core/spawn-smart-bomb-targeting-city
