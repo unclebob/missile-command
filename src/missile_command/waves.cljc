@@ -75,6 +75,17 @@
       (* w (/ (+ (double i) 0.5) (double n)))
       0.0)))
 
+(defn target-pool
+  "Eligible wave targets from living city ids and non-destroyed battery ids."
+  [city-ids battery-ids]
+  (into (mapv (fn [id] [:city id]) city-ids)
+        (mapv (fn [id] [:battery id]) battery-ids)))
+
+(defn cycle-targets
+  "Take n targets cycling the eligible city+battery pool."
+  [pool n]
+  (if (seq pool) (vec (take n (cycle pool))) []))
+
 ;; clj-mutate-manifest-begin
 ;; {:version 1, :tested-at "2026-07-24T14:45:57.987796-05:00", :module-hash "1607008161", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 1, :hash "644944117"} {:id "def/initial-wave", :kind "def", :line 3, :end-line 3, :hash "-1132024059"} {:id "def/full-ammo", :kind "def", :line 4, :end-line 4, :hash "1169396743"} {:id "def/max-multiplier", :kind "def", :line 5, :end-line 5, :hash "315372844"} {:id "def/base-enemy-speed", :kind "def", :line 9, :end-line 9, :hash "-227771228"} {:id "def/enemy-speed-wave-factor", :kind "def", :line 10, :end-line 10, :hash "-600801268"} {:id "defn/enemy-count", :kind "defn", :line 12, :end-line 15, :hash "761033334"} {:id "defn/enemy-speed", :kind "defn", :line 17, :end-line 20, :hash "-341813790"} {:id "defn/mirv-count", :kind "defn", :line 22, :end-line 25, :hash "-969546742"} {:id "defn/smart-bomb-count", :kind "defn", :line 27, :end-line 30, :hash "1265738633"} {:id "defn-/flyer-count-from-wave", :kind "defn-", :line 32, :end-line 35, :hash "-1203787558"} {:id "defn/bomber-count", :kind "defn", :line 37, :end-line 40, :hash "1315798360"} {:id "defn/satellite-count", :kind "defn", :line 42, :end-line 45, :hash "2000732935"} {:id "defn/multiplier", :kind "defn", :line 47, :end-line 50, :hash "666855802"} {:id "defn/schedule-metrics", :kind "defn", :line 52, :end-line 62, :hash "-951056565"} {:id "defn/harder?", :kind "defn", :line 64, :end-line 68, :hash "346906739"} {:id "defn/sky-origin-x", :kind "defn", :line 70, :end-line 76, :hash "-107469784"}]}
 ;; clj-mutate-manifest-end

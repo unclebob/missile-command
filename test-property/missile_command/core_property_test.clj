@@ -525,6 +525,52 @@
            (empty? (core/enemy-missiles after))
            (= :impact (core/last-enemy-fate after))))))
 
+(defspec wave-enemies-include-city-and-battery-targets
+  25
+  (for-all [n (gen/elements [9 12])]
+    (let [state (core/set-wave-enemies-active
+                 (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+                 n)
+          enemies (core/enemy-missiles state)
+          kinds (set (map :target-kind enemies))
+          city-ids (set (map :target-id (filter #(= :city (:target-kind %)) enemies)))
+          bat-ids (set (map :target-id (filter #(= :battery (:target-kind %)) enemies)))]
+      (and (= n (count enemies))
+           (contains? kinds :city)
+           (contains? kinds :battery)
+           (= #{0 1 2 3 4 5} city-ids)
+           (= #{:left :center :right} bat-ids)))))
+
+(defspec destroyed-batteries-excluded-from-wave-targets
+  20
+  (for-all [battery-id battery-id-gen
+            n (gen/elements [8 9])]
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+                    (core/destroy-battery battery-id)
+                    (core/set-wave-enemies-active n))
+          enemies (core/enemy-missiles state)
+          bat-targets (filter #(= :battery (:target-kind %)) enemies)]
+      (and (= n (count enemies))
+           (every? #(not= battery-id (:target-id %)) bat-targets)
+           (every? (fn [e]
+                     (or (and (= :city (:target-kind e))
+                              (core/living-city? state (:target-id e)))
+                         (and (= :battery (:target-kind e))
+                              (not (:destroyed? (core/battery state (:target-id e)))))))
+                   enemies)))))
+
+(defspec unintercepted-wave-battery-target-destroys-battery
+  15
+  (for-all [battery-id battery-id-gen]
+    (let [before (core/spawn-wave-enemy-targeting-battery
+                  (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+                  battery-id)
+          after (advance-enemies-until-gone before)]
+      (and (:destroyed? (core/battery after battery-id))
+           (empty? (core/enemy-missiles after))
+           (= :impact (core/last-enemy-fate after))
+           (= 6 (count (core/living-cities after)))))))
+
 (defspec wave-enemies-use-varied-sky-origins
   30
   (for-all [n (gen/elements [2 3 4 5])
