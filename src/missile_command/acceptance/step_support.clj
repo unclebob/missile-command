@@ -16,3 +16,8 @@
     (Integer/parseInt (str value))
     (catch NumberFormatException _
       (fail! (str "invalid integer for " label ": " value)))))
+
+(defn example-int
+  "Read and parse an integer example parameter."
+  [example param-name label]
+  (parse-int (require-value example param-name) label))

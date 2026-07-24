@@ -1,5 +1,7 @@
 .superpowers/
 .cpcache/
+.clj-config/
+.gitlibs/
 .nrepl-port
 .shadow-cljs/
 node_modules/
@@ -12,4 +14,3 @@ target/
 build/
 acceptance/generated/
 tmp/
-.cpcache/

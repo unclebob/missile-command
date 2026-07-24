@@ -13,4 +13,8 @@
   :check {:extra-deps {io.github.unclebob/speclj-structure-check
                        {:git/url "https://github.com/unclebob/speclj-structure-check.git"
                         :git/sha "6bdc1621e96bcf90f84849e2c48d750ae6bc7297"}}
-          :main-opts ["-m" "speclj-structure-check.core"]}}}
+          :main-opts ["-m" "speclj-structure-check.core"]}
+  :cov {:extra-paths ["spec"]
+        :extra-deps {cloverage/cloverage {:mvn/version "1.2.4"}
+                     speclj/speclj {:mvn/version "3.12.1"}}
+        :main-opts ["-m" "speclj.cloverage" "--" "-p" "src" "-s" "spec" "--lcov"]}}}

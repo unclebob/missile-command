@@ -29,21 +29,28 @@
         [idx example] (map-indexed vector (scenario-rows scenario))]
     (scenario-execution name (or background []) scenario idx example)))
 
+(defn- pass-result
+  [name index world]
+  {:name name :index index :pass true :world world})
+
+(defn- fail-result
+  [name index error]
+  {:name name :index index :pass false :error (.getMessage error)})
+
+(defn- execute-planned
+  [{:keys [name feature-name index steps example]}]
+  (try
+    (pass-result name index
+                 (run-steps {:feature-name feature-name
+                             :scenario-name name}
+                            steps
+                            example))
+    (catch Exception e
+      (fail-result name index e))))
+
 (defn run-feature
   [ir]
-  (mapv (fn [{:keys [name feature-name index steps example]}]
-          (try
-            (let [world (run-steps {:feature-name feature-name
-                                    :scenario-name name}
-                                   steps
-                                   example)]
-              {:name name :index index :pass true :world world})
-            (catch Exception e
-              {:name name
-               :index index
-               :pass false
-               :error (.getMessage e)})))
-        (plan-scenario-executions ir)))
+  (mapv execute-planned (plan-scenario-executions ir)))
 
 (defn run-feature-file
   [ir-path]
