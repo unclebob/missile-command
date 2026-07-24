@@ -31,7 +31,7 @@
                 expected (double (:recorded-enemy-progress world))
                 actual (double (:progress m 0.0))]
             (support/assert-condition m "missing enemy missile")
-            (support/assert-condition (< (Math/abs (- actual expected)) 1.0e-9)
+            (support/assert-condition (= actual expected)
                                       (str "progress " actual " expected recorded "
                                            expected)))
           world)}
@@ -46,3 +46,7 @@
                                (str "progress " actual " not greater than recorded "
                                     expected)))
           world)}])
+
+;; clj-mutate-manifest-begin
+;; {:version 1, :tested-at "2026-07-24T15:58:33.382266-05:00", :module-hash "228813628", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 4, :hash "-639890264"} {:id "def/handlers", :kind "def", :line 6, :end-line 48, :hash "-692662400"}]}
+;; clj-mutate-manifest-end
