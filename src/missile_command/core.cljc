@@ -706,6 +706,7 @@
 (defn- spawn-fireball-from-missile
   [state missile]
   (spawn-fireball-at state (:x1 missile) (:y1 missile)))
+
 (defn- tick-defensive-missiles
   [state dt]
   (reduce (fn [s missile]
@@ -1185,19 +1186,30 @@
              :wave-had-enemies? wave-starts-with-enemies?)
       (rearm-surviving-batteries)))
 
+(defn- advance-clock
+  [state applied]
+  (-> state
+      (assoc :last-applied-dt applied)
+      (update :sim-time (fnil + 0.0) applied)))
+
 (defn tick
-  "Advance simulation by dt seconds (clamped). Returns {:state s :events [...]}."
+  "Advance simulation by dt seconds (clamped). Returns {:state s :events [...]}.
+  Title is idle (clock only); THE END only expands the end fireball."
   [state dt]
   (let [applied (missiles/clamp-dt dt)]
-    (if (the-end? state)
+    (cond
+      (title? state)
+      {:state (advance-clock state applied) :events []}
+
+      (the-end? state)
       {:state (-> state
-                  (assoc :last-applied-dt applied)
-                  (update :sim-time (fnil + 0.0) applied)
+                  (advance-clock applied)
                   (tick-end-fireball applied))
        :events []}
+
+      :else
       (let [state (-> state
-                      (assoc :last-applied-dt applied)
-                      (update :sim-time (fnil + 0.0) applied)
+                      (advance-clock applied)
                       (tick-defensive-missiles applied)
                       (tick-fireballs applied)
                       (destroy-targets-in-fireballs)

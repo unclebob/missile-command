@@ -624,6 +624,69 @@
   [state]
   (reduce core/destroy-city state (map :id (core/cities state))))
 
+(defspec confirm-end-returns-to-title
+  15
+  (for-all [width (gen/elements [800 1024])]
+    (let [playing (assoc (core/new-game {:width width :height 600}) :screen :playing)
+          ended (-> playing
+                    destroy-all-cities
+                    (core/set-bonus-city-reserve 0)
+                    core/evaluate-game-over)
+          title (core/confirm-end-screen ended)]
+      (and (core/the-end? ended)
+           (core/title? title)
+           (= width (core/playfield-width title))
+           (zero? (core/score title))))))
+
+(defspec new-session-starts-on-title-screen
+  30
+  (for-all [width playfield-size-gen
+            height playfield-size-gen]
+    (let [state (core/new-game {:width width :height height})]
+      (and (core/title? state)
+           (not (core/playing? state))
+           (= "Missile Command" (core/title-game-name-of state))
+           (core/title-shows-start-affordance? state)))))
+
+(defspec start-game-enters-playing-with-fresh-run
+  25
+  (for-all [width (gen/elements [800 1920])
+            height (gen/elements [600 1080])
+            prior-score (gen/elements [0 2500 99999])
+            prior-wave (gen/elements [1 5 12])]
+    (let [prior (-> (core/new-game {:width width :height height})
+                    (core/set-score prior-score)
+                    (core/set-wave prior-wave))
+          after (core/start-game prior)]
+      (and (core/playing? after)
+           (not (core/title? after))
+           (zero? (core/score after))
+           (= 1 (core/wave after))
+           (= 1 (core/multiplier after))
+           (= 6 (count (core/living-cities after)))
+           (= width (core/playfield-width after))
+           (= height (core/playfield-height after))
+           (every? #(= 10 (:missiles %)) (core/batteries after))))))
+
+(defspec fire-is-blocked-on-title-screen
+  20
+  (for-all [battery-id battery-id-gen]
+    (let [state (core/new-game {:width 800 :height 600})
+          after (:state (core/handle state {:type :fire :battery battery-id}))]
+      (and (core/title? after)
+           (empty? (core/defensive-missiles after))))))
+
+(defspec title-tick-is-idle
+  20
+  (for-all [dt (gen/elements [0.05 0.1 1.0])]
+    (let [before (core/new-game {:width 800 :height 600})
+          after (:state (core/tick before dt))]
+      (and (core/title? after)
+           (empty? (core/enemy-missiles after))
+           (empty? (core/defensive-missiles after))
+           (= (count (core/living-cities before))
+              (count (core/living-cities after)))))))
+
 (defspec the-end-enters-only-with-no-cities-and-no-reserve
   25
   (for-all [width (gen/elements [800 1920])
@@ -896,6 +959,9 @@
   (is (fn? core/spawn-flyer))
   (is (fn? core/evaluate-game-over))
   (is (fn? core/the-end?))
+  (is (fn? core/title?))
+  (is (fn? core/start-game))
+  (is (fn? core/confirm-end-screen))
   (is (fn? core/multiplier))
   (is (fn? core/wave-mirv-count))
   (is (fn? core/wave-smart-bomb-count))
