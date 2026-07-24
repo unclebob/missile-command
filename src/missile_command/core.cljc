@@ -30,10 +30,16 @@
 (def screen-high-score-entry :high-score-entry)
 (def screen-high-scores :high-scores)
 (def screen-options :options)
+(def screen-wave-banner :wave-banner)
 (def end-message-text game-end/message-text)
 (def wrong-end-message-text game-end/wrong-message-text)
 (def title-game-name screens/title-game-name)
 (def title-start-affordance screens/title-start-affordance)
+(def banner-phase-enter :enter)
+(def banner-phase-exit :exit)
+(def banner-enter-duration 0.6)
+(def banner-exit-duration 0.6)
+(def banner-offscreen-margin 80.0)
 (def end-fireball-expand-seconds missiles/fireball-expand-seconds)
 (def end-fireball-contract-seconds missiles/fireball-contract-seconds)
 
@@ -270,6 +276,72 @@
 (defn high-scores-view?
   [state]
   (= screen-high-scores (screen state)))
+
+(defn wave-banner?
+  [state]
+  (= screen-wave-banner (screen state)))
+
+(defn wave-banner
+  [state]
+  (:wave-banner state))
+
+(defn wave-banner-text
+  [state]
+  (or (:text (wave-banner state)) ""))
+
+(defn wave-banner-announced-wave
+  [state]
+  (long (or (:announced-wave (wave-banner state)) 0)))
+
+(defn wave-banner-phase
+  [state]
+  (:phase (wave-banner state)))
+
+(defn wave-banner-text-position
+  [state]
+  (let [b (wave-banner state)]
+    {:x (double (or (:x b) 0.0))
+     :y (double (or (:y b) 0.0))}))
+
+(defn- playfield-center
+  [state]
+  {:x (/ (double (playfield-width state)) 2.0)
+   :y (/ (double (playfield-height state)) 2.0)})
+
+(defn wave-banner-distance-to-center
+  [state]
+  (let [c (playfield-center state)
+        p (wave-banner-text-position state)
+        dx (- (:x p) (:x c))
+        dy (- (:y p) (:y c))]
+    (Math/sqrt (+ (* dx dx) (* dy dy)))))
+
+(defn- banner-text-for
+  [wave]
+  (str "WAVE " (long wave)))
+
+(defn- make-wave-banner
+  [state announced-wave]
+  (let [c (playfield-center state)
+        start-x (- 0.0 banner-offscreen-margin)]
+    {:announced-wave (long announced-wave)
+     :text (banner-text-for announced-wave)
+     :phase banner-phase-enter
+     :progress 0.0
+     :x start-x
+     :y (:y c)
+     :enter-start-x start-x
+     :center-x (:x c)
+     :center-y (:y c)
+     :exit-end-x (+ (double (playfield-width state)) banner-offscreen-margin)}))
+
+(defn- banner-lerp
+  [a b t]
+  (+ (double a) (* (- (double b) (double a)) (double t))))
+
+(defn- clamp01
+  [t]
+  (max 0.0 (min 1.0 (double t))))
 
 (defn game-options
   [state]
@@ -1373,13 +1445,17 @@
 
 (defn- mark-wave-complete
   [state]
-  (-> state
-      award-wave-end-bonuses
-      apply-bonus-cities-from-reserve
-      (assoc :wave-complete? wave-flag-on
-             :wave-had-enemies? wave-starts-with-enemies?)
-      (update :wave (fnil inc waves/initial-wave))
-      (emit-sfx :sfx/wave-clear)))
+  (let [next-wave (inc (long (or (wave state) waves/initial-wave)))
+        state (-> state
+                  award-wave-end-bonuses
+                  apply-bonus-cities-from-reserve
+                  (assoc :wave-complete? wave-flag-on
+                         :wave-had-enemies? wave-starts-with-enemies?
+                         :wave next-wave
+                         :screen screen-wave-banner
+                         :wave-banner (make-wave-banner state next-wave))
+                  (emit-sfx :sfx/wave-clear))]
+    state))
 
 (defn- maybe-complete-wave
   "When all active wave enemies are gone, mark the wave complete and advance."
@@ -1491,10 +1567,12 @@
          :flyers []))
 
 (defn start-next-wave
-  "Begin the next wave: rearm survivors; wave number already advanced on complete."
+  "Begin the next wave: rearm survivors; leave banner; wave number already advanced."
   [state]
   (-> state
-      (assoc :wave-complete? wave-starts-complete?
+      (assoc :screen screen-playing
+             :wave-banner nil
+             :wave-complete? wave-starts-complete?
              :wave-had-enemies? wave-starts-with-enemies?)
       (rearm-surviving-batteries)))
 
@@ -1503,6 +1581,36 @@
   (-> state
       (assoc :last-applied-dt applied)
       (update :sim-time (fnil + 0.0) applied)))
+
+(defn- finish-wave-banner
+  [state]
+  (start-next-wave state))
+
+(defn- tick-wave-banner
+  [state dt]
+  (let [b (wave-banner state)]
+    (if-not b
+      (finish-wave-banner state)
+      (let [phase (:phase b)
+            progress (double (or (:progress b) 0.0))
+            dur (if (= phase banner-phase-enter)
+                  banner-enter-duration
+                  banner-exit-duration)
+            progress' (clamp01 (+ progress (/ (double dt) dur)))]
+        (if (and (= phase banner-phase-enter) (>= progress' 1.0))
+          (assoc state :wave-banner
+                 (assoc b
+                        :phase banner-phase-exit
+                        :progress 0.0
+                        :x (:center-x b)
+                        :y (:center-y b)))
+          (if (and (= phase banner-phase-exit) (>= progress' 1.0))
+            (finish-wave-banner state)
+            (let [x (if (= phase banner-phase-enter)
+                      (banner-lerp (:enter-start-x b) (:center-x b) progress')
+                      (banner-lerp (:center-x b) (:exit-end-x b) progress'))]
+              (assoc state :wave-banner
+                     (assoc b :progress progress' :x x :y (:center-y b))))))))))
 
 (defn tick
   "Advance simulation by dt seconds (clamped). Returns {:state s :events [...]}.
@@ -1516,6 +1624,12 @@
 
       (title? state)
       {:state (advance-clock state applied) :events []}
+
+      (wave-banner? state)
+      {:state (-> state
+                  (advance-clock applied)
+                  (tick-wave-banner applied))
+       :events []}
 
       (the-end? state)
       {:state (-> state

@@ -181,19 +181,17 @@
     (* wall speed)))
 
 (defn- advance-one-step
-  "One core tick + rearm/spawn on wave complete. Returns [state completed?]."
+  "One core tick; after wave banner ends, spawn next-wave enemies."
   [state dt]
-  (let [result (core/tick state dt)
+  (let [was-banner? (core/wave-banner? state)
+        result (core/tick state dt)
         state' (:state result)
-        completed? (and (core/wave-complete? state')
-                        (not (core/wave-complete? state)))
-        ;; Continuous play: rearm survivors and launch next wave attacks.
-        state' (if completed?
-                 (-> state'
-                     core/start-next-wave
-                     ensure-wave-enemies)
+        banner-finished? (and was-banner? (core/playing? state'))
+        ;; After banner, launch next wave attacks for continuous play.
+        state' (if banner-finished?
+                 (ensure-wave-enemies state')
                  state')]
-    [state' completed?]))
+    [state' banner-finished?]))
 
 (defn- tick-state
   "Advance sim by wall-dt * qa-speed, substepping at missiles/max-dt."
