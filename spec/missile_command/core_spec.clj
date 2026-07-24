@@ -194,6 +194,35 @@
           after (:state (core/handle state {:type :click :x 500 :y 100}))]
       (should= :left (:battery (first (core/defensive-missiles after)))))))
 
+(describe "waves and rearm"
+  (it "starts at wave one with full ammo"
+    (let [state (core/new-game {:width 800 :height 600})]
+      (should= 1 (core/wave state))
+      (should= 1 (:wave (core/hud state)))
+      (doseq [b (core/batteries state)]
+        (should= 10 (:missiles b)))))
+
+  (it "completes a wave when enemies are cleared and advances the number"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (core/set-wave-enemies-active 1))
+          after (loop [s state n 0]
+                  (if (or (core/wave-complete? s) (> n 5000))
+                    s
+                    (recur (:state (core/tick s 0.05)) (inc n))))]
+      (should (core/wave-complete? after))
+      (should= 2 (core/wave after))))
+
+  (it "rearms surviving batteries but not destroyed ones"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (core/set-battery-ammo :left 3)
+                    (core/destroy-battery :left)
+                    (core/set-non-destroyed-battery-ammo 2)
+                    (core/rearm-surviving-batteries))]
+      (should (:destroyed? (core/battery state :left)))
+      (should= 3 (:missiles (core/battery state :left)))
+      (should= 10 (:missiles (core/battery state :center)))
+      (should= 10 (:missiles (core/battery state :right))))))
+
 (describe "enemy missiles"
   (it "spawns city-bound enemies from the top of the sky"
     (let [state (core/spawn-enemy-targeting-city

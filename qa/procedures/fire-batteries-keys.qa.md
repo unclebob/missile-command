@@ -30,8 +30,9 @@ Command-line flags that are published as part of the documented developer interf
 
 Executable QA must:
 
-- Start the app using the documented launch command.
-- Fire batteries through the real keyboard UI (default keys), not by injecting core fire commands.
+- Start the app with documented launch (`bb play`, optionally `bb play --qa --qa-scenario … --qa-events …`).
+- Fire through real keyboard or `--qa-events` `key` lines (default keys), not by injecting core fire commands.
+- Optional scenario: `{:batteries {:left {:ammo 0}}}` etc. for empty-battery checks.
 - **Stop and request explicit approval from the human user** for look and feel before marking this suite passed.
 
 ## Procedure

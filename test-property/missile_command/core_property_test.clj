@@ -490,11 +490,72 @@
       (and (= 1 (count enemies))
            (> (:progress (first enemies)) p0)))))
 
+(defspec new-game-starts-at-wave-one-with-full-ammo
+  30
+  (for-all [width playfield-size-gen
+            height playfield-size-gen]
+    (let [state (core/new-game {:width width :height height})]
+      (and (= 1 (core/wave state))
+           (not (core/wave-complete? state))
+           (= 1 (:wave (core/hud state)))
+           (every? #(= 10 (:missiles %)) (core/batteries state))))))
+
+(defspec wave-stays-incomplete-while-enemies-remain
+  25
+  (for-all [n (gen/elements [1 2 3])]
+    (let [before (core/set-wave-enemies-active
+                  (core/new-game {:width 800 :height 600}) n)
+          after (:state (core/tick before 0.05))]
+      (and (pos? (count (core/enemy-missiles after)))
+           (not (core/wave-complete? after))
+           (= 1 (core/wave after))))))
+
+(defspec wave-completes-and-advances-when-enemies-gone
+  20
+  (for-all [n (gen/elements [1 2])]
+    (let [before (core/set-wave-enemies-active
+                  (core/new-game {:width 800 :height 600}) n)
+          after (advance-enemies-until-gone before)]
+      (and (core/wave-complete? after)
+           (= 2 (core/wave after))
+           (= 2 (:wave (core/hud after)))
+           (empty? (core/enemy-missiles after))))))
+
+(defspec rearm-fills-survivors-and-leaves-destroyed
+  20
+  (for-all [battery-id battery-id-gen]
+    (let [before (-> (core/new-game {:width 800 :height 600})
+                     (core/set-non-destroyed-battery-ammo 3)
+                     (core/destroy-battery battery-id)
+                     (core/set-wave-enemies-active 1))
+          after (-> before
+                    advance-enemies-until-gone
+                    core/start-next-wave)
+          destroyed (core/battery after battery-id)
+          survivors (remove #(= battery-id (:id %)) (core/batteries after))]
+      (and (:destroyed? destroyed)
+           (every? #(= 10 (:missiles %)) survivors)
+           (zero? (count (core/defensive-missiles
+                          (:state (fire after battery-id)))))))))
+
+(defspec higher-waves-are-harder-by-count-or-speed
+  40
+  (for-all [low (gen/large-integer* {:min 1 :max 5})
+            high (gen/large-integer* {:min 2 :max 8})]
+    (let [lo (min low high)
+          hi (max low (inc high))
+          m-lo (core/wave-schedule-metrics lo)
+          m-hi (core/wave-schedule-metrics hi)]
+      (and (core/harder-wave? m-lo m-hi)
+           (or (> (:enemy-count m-hi) (:enemy-count m-lo))
+               (> (:enemy-speed m-hi) (:enemy-speed m-lo)))))))
+
 (deftest property-suite-loads
   (is (fn? core/new-game))
   (is (fn? core/resize))
   (is (fn? core/handle))
   (is (fn? core/tick))
   (is (fn? core/spawn-enemy-targeting-city))
+  (is (fn? core/rearm-surviving-batteries))
   (is (fn? core/on-ground?))
   (is (fn? input/click-zone)))
