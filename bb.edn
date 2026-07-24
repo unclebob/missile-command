@@ -70,6 +70,7 @@
                    "missile_command/entities"
                    "missile_command/waves"
                    "missile_command/scoring"
+                   "missile_command/flyers"
                    "missile_command/acceptance"
                    "missile_command/jvm/input"]))}
 
@@ -87,6 +88,7 @@
                    "src/missile_command/entities.cljc"
                    "src/missile_command/waves.cljc"
                    "src/missile_command/scoring.cljc"
+                   "src/missile_command/flyers.cljc"
                    "src/missile_command/acceptance"
                    "src/missile_command/jvm/input.clj"]))}
 

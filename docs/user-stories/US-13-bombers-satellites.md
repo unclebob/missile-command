@@ -1,6 +1,6 @@
 # US-13 — Bombers and satellites
 
-**Status:** backlog  
+**Status:** in-specifier  
 **Depends on:** US-08  
 **Design:** §5.5, §5.7
 

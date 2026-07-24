@@ -376,6 +376,36 @@
     (if (seq enemies)
       (reduce spawn-scenario-enemy state enemies)
       state)))
+
+(def ^:private default-flyer-from [0 80])
+(def ^:private default-flyer-to [800 80])
+(def ^:private default-flyer-speed 100)
+
+(defn- scenario-flyer-drops
+  [drops]
+  (mapv (fn [i d]
+          {:id i
+           :at-progress (double (get d :at-progress 0.5))
+           :target (get d :target [:city 0])})
+        (range (count drops))
+        drops))
+
+(defn- apply-scenario-flyer
+  [state flyer]
+  (let [[x0 y0] (get flyer :from default-flyer-from)
+        [x1 y1] (get flyer :to default-flyer-to)
+        state (core/spawn-flyer state
+                                (get flyer :kind :bomber)
+                                x0 y0 x1 y1
+                                (get flyer :speed default-flyer-speed))]
+    (if-let [drops (seq (:drops flyer))]
+      (core/set-flyer-drops state (scenario-flyer-drops drops))
+      state)))
+
+(defn- apply-scenario-flyers
+  [state scenario]
+  (reduce apply-scenario-flyer state (or (:flyers scenario) [])))
+
 (defn apply-scenario
   "Apply documented scenario keys onto a new-game state."
   [state scenario]
@@ -387,7 +417,9 @@
       (apply-scenario-cities scenario)
       (apply-scenario-targets scenario)
       (apply-scenario-enemies scenario)
+      (apply-scenario-flyers scenario)
       (apply-scenario-score-and-bonus scenario)))
+
 (defn format-fireball-phase-line
   "Phase timing line for one fireball."
   [state fireball phase]

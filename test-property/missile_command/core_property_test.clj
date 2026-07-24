@@ -710,6 +710,61 @@
            (:smart-evaded? bomb)
            (= 1 (count (core/smart-bombs after)))))))
 
+(defspec flyer-advances-along-path
+  25
+  (for-all [kind (gen/elements [:bomber :satellite])
+            speed (gen/elements [80.0 100.0 140.0])]
+    (let [before (core/spawn-flyer
+                  (core/new-game {:width 800 :height 600})
+                  kind 0 80 800 80 speed)
+          after (:state (core/tick before 0.2))
+          f (first (core/flyers after))]
+      (and (= 1 (count (core/flyers-of-kind after kind)))
+           (pos? (double (:progress f)))
+           (= 80.0 (double (:y f)))))))
+
+(defspec destroying-flyer-awards-flyer-points
+  20
+  (for-all [kind (gen/elements [:bomber :satellite])
+            wave (gen/elements [1 3 5])]
+    (let [before (-> (core/new-game {:width 800 :height 600})
+                     (core/set-wave wave)
+                     (core/spawn-flyer kind 0 80 800 80 100.0)
+                     (core/add-static-fireball 400 80 40.0)
+                     (core/route-flyer-through-point 400 80)
+                     ;; Keep wave open with another enemy.
+                     (core/spawn-enemy-targeting-city 0))
+          score0 (core/score before)
+          mult (core/multiplier before)
+          after (loop [s before n 0]
+                  (cond
+                    (> n 5000) s
+                    (empty? (core/flyers s)) s
+                    :else (recur (:state (core/tick s 0.05)) (inc n))))
+          expected (scoring/flyer-kill-points mult)]
+      (and (empty? (core/flyers after))
+           (= :fireball (:last-flyer-fate after))
+           (= (+ score0 expected) (core/score after))
+           (pos? (count (core/enemy-missiles after)))
+           (not (core/wave-complete? after))))))
+
+(defspec flyer-drops-enemy-missiles-at-progress
+  15
+  (for-all [kind (gen/elements [:bomber :satellite])
+            drop-count (gen/elements [1 2])]
+    (let [before (-> (core/new-game {:width 800 :height 600})
+                     (core/spawn-flyer kind 0 80 800 80 100.0)
+                     (core/set-flyer-drops-toward-living-cities drop-count 0.4))
+          after (loop [s before n 0]
+                  (cond
+                    (> n 5000) s
+                    (>= (count (core/enemy-missiles s)) drop-count) s
+                    (empty? (core/flyers s)) s
+                    :else (recur (:state (core/tick s 0.05)) (inc n))))]
+      (and (= drop-count (count (core/enemy-missiles after)))
+           (every? :dropped-from-flyer? (core/enemy-missiles after))
+           (= 1 (count (core/flyers after)))))))
+
 (defspec unintercepted-smart-bomb-destroys-city
   15
   (for-all [city-id city-index-gen]
@@ -792,9 +847,12 @@
   (is (fn? core/spawn-enemy-targeting-city-from))
   (is (fn? core/spawn-mirv-targeting-city))
   (is (fn? core/spawn-smart-bomb-targeting-city))
+  (is (fn? core/spawn-flyer))
   (is (fn? core/multiplier))
   (is (fn? core/wave-mirv-count))
   (is (fn? core/wave-smart-bomb-count))
+  (is (fn? core/wave-bomber-count))
+  (is (fn? core/wave-satellite-count))
   (is (fn? core/rearm-surviving-batteries))
   (is (fn? core/on-ground?))
   (is (fn? input/click-zone))

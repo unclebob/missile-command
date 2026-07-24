@@ -13,7 +13,9 @@
     (and (= (* scoring/points-enemy-missile mult)
             (scoring/enemy-kill-points mult))
          (= (* scoring/points-smart-bomb mult)
-            (scoring/enemy-kill-points :smart mult)))))
+            (scoring/enemy-kill-points :smart mult))
+         (= (* scoring/points-flyer mult)
+            (scoring/flyer-kill-points mult)))))
 
 (defspec wave-end-points-are-non-negative-and-scale
   50
