@@ -369,6 +369,63 @@
                                       (str "multiplier " actual " expected " expected)))
           world)}
 
+   {:pattern #"^the bonus city threshold is <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ thresh-param] example]
+          (assoc world :state
+                 (core/set-bonus-city-threshold
+                  (:state world)
+                  (support/example-int example thresh-param "threshold"))))}
+
+   {:pattern #"^the score becomes <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ score-param] example]
+          (assoc world :state
+                 (core/set-score
+                  (:state world)
+                  (support/example-int example score-param "score"))))}
+
+   {:pattern #"^the bonus city reserve is <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ reserve-param] example]
+          (let [expected (support/example-int example reserve-param "reserve")
+                actual (core/bonus-cities (:state world))]
+            (assert-condition (= expected actual)
+                              (str "bonus city reserve " actual " expected " expected)))
+          world)}
+
+   {:pattern #"^the bonus city reserve is set to <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ reserve-param] example]
+          (assoc world :state
+                 (core/set-bonus-city-reserve
+                  (:state world)
+                  (support/example-int example reserve-param "reserve"))))}
+
+   {:pattern #"^bonus cities from reserve are applied after wave resolution$"
+    :fn (fn [world _ _]
+          (assoc world :state
+                 (core/apply-bonus-cities-from-reserve (:state world))))}
+
+   {:pattern #"^the number of bonus city earned events is <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ count-param] example]
+          (let [expected (support/example-int example count-param "event count")
+                actual (core/bonus-city-earned-events (:state world))]
+            (assert-condition (= expected actual)
+                              (str "bonus city earned events " actual
+                                   " expected " expected)))
+          world)}
+
+   {:pattern #"^city (\d+) has been destroyed$"
+    :fn (fn [world [_ city-text] _]
+          (assoc world :state
+                 (core/destroy-city
+                  (:state world)
+                  (support/parse-int city-text "city"))))}
+
+   {:pattern #"^city <([A-Za-z0-9_]+)> has been destroyed$"
+    :fn (fn [world [_ city-param] example]
+          (assoc world :state
+                 (core/destroy-city
+                  (:state world)
+                  (support/example-int example city-param "city"))))}
+
    {:pattern #"^the player fires the (left|center|right) battery$"
     :fn (fn [world [_ battery-name] _]
           (let [battery-id (support/parse-battery-id battery-name)
