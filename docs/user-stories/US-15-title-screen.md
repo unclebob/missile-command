@@ -1,6 +1,6 @@
 # US-15 — Title screen and start
 
-**Status:** in-specifier  
+**Status:** done  
 **Depends on:** US-02  
 **Design:** §5.1, §6.1
 
