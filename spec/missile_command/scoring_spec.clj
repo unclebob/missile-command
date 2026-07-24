@@ -5,6 +5,7 @@
 (describe "scoring tables"
   (it "uses classic base point values"
     (should= 25 scoring/points-enemy-missile)
+    (should= 125 scoring/points-smart-bomb)
     (should= 5 scoring/points-unused-missile)
     (should= 100 scoring/points-surviving-city))
 
@@ -12,7 +13,10 @@
     (should= 25 (scoring/enemy-kill-points 1))
     (should= 50 (scoring/enemy-kill-points 2))
     (should= 75 (scoring/enemy-kill-points 3))
-    (should= 150 (scoring/enemy-kill-points 6)))
+    (should= 150 (scoring/enemy-kill-points 6))
+    (should= 125 (scoring/enemy-kill-points :smart 1))
+    (should= 250 (scoring/enemy-kill-points :smart 2))
+    (should= 750 (scoring/enemy-kill-points :smart 6)))
 
   (it "computes wave-end bonuses for ammo and cities"
     ;; 10 ammo * 5 + 5 cities * 100 = 550 at 1x; 1100 at 2x

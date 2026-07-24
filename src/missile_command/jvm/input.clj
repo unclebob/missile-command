@@ -317,7 +317,6 @@
   (if-let [w (:width scenario)]
     (core/resize state w (or (:height scenario) (core/playfield-height state)))
     state))
-
 (defn- apply-scenario-battery
   [state [id opts]]
   (cond-> state
@@ -364,10 +363,11 @@
       :else ((:default spawners) state id))))
 
 (defn- spawn-scenario-enemy
-  "Spawn one scenario enemy, honoring MIRV kind and optional angled :origin [x y]."
+  "Spawn one scenario enemy, honoring MIRV/smart kinds and optional angled origin."
   [state e]
-  (if (= :mirv (:kind e))
-    (spawn-scenario-mirv state e)
+  (case (:kind e)
+    :mirv (spawn-scenario-mirv state e)
+    :smart (core/spawn-smart-bomb-targeting-city state (second (:target e)))
     (spawn-scenario-ballistic state e)))
 
 (defn- apply-scenario-enemies

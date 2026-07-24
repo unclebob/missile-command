@@ -46,6 +46,16 @@
     (should= 2 (waves/mirv-count 6))
     (should= (:mirv-count (waves/schedule-metrics 4)) (waves/mirv-count 4)))
 
+  (it "schedules smart bombs only on later waves"
+    (should= 0 (waves/smart-bomb-count 1))
+    (should= 0 (waves/smart-bomb-count 4))
+    (should= 0 (waves/smart-bomb-count 6))
+    (should= 1 (waves/smart-bomb-count 7))
+    (should= 1 (waves/smart-bomb-count 8))
+    (should= 2 (waves/smart-bomb-count 9))
+    (should= (:smart-bomb-count (waves/schedule-metrics 7))
+             (waves/smart-bomb-count 7)))
+
   (it "raises multiplier every two waves up to six"
     (should= 1 (waves/multiplier 1))
     (should= 1 (waves/multiplier 2))
