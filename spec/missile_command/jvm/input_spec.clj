@@ -162,6 +162,36 @@
       (should (empty? e1)) ; still expanding -> still start
       (should= [:max :shrink] (mapv :phase e2)))))
 
+(describe "parse-enemy-spec"
+  (it "parses city and battery specs"
+    (should= {:kind :city :id 2} (input/parse-enemy-spec "city:2"))
+    (should= {:kind :battery :id :left} (input/parse-enemy-spec "battery:left")))
+
+  (it "rejects unknown kinds"
+    (should-throw Exception
+      (input/parse-enemy-spec "moon:1"))))
+
+(describe "format-sim-telemetry-line"
+  (it "includes wave, ammo, and enemy fields for a seeded scenario"
+    (let [state (input/apply-scenario
+                 (core/new-game {:width 800 :height 600})
+                 {:wave 2
+                  :batteries {:left {:ammo 3}}
+                  :enemies [{:origin [50 0] :target [:city 0]}
+                            {:target [:battery :center]}]
+                  :targets [{:x 100 :y 200}]})
+          line (input/format-sim-telemetry-line state)]
+      (should (str/includes? line "qa-sim t="))
+      (should (str/includes? line "wave=2"))
+      (should (str/includes? line "wave_complete="))
+      (should (str/includes? line "wave_enemy_count="))
+      (should (str/includes? line "enemy_missiles=2"))
+      (should (str/includes? line "enemy_origin_x=50"))
+      (should (str/includes? line "enemy_target=city:0"))
+      (should (str/includes? line "battery_left_ammo=3"))
+      (should (str/includes? line "target_x=100"))
+      (should (str/includes? line "cities_alive=")))))
+
 (describe "apply-scenario"
   (it "honors angled enemy origin in scenario enemies"
     (let [base (core/new-game {:width 800 :height 600})
@@ -173,4 +203,31 @@
       (should= 0.0 (double (:y0 m)))
       (should-not= (double (:x0 m)) (double (:x1 m)))
       (should= :city (:target-kind m))
-      (should= 0 (:target-id m)))))
+      (should= 0 (:target-id m))))
+
+  (it "applies wave, size, batteries, cities, targets, and default enemy origins"
+    (let [state (input/apply-scenario
+                 (core/new-game {:width 800 :height 600})
+                 {:wave 3
+                  :width 640
+                  :height 480
+                  :batteries {:left {:ammo 2}
+                              :right {:destroyed true :ammo 0}}
+                  :cities {:destroyed [5]}
+                  :targets [{:x 10 :y 20}]
+                  :enemies [{:target [:city 0]}
+                            {:origin [100 0] :target [:battery :center]}]})
+          enemies (core/enemy-missiles state)
+          city-enemy (first (filter #(= :city (:target-kind %)) enemies))
+          bat-enemy (first (filter #(= :battery (:target-kind %)) enemies))]
+      (should= 3 (core/wave state))
+      (should= 640 (core/playfield-width state))
+      (should= 480 (core/playfield-height state))
+      (should= 2 (:missiles (core/battery state :left)))
+      (should (:destroyed? (core/battery state :right)))
+      (should-not (core/living-city? state 5))
+      (should= 1 (count (core/destroyable-targets state)))
+      (should= 2 (count enemies))
+      (should= (double (:x (core/city state 0))) (double (:x0 city-enemy)))
+      (should= 100.0 (double (:x0 bat-enemy)))
+      (should= :center (:target-id bat-enemy)))))

@@ -1,5 +1,6 @@
 (ns missile-command.acceptance.steps
   (:require [missile-command.acceptance.step-support :as support]
+            [missile-command.acceptance.enemy-steps :as enemy-steps]
             [missile-command.core :as core]))
 
 (defn- assert-playfield-dimension
@@ -22,11 +23,6 @@
   [world id]
   (or (core/battery (:state world) id)
       (support/fail! (str "missing battery " id))))
-
-(defn- assert-count
-  [actual expected label]
-  (when-not (= expected actual)
-    (support/fail! (str label " count " actual " expected " expected))))
 
 (defn- city-xs
   [world]
@@ -53,11 +49,6 @@
   [width]
   (* width (/ 2.0 3)))
 
-(defn- assert-condition
-  [ok? message]
-  (when-not ok?
-    (support/fail! message)))
-
 (defn- assert-entities-in-ground-band
   [state entities height entity-label]
   (doseq [entity entities]
@@ -73,23 +64,14 @@
       (support/fail! (str entity-label " " (:id entity) " x " (:x entity)
                           " not in [0," width ")")))))
 
-(defn- assert-lt
-  [actual bound message]
-  (assert-condition (< actual bound) message))
-
-(defn- assert-gt
-  [actual bound message]
-  (assert-condition (> actual bound) message))
-
 (defn- assert-between-open
   [actual lo hi message]
-  (assert-condition (and (< lo actual) (< actual hi)) message))
-
+  (support/assert-condition (and (< lo actual) (< actual hi)) message))
 (defn- earlier-fallback-batteries
   [state x target]
   (let [zone (core/click-zone (core/playfield-width state) x)
         order (core/click-fallback-order zone)]
-    (assert-condition (some #{target} order)
+    (support/assert-condition (some #{target} order)
                       (str "battery " target " not in fallback for zone " zone))
     (take-while #(not= % target) order)))
 
@@ -113,7 +95,8 @@
       :else (recur (:state (core/tick s dt)) (dec steps-left)))))
 
 (def step-handlers
-  [{:pattern #"^a new game with width <([A-Za-z0-9_]+)> and height <([A-Za-z0-9_]+)>$"
+  (into
+   [{:pattern #"^a new game with width <([A-Za-z0-9_]+)> and height <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ width-param height-param] example]
           (assoc world :state
                  (core/new-game
@@ -146,14 +129,14 @@
 
    {:pattern #"^there are (\d+) living cities$"
     :fn (fn [world [_ count-text] _]
-          (assert-count (count (living-cities world))
+          (support/assert-count (count (living-cities world))
                         (support/parse-int count-text "city count")
                         "living cities")
           world)}
 
    {:pattern #"^there are <([A-Za-z0-9_]+)> living cities$"
     :fn (fn [world [_ count-param] example]
-          (assert-count (count (living-cities world))
+          (support/assert-count (count (living-cities world))
                         (support/example-int example count-param "city count")
                         "living cities")
           world)}
@@ -161,7 +144,7 @@
    {:pattern #"^there are <([A-Za-z0-9_]+)> non-destroyed batteries named left center and right$"
     :fn (fn [world [_ count-param] example]
           (let [bats (filterv (complement :destroyed?) (batteries world))]
-            (assert-count (count bats)
+            (support/assert-count (count bats)
                           (support/example-int example count-param "battery count")
                           "non-destroyed batteries")
             (when-not (= #{:left :center :right} (set (map :id bats)))
@@ -181,7 +164,7 @@
    {:pattern #"^city x positions increase with city index$"
     :fn (fn [world _ _]
           (let [xs (city-xs world)]
-            (assert-condition (apply < xs)
+            (support/assert-condition (apply < xs)
                               (str "city x positions not increasing: " xs)))
           world)}
 
@@ -204,7 +187,7 @@
     :fn (fn [world [_ width-param] example]
           (let [width (example-width example width-param)
                 leftmost (apply min (city-xs world))]
-            (assert-lt leftmost (one-third width)
+            (support/assert-lt leftmost (one-third width)
                        (str "leftmost city x " leftmost
                             " not < one third of " width)))
           world)}
@@ -213,21 +196,21 @@
     :fn (fn [world [_ width-param] example]
           (let [width (example-width example width-param)
                 rightmost (apply max (city-xs world))]
-            (assert-gt rightmost (two-thirds width)
+            (support/assert-gt rightmost (two-thirds width)
                        (str "rightmost city x " rightmost
                             " not > two thirds of " width)))
           world)}
 
    {:pattern #"^the left battery x is less than the center battery x$"
     :fn (fn [world _ _]
-          (assert-lt (:x (battery world :left))
+          (support/assert-lt (:x (battery world :left))
                      (:x (battery world :center))
                      "left battery x not less than center")
           world)}
 
    {:pattern #"^the center battery x is less than the right battery x$"
     :fn (fn [world _ _]
-          (assert-lt (:x (battery world :center))
+          (support/assert-lt (:x (battery world :center))
                      (:x (battery world :right))
                      "center battery x not less than right")
           world)}
@@ -236,7 +219,7 @@
     :fn (fn [world [_ width-param] example]
           (let [width (example-width example width-param)
                 x (:x (battery world :left))]
-            (assert-lt x (one-third width)
+            (support/assert-lt x (one-third width)
                        (str "left battery x " x " not < one third of " width)))
           world)}
 
@@ -254,7 +237,7 @@
     :fn (fn [world [_ width-param] example]
           (let [width (example-width example width-param)
                 x (:x (battery world :right))]
-            (assert-gt x (two-thirds width)
+            (support/assert-gt x (two-thirds width)
                        (str "right battery x " x " not > two thirds of " width)))
           world)}
 
@@ -268,14 +251,14 @@
 
    {:pattern #"^the center battery missile speed is greater than the left battery missile speed$"
     :fn (fn [world _ _]
-          (assert-gt (:missile-speed (battery world :center))
+          (support/assert-gt (:missile-speed (battery world :center))
                      (:missile-speed (battery world :left))
                      "center missile speed not greater than left")
           world)}
 
    {:pattern #"^the center battery missile speed is greater than the right battery missile speed$"
     :fn (fn [world _ _]
-          (assert-gt (:missile-speed (battery world :center))
+          (support/assert-gt (:missile-speed (battery world :center))
                      (:missile-speed (battery world :right))
                      "center missile speed not greater than right")
           world)}
@@ -284,7 +267,7 @@
     :fn (fn [world [_ width-param] example]
           (let [width (example-width example width-param)
                 span (city-span world)]
-            (assert-gt span (/ width 2.0)
+            (support/assert-gt span (/ width 2.0)
                        (str "city span " span " not > half of " width)))
           world)}
 
@@ -292,7 +275,7 @@
     :fn (fn [world [_ width-param] example]
           (let [width (example-width example width-param)
                 span (city-span world)]
-            (assert-lt span width
+            (support/assert-lt span width
                        (str "city span " span " not < " width)))
           world)}
 
@@ -317,7 +300,7 @@
           (let [expected {:x (support/parse-int x "x")
                           :y (support/parse-int y "y")}
                 actual (core/crosshair (:state world))]
-            (assert-condition (= expected actual)
+            (support/assert-condition (= expected actual)
                               (str "crosshair " actual " expected " expected)))
           world)}
 
@@ -366,7 +349,7 @@
           (let [expected {:x (support/example-int example x-param "x")
                           :y (support/example-int example y-param "y")}
                 actual (core/crosshair (:state world))]
-            (assert-condition (= expected actual)
+            (support/assert-condition (= expected actual)
                               (str "crosshair " actual " expected " expected)))
           world)}
 
@@ -374,7 +357,7 @@
     :fn (fn [world [_ score-param] example]
           (let [expected (support/example-int example score-param "score")
                 actual (core/score (:state world))]
-            (assert-condition (= expected actual)
+            (support/assert-condition (= expected actual)
                               (str "score " actual " expected " expected)))
           world)}
 
@@ -405,7 +388,7 @@
           (let [battery-id (support/parse-battery-id battery-name)
                 expected (support/parse-int ammo "ammo")
                 actual (:missiles (battery world battery-id))]
-            (assert-condition (= expected actual)
+            (support/assert-condition (= expected actual)
                               (str "battery " battery-id " missiles "
                                    actual " expected " expected)))
           world)}
@@ -415,7 +398,7 @@
           (let [battery-id (support/example-battery example battery-param)
                 expected (support/example-int example ammo-param "ammo")
                 actual (:missiles (battery world battery-id))]
-            (assert-condition (= expected actual)
+            (support/assert-condition (= expected actual)
                               (str "battery " battery-id " missiles "
                                    actual " expected " expected)))
           world)}
@@ -426,21 +409,21 @@
                 fired (support/example-battery example "battery")
                 others (remove #(= fired (:id %)) (batteries world))]
             (doseq [b others]
-              (assert-condition (= expected (:missiles b))
+              (support/assert-condition (= expected (:missiles b))
                                 (str "battery " (:id b) " missiles "
                                      (:missiles b) " expected " expected))))
           world)}
 
    {:pattern #"^there are (\d+) defensive missiles in flight$"
     :fn (fn [world [_ count-text] _]
-          (assert-count (count (core/defensive-missiles (:state world)))
+          (support/assert-count (count (core/defensive-missiles (:state world)))
                         (support/parse-int count-text "missile count")
                         "defensive missiles")
           world)}
 
    {:pattern #"^there are <([A-Za-z0-9_]+)> defensive missiles in flight$"
     :fn (fn [world [_ count-param] example]
-          (assert-count (count (core/defensive-missiles (:state world)))
+          (support/assert-count (count (core/defensive-missiles (:state world)))
                         (support/example-int example count-param "missile count")
                         "defensive missiles")
           world)}
@@ -454,7 +437,7 @@
                                            (= target-x (:x1 %))
                                            (= target-y (:y1 %)))
                                      (core/defensive-missiles (:state world))))]
-            (assert-condition match
+            (support/assert-condition match
                               (str "no defensive missile from " battery-id
                                    " targeting " target-x "," target-y)))
           world)}
@@ -468,7 +451,7 @@
                                            (= target-x (:x1 %))
                                            (= target-y (:y1 %)))
                                      (core/defensive-missiles (:state world))))]
-            (assert-condition match
+            (support/assert-condition match
                               (str "no defensive missile from " battery-id
                                    " targeting " target-x "," target-y)))
           world)}
@@ -487,7 +470,7 @@
                 bat (battery world battery-id)]
             (if (= :then (:gherkin-phase world))
               (do
-                (assert-condition (:destroyed? bat)
+                (support/assert-condition (:destroyed? bat)
                                   (str "battery " battery-id " is not destroyed"))
                 world)
               (assoc world :state
@@ -499,7 +482,7 @@
                 bat (battery world battery-id)]
             (if (= :then (:gherkin-phase world))
               (do
-                (assert-condition (:destroyed? bat)
+                (support/assert-condition (:destroyed? bat)
                                   (str "battery " battery-id " is not destroyed"))
                 world)
               (assoc world :state
@@ -515,9 +498,9 @@
                          (support/fail! "missing left defensive missile"))
                 right (or (by-battery :right)
                           (support/fail! "missing right defensive missile"))]
-            (assert-gt (:speed center) (:speed left)
+            (support/assert-gt (:speed center) (:speed left)
                        "center missile not faster than left")
-            (assert-gt (:speed center) (:speed right)
+            (support/assert-gt (:speed center) (:speed right)
                        "center missile not faster than right"))
           world)}
 
@@ -594,14 +577,14 @@
 
    {:pattern #"^there are (\d+) fireballs$"
     :fn (fn [world [_ count-text] _]
-          (assert-count (count (core/fireballs (:state world)))
+          (support/assert-count (count (core/fireballs (:state world)))
                         (support/parse-int count-text "fireball count")
                         "fireballs")
           world)}
 
    {:pattern #"^there are <([A-Za-z0-9_]+)> fireballs$"
     :fn (fn [world [_ count-param] example]
-          (assert-count (count (core/fireballs (:state world)))
+          (support/assert-count (count (core/fireballs (:state world)))
                         (support/example-int example count-param "fireball count")
                         "fireballs")
           world)}
@@ -612,13 +595,13 @@
                 y (support/example-int example y-param "y")
                 match (first (filter #(and (= x (:x %)) (= y (:y %)))
                                      (core/fireballs (:state world))))]
-            (assert-condition match
+            (support/assert-condition match
                               (str "no fireball centered at " x "," y)))
           world)}
 
    {:pattern #"^there is an active fireball$"
     :fn (fn [world _ _]
-          (assert-condition (seq (core/fireballs (:state world)))
+          (support/assert-condition (seq (core/fireballs (:state world)))
                             "expected an active fireball")
           world)}
 
@@ -628,21 +611,21 @@
 
    {:pattern #"^the fireball max time is at least the fireball start time$"
     :fn (fn [world _ _]
-          (assert-condition (>= (:fireball-max-time world)
+          (support/assert-condition (>= (:fireball-max-time world)
                                 (:fireball-start-time world))
                             "max time before start time")
           world)}
 
    {:pattern #"^the fireball shrink time is at least the fireball max time$"
     :fn (fn [world _ _]
-          (assert-condition (>= (:fireball-shrink-time world)
+          (support/assert-condition (>= (:fireball-shrink-time world)
                                 (:fireball-max-time world))
                             "shrink time before max time")
           world)}
 
    {:pattern #"^the fireball end time is at least the fireball shrink time$"
     :fn (fn [world _ _]
-          (assert-condition (>= (:fireball-end-time world)
+          (support/assert-condition (>= (:fireball-end-time world)
                                 (:fireball-shrink-time world))
                             "end time before shrink time")
           world)}
@@ -651,21 +634,21 @@
     :fn (fn [world [_ r-text] _]
           (let [min-r (Double/parseDouble r-text)
                 r (apply max 0.0 (map :radius (core/fireballs (:state world))))]
-            (assert-gt r min-r (str "fireball radius " r " not > " min-r)))
+            (support/assert-gt r min-r (str "fireball radius " r " not > " min-r)))
           world)}
 
    {:pattern #"^a fireball radius is greater than <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ r-param] example]
           (let [min-r (Double/parseDouble (str (support/require-value example r-param)))
                 r (apply max 0.0 (map :radius (core/fireballs (:state world))))]
-            (assert-gt r min-r (str "fireball radius " r " not > " min-r)))
+            (support/assert-gt r min-r (str "fireball radius " r " not > " min-r)))
           world)}
 
    {:pattern #"^a fireball radius is less than the max fireball radius$"
     :fn (fn [world _ _]
           (let [max-r (core/max-fireball-radius (:state world))
                 r (apply max 0.0 (map :radius (core/fireballs (:state world))))]
-            (assert-lt r max-r (str "fireball radius " r " not < max " max-r)))
+            (support/assert-lt r max-r (str "fireball radius " r " not < max " max-r)))
           world)}
 
    {:pattern #"^a destroyable target at (-?\d+) (-?\d+)$"
@@ -687,14 +670,14 @@
    {:pattern #"^the destroyable target is destroyed$"
     :fn (fn [world _ _]
           (let [targets (core/destroyable-targets (:state world))]
-            (assert-condition (some :destroyed? targets)
+            (support/assert-condition (some :destroyed? targets)
                               "expected a destroyed target"))
           world)}
 
    {:pattern #"^the destroyable target is not destroyed$"
     :fn (fn [world _ _]
           (let [targets (core/destroyable-targets (:state world))]
-            (assert-condition (every? (complement :destroyed?) targets)
+            (support/assert-condition (every? (complement :destroyed?) targets)
                               "expected no destroyed targets"))
           world)}
 
@@ -702,7 +685,7 @@
     :fn (fn [world [_ max-dt-text] _]
           (let [max-dt (Double/parseDouble max-dt-text)
                 actual (core/last-applied-dt (:state world))]
-            (assert-condition (<= actual max-dt)
+            (support/assert-condition (<= actual max-dt)
                               (str "last applied dt " actual " > " max-dt)))
           world)}
 
@@ -710,7 +693,7 @@
     :fn (fn [world [_ dt-param] example]
           (let [max-dt (Double/parseDouble (str (support/require-value example dt-param)))
                 actual (core/last-applied-dt (:state world))]
-            (assert-condition (<= actual max-dt)
+            (support/assert-condition (<= actual max-dt)
                               (str "last applied dt " actual " > " max-dt)))
           world)}
 
@@ -718,18 +701,8 @@
     :fn (fn [world [_ dt-param] example]
           (let [expected (support/example-double example dt-param "applied dt")
                 actual (core/last-applied-dt (:state world))]
-            (assert-condition (= expected actual)
+            (support/assert-condition (= expected actual)
                               (str "last applied dt " actual " expected " expected)))
-          world)}
-
-   {:pattern #"^the first enemy missile progress equals <([A-Za-z0-9_]+)>$"
-    :fn (fn [world [_ p-param] example]
-          (let [expected (support/example-double example p-param "progress")
-                m (first (core/enemy-missiles (:state world)))
-                actual (double (:progress m))]
-            (assert-condition m "missing enemy missile")
-            (assert-condition (< (Math/abs (- actual expected)) 1.0e-9)
-                              (str "enemy progress " actual " expected " expected)))
           world)}
 
    {:pattern #"^a defensive missile from the <([A-Za-z0-9_]+)> battery has progressed toward <([A-Za-z0-9_]+)> <([A-Za-z0-9_]+)>$"
@@ -741,8 +714,8 @@
                                        (= aim-x (:x1 %))
                                        (= aim-y (:y1 %)))
                                  (core/defensive-missiles (:state world))))]
-            (assert-condition m "missing defensive missile")
-            (assert-gt (:progress m) 0.0 "missile has not progressed"))
+            (support/assert-condition m "missing defensive missile")
+            (support/assert-gt (:progress m) 0.0 "missile has not progressed"))
           world)}
 
    {:pattern #"^a defensive missile from the <([A-Za-z0-9_]+)> battery has not reached <([A-Za-z0-9_]+)> <([A-Za-z0-9_]+)>$"
@@ -754,254 +727,21 @@
                                        (= aim-x (:x1 %))
                                        (= aim-y (:y1 %)))
                                  (core/defensive-missiles (:state world))))]
-            (assert-condition m "missing defensive missile")
-            (assert-lt (:progress m) 1.0 "missile already reached aim"))
-          world)}
-
-   {:pattern #"^an enemy missile targeting city (\d+)$"
-    :fn (fn [world [_ city-text] _]
-          (assoc world :state
-                 (core/spawn-enemy-targeting-city
-                  (:state world)
-                  (support/parse-int city-text "city"))))}
-
-   {:pattern #"^an enemy missile targeting city <([A-Za-z0-9_]+)>$"
-    :fn (fn [world [_ city-param] example]
-          (assoc world :state
-                 (core/spawn-enemy-targeting-city
-                  (:state world)
-                  (support/example-int example city-param "city"))))}
-
-   {:pattern #"^an enemy missile from <([A-Za-z0-9_]+)> (\d+) targeting city <([A-Za-z0-9_]+)>$"
-    :fn (fn [world [_ ox-param oy-text city-param] example]
-          (assoc world :state
-                 (core/spawn-enemy-targeting-city-from
-                  (:state world)
-                  (support/example-int example ox-param "origin x")
-                  (support/parse-int oy-text "origin y")
-                  (support/example-int example city-param "city"))))}
-
-   {:pattern #"^an enemy missile from <([A-Za-z0-9_]+)> (\d+) targeting battery <([A-Za-z0-9_]+)>$"
-    :fn (fn [world [_ ox-param oy-text battery-param] example]
-          (assoc world :state
-                 (core/spawn-enemy-targeting-battery-from
-                  (:state world)
-                  (support/example-int example ox-param "origin x")
-                  (support/parse-int oy-text "origin y")
-                  (support/example-battery example battery-param))))}
-
-   {:pattern #"^an enemy missile targeting battery (left|center|right)$"
-    :fn (fn [world [_ battery-name] _]
-          (assoc world :state
-                 (core/spawn-enemy-targeting-battery
-                  (:state world)
-                  (support/parse-battery-id battery-name))))}
-
-   {:pattern #"^an enemy missile targeting battery <([A-Za-z0-9_]+)>$"
-    :fn (fn [world [_ battery-param] example]
-          (assoc world :state
-                 (core/spawn-enemy-targeting-battery
-                  (:state world)
-                  (support/example-battery example battery-param))))}
-
-   {:pattern #"^<([A-Za-z0-9_]+)> enemy missiles each targeting a different living city$"
-    :fn (fn [world [_ count-param] example]
-          (assoc world :state
-                 (core/spawn-enemies-targeting-distinct-cities
-                  (:state world)
-                  (support/example-int example count-param "spawn count"))))}
-
-   {:pattern #"^there are (\d+) enemy missiles in flight$"
-    :fn (fn [world [_ count-text] _]
-          (assert-count (count (core/enemy-missiles (:state world)))
-                        (support/parse-int count-text "enemy count")
-                        "enemy missiles")
-          world)}
-
-   {:pattern #"^there are <([A-Za-z0-9_]+)> enemy missiles in flight$"
-    :fn (fn [world [_ count-param] example]
-          (assert-count (count (core/enemy-missiles (:state world)))
-                        (support/example-int example count-param "enemy count")
-                        "enemy missiles")
-          world)}
-
-   {:pattern #"^an enemy missile has progressed toward city <([A-Za-z0-9_]+)>$"
-    :fn (fn [world [_ city-param] example]
-          (let [city-id (support/example-int example city-param "city")
-                m (first (filter #(and (= :city (:target-kind %))
-                                       (= city-id (:target-id %)))
-                                 (core/enemy-missiles (:state world))))]
-            (assert-condition m "missing enemy missile")
-            (assert-gt (:progress m) 0.0 "enemy has not progressed"))
-          world)}
-
-   {:pattern #"^an enemy missile has progressed toward city (\d+)$"
-    :fn (fn [world [_ city-text] _]
-          (let [city-id (support/parse-int city-text "city")
-                m (first (filter #(and (= :city (:target-kind %))
-                                       (= city-id (:target-id %)))
-                                 (core/enemy-missiles (:state world))))]
-            (assert-condition m "missing enemy missile")
-            (assert-gt (:progress m) 0.0 "enemy has not progressed"))
-          world)}
-
-   {:pattern #"^the first enemy missile origin is <([A-Za-z0-9_]+)> (\d+)$"
-    :fn (fn [world [_ ox-param oy-text] example]
-          (let [m (first (core/enemy-missiles (:state world)))
-                ox (support/example-int example ox-param "origin x")
-                oy (support/parse-int oy-text "origin y")]
-            (assert-condition m "missing enemy missile")
-            (assert-condition (= (double ox) (double (:x0 m)))
-                              (str "enemy origin x " (:x0 m) " expected " ox))
-            (assert-condition (= (double oy) (double (:y0 m)))
-                              (str "enemy origin y " (:y0 m) " expected " oy)))
-          world)}
-
-   {:pattern #"^the first enemy missile origin x differs from its target x$"
-    :fn (fn [world _ _]
-          (let [m (first (core/enemy-missiles (:state world)))]
-            (assert-condition m "missing enemy missile")
-            (assert-condition (not= (double (:x0 m)) (double (:x1 m)))
-                              (str "enemy origin x equals target x " (:x0 m))))
-          world)}
-
-   {:pattern #"^the first enemy missile has moved toward its target on both axes$"
-    :fn (fn [world _ _]
-          (let [m (first (core/enemy-missiles (:state world)))]
-            (assert-condition m "missing enemy missile")
-            (let [x0 (double (:x0 m))
-                  y0 (double (:y0 m))
-                  x1 (double (:x1 m))
-                  y1 (double (:y1 m))
-                  x (double (:x m))
-                  y (double (:y m))]
-              (assert-condition (or (and (< x0 x x1) (< y0 y y1))
-                                    (and (> x0 x x1) (< y0 y y1))
-                                    (and (< x0 x x1) (> y0 y y1))
-                                    (and (> x0 x x1) (> y0 y y1)))
-                                (str "enemy not between origin and target: "
-                                     x "," y " from " x0 "," y0 " to " x1 "," y1))))
-          world)}
-
-   {:pattern #"^every enemy missile origin y is (\d+)$"
-    :fn (fn [world [_ y-text] _]
-          (let [y (support/parse-int y-text "origin y")
-                enemies (core/enemy-missiles (:state world))]
-            (assert-condition (seq enemies) "no enemy missiles")
-            (doseq [m enemies]
-              (assert-condition (= (double y) (double (:y0 m)))
-                                (str "enemy " (:id m) " origin y " (:y0 m)
-                                     " expected " y))))
-          world)}
-
-   {:pattern #"^every enemy missile origin x is within the playfield$"
-    :fn (fn [world _ _]
-          (let [w (core/playfield-width (:state world))
-                enemies (core/enemy-missiles (:state world))]
-            (assert-condition (seq enemies) "no enemy missiles")
-            (doseq [m enemies]
-              (assert-condition (and (<= 0 (double (:x0 m)))
-                                     (< (double (:x0 m)) w))
-                                (str "enemy " (:id m) " origin x " (:x0 m)
-                                     " not in [0," w ")"))))
-          world)}
-
-   {:pattern #"^the enemy missiles use more than one distinct origin x$"
-    :fn (fn [world _ _]
-          (let [xs (set (map #(double (:x0 %))
-                             (core/enemy-missiles (:state world))))]
-            (assert-condition (< 1 (count xs))
-                              (str "expected multiple origin x, got " xs)))
-          world)}
-
-   {:pattern #"^at least one enemy missile origin x differs from its target x$"
-    :fn (fn [world _ _]
-          (let [enemies (core/enemy-missiles (:state world))]
-            (assert-condition (seq enemies) "no enemy missiles")
-            (assert-condition (some #(not= (double (:x0 %)) (double (:x1 %)))
-                                    enemies)
-                              "all enemy origins share target x (all vertical)"))
-          world)}
-
-   {:pattern #"^time advances until enemy missiles impact or are destroyed$"
-    :fn (fn [world _ _]
-          (loop [s (:state world) n 0]
-            (cond
-              (empty? (core/enemy-missiles s)) (assoc world :state s)
-              (> n 10000) (support/fail! "enemy missiles never finished")
-              :else (recur (:state (core/tick s 0.05)) (inc n)))))}
-
-   {:pattern #"^time advances until the enemy missile is inside the fireball radius or has impacted$"
-    :fn (fn [world _ _]
-          (loop [s (:state world) n 0]
-            (cond
-              (empty? (core/enemy-missiles s)) (assoc world :state s)
-              (#{:fireball :impact} (core/last-enemy-fate s)) (assoc world :state s)
-              (> n 10000) (support/fail! "enemy never entered fireball or impacted")
-              :else (recur (:state (core/tick s 0.05)) (inc n)))))}
-
-   {:pattern #"^a fireball at (-?\d+) (-?\d+) with radius (\d+)$"
-    :fn (fn [world [_ x y r] _]
-          (assoc world
-                 :state (core/add-static-fireball
-                         (:state world)
-                         (support/parse-int x "x")
-                         (support/parse-int y "y")
-                         (support/parse-int r "radius"))
-                 :fireball-x (support/parse-int x "x")
-                 :fireball-y (support/parse-int y "y")))}
-
-   {:pattern #"^a fireball at <([A-Za-z0-9_]+)> <([A-Za-z0-9_]+)> with radius <([A-Za-z0-9_]+)>$"
-    :fn (fn [world [_ x-param y-param r-param] example]
-          (assoc world :state
-                 (core/add-static-fireball
-                  (:state world)
-                  (support/example-int example x-param "x")
-                  (support/example-int example y-param "y")
-                  (support/example-int example r-param "radius"))))}
-
-   {:pattern #"^the enemy missile path passes within distance (\d+) of that fireball center$"
-    :fn (fn [world [_ _] _]
-          (assoc world :state
-                 (core/route-enemy-through-point
-                  (:state world)
-                  (:fireball-x world)
-                  (:fireball-y world))))}
-
-   {:pattern #"^the enemy missile path passes within distance <([A-Za-z0-9_]+)> of that fireball center$"
-    :fn (fn [world [_ _r-param] example]
-          (let [x (support/example-int example "fireball_x" "x")
-                y (support/example-int example "fireball_y" "y")]
-            (assoc world :state (core/route-enemy-through-point (:state world) x y))))}
-
-   {:pattern #"^the enemy missile path stays farther than (\d+) from that fireball center$"
-    :fn (fn [world _ _]
-          ;; Default vertical spawn plus far fireball examples already satisfy this.
-          world)}
-
-   {:pattern #"^the enemy missile path stays farther than <([A-Za-z0-9_]+)> from that fireball center$"
-    :fn (fn [world _ _]
-          ;; Default vertical spawn plus far fireball examples already satisfy this.
-          world)}
-
-   {:pattern #"^the enemy missile is destroyed by the fireball$"
-    :fn (fn [world _ _]
-          (assert-condition (= :fireball (core/last-enemy-fate (:state world)))
-                            (str "expected fireball kill, got "
-                                 (core/last-enemy-fate (:state world))))
+            (support/assert-condition m "missing defensive missile")
+            (support/assert-lt (:progress m) 1.0 "missile already reached aim"))
           world)}
 
    {:pattern #"^city (\d+) is living$"
     :fn (fn [world [_ city-text] _]
           (let [city-id (support/parse-int city-text "city")]
-            (assert-condition (core/living-city? (:state world) city-id)
+            (support/assert-condition (core/living-city? (:state world) city-id)
                               (str "city " city-id " is not living")))
           world)}
 
    {:pattern #"^city <([A-Za-z0-9_]+)> is living$"
     :fn (fn [world [_ city-param] example]
           (let [city-id (support/example-int example city-param "city")]
-            (assert-condition (core/living-city? (:state world) city-id)
+            (support/assert-condition (core/living-city? (:state world) city-id)
                               (str "city " city-id " is not living")))
           world)}
 
@@ -1009,8 +749,8 @@
     :fn (fn [world [_ city-text] _]
           (let [city-id (support/parse-int city-text "city")
                 city (core/city (:state world) city-id)]
-            (assert-condition city (str "city " city-id " does not exist"))
-            (assert-condition (not (:alive? city))
+            (support/assert-condition city (str "city " city-id " does not exist"))
+            (support/assert-condition (not (:alive? city))
                               (str "city " city-id " is still living")))
           world)}
 
@@ -1018,8 +758,8 @@
     :fn (fn [world [_ city-param] example]
           (let [city-id (support/example-int example city-param "city")
                 city (core/city (:state world) city-id)]
-            (assert-condition city (str "city " city-id " does not exist"))
-            (assert-condition (not (:alive? city))
+            (support/assert-condition city (str "city " city-id " does not exist"))
+            (support/assert-condition (not (:alive? city))
                               (str "city " city-id " is still living")))
           world)}
 
@@ -1027,7 +767,7 @@
     :fn (fn [world [_ wave-param] example]
           (let [expected (support/example-int example wave-param "wave")
                 actual (core/wave (:state world))]
-            (assert-condition (= expected actual)
+            (support/assert-condition (= expected actual)
                               (str "wave " actual " expected " expected)))
           world)}
 
@@ -1035,7 +775,7 @@
     :fn (fn [world [_ wave-param] example]
           (let [expected (support/example-int example wave-param "wave")
                 actual (:wave (core/hud (:state world)))]
-            (assert-condition (= expected actual)
+            (support/assert-condition (= expected actual)
                               (str "hud wave " actual " expected " expected)))
           world)}
 
@@ -1043,7 +783,7 @@
     :fn (fn [world [_ ammo-param] example]
           (let [ammo (support/example-int example ammo-param "ammo")]
             (doseq [b (remove :destroyed? (batteries world))]
-              (assert-condition (= ammo (:missiles b))
+              (support/assert-condition (= ammo (:missiles b))
                                 (str "battery " (:id b) " missiles "
                                      (:missiles b) " expected " ammo))))
           world)}
@@ -1057,13 +797,13 @@
 
    {:pattern #"^the wave is not complete$"
     :fn (fn [world _ _]
-          (assert-condition (not (core/wave-complete? (:state world)))
+          (support/assert-condition (not (core/wave-complete? (:state world)))
                             "wave is complete but should not be")
           world)}
 
    {:pattern #"^the wave is complete$"
     :fn (fn [world _ _]
-          (assert-condition (core/wave-complete? (:state world))
+          (support/assert-condition (core/wave-complete? (:state world))
                             "wave is not complete")
           world)}
 
@@ -1130,7 +870,7 @@
                           (core/wave-schedule-metrics low))
                 high-m (or (:high-wave-metrics world)
                            (core/wave-schedule-metrics high))]
-            (assert-condition (core/harder-wave? low-m high-m)
+            (support/assert-condition (core/harder-wave? low-m high-m)
                               (str "wave " high " not harder than " low
                                    " metrics " low-m " vs " high-m)))
           world)}
@@ -1141,13 +881,14 @@
                 expected-count (support/example-int example count-param "enemy count")
                 expected-speed (support/example-double example speed-param "enemy speed")
                 metrics (core/wave-schedule-metrics wave)]
-            (assert-condition (= expected-count (:enemy-count metrics))
+            (support/assert-condition (= expected-count (:enemy-count metrics))
                               (str "wave " wave " enemy count "
                                    (:enemy-count metrics) " expected " expected-count))
-            (assert-condition (= expected-speed (double (:enemy-speed metrics)))
+            (support/assert-condition (= expected-speed (double (:enemy-speed metrics)))
                               (str "wave " wave " enemy speed "
                                    (:enemy-speed metrics) " expected " expected-speed)))
-          world)}])
+          world)}]
+   enemy-steps/handlers))
 
 (defn- match-handler
   [text]

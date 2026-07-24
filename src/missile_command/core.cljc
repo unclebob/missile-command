@@ -226,10 +226,9 @@
 (defn spawn-enemy-targeting-city
   "Spawn an enemy missile from the top of the sky toward a living city."
   [state city-id]
-  (let [c (city state city-id)]
-    (when-not c
-      (throw (ex-info (str "unknown city " city-id) {:city-id city-id})))
-    (spawn-enemy-targeting-city-from state (:x c) 0 city-id)))
+  (if-let [c (city state city-id)]
+    (spawn-enemy-targeting-city-from state (:x c) 0 city-id)
+    (throw (ex-info (str "unknown city " city-id) {:city-id city-id}))))
 
 (defn spawn-enemy-targeting-battery-from
   "Spawn an enemy missile from an explicit sky origin toward a battery."
@@ -245,11 +244,9 @@
 (defn spawn-enemy-targeting-battery
   "Spawn an enemy missile from the top of the sky toward a battery."
   [state battery-id]
-  (let [b (battery state battery-id)]
-    (when-not b
-      (throw (ex-info (str "unknown battery " battery-id) {:battery-id battery-id})))
-    (spawn-enemy-targeting-battery-from state (:x b) 0 battery-id)))
-
+  (if-let [b (battery state battery-id)]
+    (spawn-enemy-targeting-battery-from state (:x b) 0 battery-id)
+    (throw (ex-info (str "unknown battery " battery-id) {:battery-id battery-id}))))
 (defn spawn-enemies-targeting-distinct-cities
   "Spawn n enemy missiles each aimed at a different living city."
   [state n]
@@ -343,12 +340,16 @@
     (throw (ex-info (str "unsupported command: " (:type command))
                     {:command command}))))
 
-(defn- spawn-fireball-from-missile
-  [state missile]
+(defn- spawn-fireball-at
+  "Allocate and attach a expanding fireball centered at x,y."
+  [state x y]
   (let [[fid state] (next-entity-id state)
-        fireball (missiles/make-fireball fid (:x1 missile) (:y1 missile))]
+        fireball (missiles/make-fireball fid x y)]
     (update state :fireballs (fnil conj []) fireball)))
 
+(defn- spawn-fireball-from-missile
+  [state missile]
+  (spawn-fireball-at state (:x1 missile) (:y1 missile)))
 (defn- tick-defensive-missiles
   [state dt]
   (reduce (fn [s missile]
@@ -392,10 +393,7 @@
 (defn- spawn-impact-fireball
   "Visual/game blast at the impact point (ground strike)."
   [state enemy]
-  (let [[fid state] (next-entity-id state)
-        fb (missiles/make-fireball fid (:x1 enemy) (:y1 enemy))]
-    (update state :fireballs (fnil conj []) fb)))
-
+  (spawn-fireball-at state (:x1 enemy) (:y1 enemy)))
 (defn- resolve-enemy-impact
   [state enemy]
   (-> state

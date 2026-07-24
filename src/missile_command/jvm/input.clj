@@ -210,6 +210,49 @@
   [e]
   (str (name (:target-kind e)) ":" (:target-id e)))
 
+(defn- fireball-sim-fields
+  [fireballs]
+  (mapcat (fn [fb]
+            [(str "center_x=" (:x fb))
+             (str "center_y=" (:y fb))
+             (str "radius=" (:radius fb))])
+          fireballs))
+
+(defn- enemy-sim-fields
+  [enemies]
+  (mapcat (fn [e]
+            [(str "enemy_id=" (:id e))
+             (str "enemy_x=" (:x e))
+             (str "enemy_y=" (:y e))
+             (str "enemy_origin_x=" (:x0 e))
+             (str "enemy_origin_y=" (:y0 e))
+             (str "enemy_target_x=" (:x1 e))
+             (str "enemy_target_y=" (:y1 e))
+             (str "enemy_target=" (enemy-target-label e))])
+          enemies))
+
+(defn- battery-sim-fields
+  [state]
+  (mapcat (fn [id]
+            (let [b (core/battery state id)]
+              [(str "battery_" (name id) "_destroyed=" (boolean (:destroyed? b)))
+               (str "battery_" (name id) "_ammo=" (long (or (:missiles b) 0)))]))
+          [:left :center :right]))
+
+(defn- target-sim-fields
+  [targets]
+  (mapcat (fn [t]
+            [(str "target_id=" (:id t))
+             (str "target_x=" (:x t))
+             (str "target_y=" (:y t))
+             (str "destroyed=" (boolean (:destroyed? t)))])
+          targets))
+
+(defn- last-enemy-fate-fields
+  [state]
+  (when-let [f (core/last-enemy-fate state)]
+    [(str "last_enemy_fate=" (name f))]))
+
 (defn format-sim-telemetry-line
   "Periodic simulation snapshot line."
   [state]
@@ -217,38 +260,7 @@
         fireballs (core/fireballs state)
         enemies (core/enemy-missiles state)
         targets (core/destroyable-targets state)
-        cities-alive (count (core/living-cities state))
-        fb-fields (mapcat (fn [fb]
-                            [(str "center_x=" (:x fb))
-                             (str "center_y=" (:y fb))
-                             (str "radius=" (:radius fb))])
-                          fireballs)
-        enemy-fields (mapcat (fn [e]
-                               [(str "enemy_id=" (:id e))
-                                (str "enemy_x=" (:x e))
-                                (str "enemy_y=" (:y e))
-                                (str "enemy_origin_x=" (:x0 e))
-                                (str "enemy_origin_y=" (:y0 e))
-                                (str "enemy_target_x=" (:x1 e))
-                                (str "enemy_target_y=" (:y1 e))
-                                (str "enemy_target=" (enemy-target-label e))])
-                             enemies)
-        bat-fields (mapcat (fn [id]
-                             (let [b (core/battery state id)]
-                               [(str "battery_" (name id) "_destroyed="
-                                     (boolean (:destroyed? b)))
-                                (str "battery_" (name id) "_ammo="
-                                     (long (or (:missiles b) 0)))]))
-                           [:left :center :right])
-        metrics (core/wave-schedule-metrics (core/wave state))
-        tgt-fields (mapcat (fn [t]
-                             [(str "target_id=" (:id t))
-                              (str "target_x=" (:x t))
-                              (str "target_y=" (:y t))
-                              (str "destroyed=" (boolean (:destroyed? t)))])
-                           targets)
-        fate (when-let [f (core/last-enemy-fate state)]
-               [(str "last_enemy_fate=" (name f))])]
+        metrics (core/wave-schedule-metrics (core/wave state))]
     (str/join
      " "
      (concat [(str "qa-sim t=" (core/sim-time state))
@@ -259,12 +271,12 @@
               (str "missiles_in_flight=" (count missiles))
               (str "fireballs=" (count fireballs))
               (str "enemy_missiles=" (count enemies))
-              (str "cities_alive=" cities-alive)]
-             bat-fields
-             fb-fields
-             enemy-fields
-             tgt-fields
-             fate))))
+              (str "cities_alive=" (count (core/living-cities state)))]
+             (battery-sim-fields state)
+             (fireball-sim-fields fireballs)
+             (enemy-sim-fields enemies)
+             (target-sim-fields targets)
+             (last-enemy-fate-fields state)))))
 
 (defn load-scenario-edn
   "Read a QA scenario EDN map from path."
@@ -272,50 +284,74 @@
   (when path
     (read-string (slurp path))))
 
+(defn- apply-scenario-wave
+  [state scenario]
+  (if-let [w (:wave scenario)]
+    (core/set-wave state w)
+    state))
+
+(defn- apply-scenario-size
+  [state scenario]
+  (if-let [w (:width scenario)]
+    (core/resize state w (or (:height scenario) (core/playfield-height state)))
+    state))
+
+(defn- apply-scenario-battery
+  [state [id opts]]
+  (cond-> state
+    (:destroyed opts) (core/destroy-battery id)
+    (contains? opts :ammo) (core/set-battery-ammo id (:ammo opts))))
+
+(defn- apply-scenario-batteries
+  [state scenario]
+  (reduce apply-scenario-battery state (or (:batteries scenario) {})))
+
+(defn- apply-scenario-cities
+  [state scenario]
+  (reduce core/destroy-city state
+          (or (get-in scenario [:cities :destroyed]) [])))
+
+(defn- apply-scenario-targets
+  [state scenario]
+  (reduce (fn [s t] (core/add-destroyable-target s (:x t) (:y t)))
+          state
+          (or (:targets scenario) [])))
+
+(def ^:private scenario-enemy-spawners
+  {:city {:default core/spawn-enemy-targeting-city
+          :from core/spawn-enemy-targeting-city-from}
+   :battery {:default core/spawn-enemy-targeting-battery
+             :from core/spawn-enemy-targeting-battery-from}})
+
+(defn- spawn-scenario-enemy
+  "Spawn one scenario enemy, honoring optional angled :origin [x y]."
+  [state e]
+  (let [[kind id] (:target e)
+        origin (:origin e)
+        spawners (get scenario-enemy-spawners kind)]
+    (cond
+      (nil? spawners) state
+      origin ((:from spawners) state (first origin) (second origin) id)
+      :else ((:default spawners) state id))))
+(defn- apply-scenario-enemies
+  [state scenario]
+  (let [enemies (or (:enemies scenario) [])]
+    (if (seq enemies)
+      (reduce spawn-scenario-enemy
+              (assoc state :wave-had-enemies? true :wave-complete? false)
+              enemies)
+      state)))
+
 (defn apply-scenario
   "Apply documented scenario keys onto a new-game state."
   [state scenario]
-  (let [state (if-let [w (:wave scenario)]
-                (core/set-wave state w)
-                state)
-        state (if-let [w (:width scenario)]
-                (core/resize state w (or (:height scenario) (core/playfield-height state)))
-                state)
-        state (reduce (fn [s [id opts]]
-                        (let [s (if (:destroyed opts)
-                                  (core/destroy-battery s id)
-                                  s)]
-                          (if (contains? opts :ammo)
-                            (core/set-battery-ammo s id (:ammo opts))
-                            s)))
-                      state
-                      (or (:batteries scenario) {}))
-        state (reduce core/destroy-city state
-                      (or (get-in scenario [:cities :destroyed]) []))
-        state (reduce (fn [s t]
-                        (core/add-destroyable-target s (:x t) (:y t)))
-                      state
-                      (or (:targets scenario) []))
-        enemies (or (:enemies scenario) [])
-        state (if (seq enemies)
-                (assoc state :wave-had-enemies? true :wave-complete? false)
-                state)
-        state (reduce (fn [s e]
-                        (let [[kind id] (:target e)
-                              origin (:origin e)
-                              [ox oy] (when origin [(first origin) (second origin)])]
-                          (case kind
-                            :city (if origin
-                                    (core/spawn-enemy-targeting-city-from s ox oy id)
-                                    (core/spawn-enemy-targeting-city s id))
-                            :battery (if origin
-                                       (core/spawn-enemy-targeting-battery-from s ox oy id)
-                                       (core/spawn-enemy-targeting-battery s id))
-                            s)))
-                      state
-                      enemies)]
-    state))
-
+  (-> state
+      (apply-scenario-wave scenario)
+      (apply-scenario-size scenario)
+      (apply-scenario-batteries scenario)
+      (apply-scenario-cities scenario)
+      (apply-scenario-targets scenario)
+      (apply-scenario-enemies scenario)))
 (defn format-fireball-phase-line
   "Phase timing line for one fireball."
   [state fireball phase]

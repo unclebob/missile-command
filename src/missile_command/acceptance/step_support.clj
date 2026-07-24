@@ -4,6 +4,23 @@
   [message]
   (throw (ex-info message {})))
 
+(defn assert-condition
+  [condition message]
+  (when-not condition
+    (fail! message)))
+
+(defn assert-count
+  [actual expected label]
+  (when-not (= expected actual)
+    (fail! (str label " count " actual " expected " expected))))
+
+(defn assert-gt
+  [actual bound message]
+  (assert-condition (> actual bound) message))
+
+(defn assert-lt
+  [actual bound message]
+  (assert-condition (< actual bound) message))
 (defn require-value
   [example param-name]
   (or (get example param-name)
