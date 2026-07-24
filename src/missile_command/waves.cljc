@@ -1,4 +1,5 @@
-(ns missile-command.waves)
+(ns missile-command.waves
+  (:require [missile-command.options :as options]))
 
 (def initial-wave 1)
 (def full-ammo 10)
@@ -10,12 +11,12 @@
 (def enemy-speed-wave-factor 0.25)
 
 (defn enemy-count
-  "Number of ballistic enemies scheduled for a wave."
+  "Number of ballistic enemies scheduled for a wave (arcade base)."
   [wave]
   (+ 2 wave))
 
 (defn enemy-speed
-  "Enemy missile speed (px/s) for a wave."
+  "Enemy missile speed (px/s) for a wave (arcade base)."
   [wave]
   (* base-enemy-speed (+ 1.0 (* enemy-speed-wave-factor (dec wave)))))
 
@@ -50,16 +51,22 @@
   (min max-multiplier (+ 1 (quot (dec (long wave)) 2))))
 
 (defn schedule-metrics
-  "Observable difficulty metrics for a wave."
-  [wave]
-  {:wave wave
-   :enemy-count (enemy-count wave)
-   :enemy-speed (enemy-speed wave)
-   :multiplier (multiplier wave)
-   :mirv-count (mirv-count wave)
-   :smart-bomb-count (smart-bomb-count wave)
-   :bomber-count (bomber-count wave)
-   :satellite-count (satellite-count wave)})
+  "Observable difficulty metrics for a wave.
+  Optional difficulty preset scales enemy count/speed (arcade default)."
+  ([wave]
+   (schedule-metrics wave options/difficulty-arcade))
+  ([wave difficulty]
+   (let [factor (options/difficulty-factor difficulty)
+         arcade-count (enemy-count wave)
+         arcade-speed (enemy-speed wave)]
+     {:wave wave
+      :enemy-count (options/scale-enemy-count arcade-count factor)
+      :enemy-speed (options/scale-enemy-speed arcade-speed factor)
+      :multiplier (multiplier wave)
+      :mirv-count (mirv-count wave)
+      :smart-bomb-count (smart-bomb-count wave)
+      :bomber-count (bomber-count wave)
+      :satellite-count (satellite-count wave)})))
 
 (defn harder?
   "True when high-wave metrics exceed low-wave by count or speed."

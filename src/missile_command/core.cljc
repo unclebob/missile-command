@@ -9,6 +9,7 @@
             [missile-command.scoring :as scoring]
             [missile-command.screens :as screens]
             [missile-command.high-scores :as high-scores]
+            [missile-command.options :as options]
             [missile-command.waves :as waves]
             [missile-command.world :as world]))
 (def initial-score 0)
@@ -84,6 +85,7 @@
           :high-score-capacity high-scores/default-capacity
           :pending-high-score nil
           :submitted-high-score-initials nil
+          :options options/default-options
           :crosshair (center-crosshair width height)
           :defensive-missiles []
           :fireballs []
@@ -220,10 +222,28 @@
   (new-game {:width (playfield-width source)
              :height (playfield-height source)}))
 
+(def game-options options/of)
+(def mute? options/mute-state?)
+(def difficulty options/difficulty-of)
+(def options? options/screen?)
+(def open-options options/open)
+(def leave-options options/leave)
+(def set-mute options/set-mute-state)
+(def set-difficulty options/set-difficulty-state)
+(def bind-fire-key options/bind-fire-key-state)
+(def fire-key-includes? options/fire-key-includes-state?)
+(def pause-key-includes? options/pause-key-includes-state?)
+
+(defn- apply-shell
+  "High-score shell transition that also carries options."
+  [shell-state source]
+  (options/carry shell-state source))
+
 (defn start-game
   "Leave title (or any shell) and begin a fresh playing run at current size."
   [state]
-  (high-scores/start-playing (blank-shell state) state))
+  (-> (high-scores/start-playing (blank-shell state) state)
+      (apply-shell state)))
 
 (defn final-score
   "Score frozen at THE END, else current score."
@@ -233,19 +253,23 @@
 (defn confirm-end-screen
   "After THE END: open initials entry if score qualifies, else return to title."
   [state]
-  (high-scores/confirm-end state
-                           (the-end? state)
-                           (final-score state)
-                           (blank-shell state)))
+  (apply-shell
+   (high-scores/confirm-end state
+                            (the-end? state)
+                            (final-score state)
+                            (blank-shell state))
+   state))
 
 (defn submit-high-score-initials
   "Insert pending score with initials, then return to title."
   [state initials]
-  (high-scores/submit-entry state
-                            (high-score-entry? state)
-                            (long (or (pending-high-score state) (final-score state)))
-                            initials
-                            (blank-shell state)))
+  (apply-shell
+   (high-scores/submit-entry state
+                             (high-score-entry? state)
+                             (long (or (pending-high-score state) (final-score state)))
+                             initials
+                             (blank-shell state))
+   state))
 
 (defn end-message
   [state]
@@ -714,7 +738,17 @@
    :open-high-scores (fn [state _] (no-events (open-high-scores state)))
    :close-high-scores (fn [state _] (no-events (close-high-scores state)))
    :submit-high-score
-   (fn [state cmd] (no-events (submit-high-score-initials state (:initials cmd))))})
+   (fn [state cmd] (no-events (submit-high-score-initials state (:initials cmd))))
+   :open-options (fn [state _] (no-events (open-options state)))
+   :leave-options (fn [state _] (no-events (leave-options state)))
+   :set-mute (fn [state cmd] (no-events (set-mute state (:mute cmd))))
+   :set-difficulty (fn [state cmd] (no-events (set-difficulty state (:difficulty cmd))))
+   :bind-fire-key (fn [state cmd]
+                    (no-events (bind-fire-key state (:battery cmd) (:key cmd))))
+   :key (fn [state cmd]
+          (if-let [battery-id (options/key->battery (options/of state) (:key cmd))]
+            (fire-battery state battery-id)
+            (no-events state)))})
 
 (defn handle
   "Apply a player command. Returns {:state s :events [...]}."
@@ -722,6 +756,11 @@
   (if-let [handler (get command-handlers (:type command))]
     (handler state command)
     (unsupported-command command)))
+
+(defn press-key
+  "Apply a remappable key: fire mapped battery when playing, else no-op result."
+  [state key]
+  (handle state {:type :key :key key}))
 
 (defn- spawn-fireball-at
   "Allocate and attach a expanding fireball centered at x,y."
@@ -1192,7 +1231,16 @@
   [state ammo]
   (map-living-batteries state #(batteries/set-ammo % ammo)))
 
-(def wave-schedule-metrics waves/schedule-metrics)
+(defn wave-schedule-metrics
+  ([wave-number]
+   (waves/schedule-metrics wave-number))
+  ([wave-number difficulty]
+   (waves/schedule-metrics wave-number difficulty)))
+
+(defn wave-schedule-metrics-for
+  "Wave schedule metrics using the state's difficulty preset."
+  [state wave-number]
+  (waves/schedule-metrics wave-number (difficulty state)))
 
 
 

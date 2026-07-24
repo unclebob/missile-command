@@ -11,6 +11,7 @@
             [missile-command.acceptance.pause-steps :as pause-steps]
             [missile-command.acceptance.hud-steps :as hud-steps]
             [missile-command.acceptance.high-score-steps :as high-score-steps]
+            [missile-command.acceptance.options-steps :as options-steps]
             [missile-command.core :as core]
             [missile-command.waves :as waves]))
 
@@ -1024,7 +1025,8 @@
         title-steps/handlers
         pause-steps/handlers
         hud-steps/handlers
-        high-score-steps/handlers)))
+        high-score-steps/handlers
+        options-steps/handlers)))
 
 (defn- match-handler
   [text]
