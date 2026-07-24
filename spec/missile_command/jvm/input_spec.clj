@@ -112,7 +112,7 @@
 
 (describe "resize-if-needed"
   (it "reflows when dimensions change"
-    (let [state (core/new-game {:width 800 :height 600})
+    (let [state (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
           next (input/resize-if-needed state 1024 768
                                        core/resize
                                        core/playfield-width
@@ -121,7 +121,7 @@
       (should= 768 (core/playfield-height next))))
 
   (it "keeps the same state object when size is unchanged"
-    (let [state (core/new-game {:width 800 :height 600})
+    (let [state (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
           next (input/resize-if-needed state 800 600
                                        core/resize
                                        core/playfield-width
@@ -130,19 +130,19 @@
 
 (describe "format-telemetry-line"
   (it "reports battery none with zero missiles"
-    (let [state (core/new-game {:width 900 :height 600})
+    (let [state (assoc (core/new-game {:width 900 :height 600}) :screen :playing)
           line (input/format-telemetry-line {:state state :events []})]
       (should (str/includes? line "battery=none"))
       (should (str/includes? line "missiles_in_flight=0"))))
 
   (it "sim telemetry includes score and multiplier"
-    (let [state (core/new-game {:width 800 :height 600})
+    (let [state (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
           line (input/format-sim-telemetry-line state)]
       (should (str/includes? line "score=0"))
       (should (str/includes? line "multiplier=1"))))
 
   (it "includes flight vectors after a click fire"
-    (let [state (core/new-game {:width 900 :height 600})
+    (let [state (assoc (core/new-game {:width 900 :height 600}) :screen :playing)
           result (core/handle state {:type :click :x 100 :y 150})
           line (input/format-telemetry-line result)]
       (should (str/includes? line "battery=left"))
@@ -195,7 +195,7 @@
 (describe "format-sim-telemetry-line"
   (it "includes wave, ammo, and enemy fields for a seeded scenario"
     (let [state (input/apply-scenario
-                 (core/new-game {:width 800 :height 600})
+                 (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                  {:wave 2
                   :batteries {:left {:ammo 3}}
                   :enemies [{:origin [50 0] :target [:city 0]}
@@ -214,7 +214,7 @@
       (should (str/includes? line "cities_alive="))))
 
   (it "reports ammo 0 when battery missiles are missing"
-    (let [base (core/new-game {:width 800 :height 600})
+    (let [base (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
           left (dissoc (core/battery base :left) :missiles)
           state (assoc-in base [:batteries]
                           (mapv (fn [b]
@@ -225,7 +225,7 @@
       (should-not (str/includes? line "battery_left_ammo=1"))))
 
   (it "includes fireball geometry and last-enemy-fate when present"
-    (let [base (core/new-game {:width 800 :height 600})
+    (let [base (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
           with-fb (core/add-static-fireball base 111 222 12.0)
           with-fate (assoc with-fb :last-enemy-fate :fireball)
           line (input/format-sim-telemetry-line with-fate)]
@@ -246,7 +246,7 @@
 
 (describe "format-fireball-phase-line"
   (it "includes id phase time and geometry"
-    (let [state (core/new-game {:width 800 :height 600})
+    (let [state (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
           fb {:id 9 :x 1 :y 2 :radius 3.5}
           line (input/format-fireball-phase-line state fb :start)]
       (should (str/includes? line "qa-fireball id=9"))
@@ -296,7 +296,7 @@
 
 (describe "apply-scenario"
   (it "honors angled enemy origin in scenario enemies"
-    (let [base (core/new-game {:width 800 :height 600})
+    (let [base (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
           state (input/apply-scenario
                  base
                  {:enemies [{:origin [50 0] :target [:city 0]}]})
@@ -310,14 +310,14 @@
       (should-not (:wave-complete? state))))
 
   (it "leaves wave flags alone when enemies list is empty"
-    (let [base (core/new-game {:width 800 :height 600})
+    (let [base (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
           state (input/apply-scenario base {:enemies []})]
       (should-not (:wave-had-enemies? state))
       (should= 0 (count (core/enemy-missiles state)))))
 
   (it "applies wave, size, batteries, cities, targets, and default enemy origins"
     (let [state (input/apply-scenario
-                 (core/new-game {:width 800 :height 600})
+                 (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                  {:wave 3
                   :width 640
                   :height 480
@@ -344,7 +344,7 @@
 
   (it "spawns MIRV scenario enemies with child count and split progress"
     (let [state (input/apply-scenario
-                 (core/new-game {:width 800 :height 600})
+                 (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                  {:enemies [{:kind :mirv
                              :target [:city 1]
                              :child-count 4

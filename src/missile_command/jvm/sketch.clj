@@ -247,9 +247,17 @@
             (case (:type ev)
               :click (apply-handle state (input/click-command (:x ev) (:y ev)))
               :aim (apply-handle state (input/aim-command (:x ev) (:y ev)))
-              :key (if-let [cmd (input/key-char->command (:ch ev))]
-                     (apply-handle state cmd)
-                     state)
+              :start (apply-handle state {:type :start})
+              :confirm (apply-handle state {:type :confirm})
+              :key (cond
+                     (input/key-char->command (:ch ev))
+                     (apply-handle state (input/key-char->command (:ch ev)))
+                     (or (= \newline (:ch ev)) (= \return (:ch ev)))
+                     (cond
+                       (core/title? state) (apply-handle state {:type :start})
+                       (core/the-end? state) (apply-handle state {:type :confirm})
+                       :else state)
+                     :else state)
               :enemy (apply-enemy-spec state (:spec ev))
               :fireball (let [{:keys [x y radius]} (:spec ev)]
                           (core/add-static-fireball state x y radius))
@@ -298,6 +306,12 @@
     (cond
       (input/escape-key? ch)
       (do (q/exit) state)
+
+      (or (= \newline ch) (= \return ch) (= (int 10) (int ch)))
+      (cond
+        (core/title? state) (apply-handle state {:type :start})
+        (core/the-end? state) (apply-handle state {:type :confirm})
+        :else state)
 
       (input/key-char->command ch)
       (apply-handle state (input/key-char->command ch))

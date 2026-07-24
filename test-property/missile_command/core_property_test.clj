@@ -50,7 +50,7 @@
   100
   (for-all [width playfield-size-gen
             height playfield-size-gen]
-    (let [state (core/new-game {:width width :height height})]
+    (let [state (assoc (core/new-game {:width width :height height}) :screen :playing)]
       (and (= width (core/playfield-width state))
            (= height (core/playfield-height state))))))
 
@@ -58,7 +58,7 @@
   50
   (for-all [width playfield-size-gen
             height playfield-size-gen]
-    (let [state (core/new-game {:width width :height height})]
+    (let [state (assoc (core/new-game {:width width :height height}) :screen :playing)]
       (and (= (:width state) (core/playfield-width state))
            (= (:height state) (core/playfield-height state))))))
 
@@ -66,7 +66,7 @@
   80
   (for-all [width playfield-size-gen
             height playfield-size-gen]
-    (let [state (core/new-game {:width width :height height})
+    (let [state (assoc (core/new-game {:width width :height height}) :screen :playing)
           cities (core/cities state)
           living (core/living-cities state)
           bats (core/batteries state)
@@ -101,7 +101,7 @@
             h0 playfield-size-gen
             w1 playfield-size-gen
             h1 playfield-size-gen]
-    (let [before (-> (core/new-game {:width w0 :height h0})
+    (let [before (-> (assoc (core/new-game {:width w0 :height h0}) :screen :playing)
                      (update :cities (fn [cs]
                                        (mapv #(if (zero? (:id %))
                                                 (assoc % :alive? false)
@@ -130,7 +130,7 @@
             height playfield-size-gen
             x coordinate-gen
             y coordinate-gen]
-    (let [state (aim (core/new-game {:width width :height height}) x y)
+    (let [state (aim (assoc (core/new-game {:width width :height height}) :screen :playing) x y)
           crosshair (core/crosshair state)]
       (in-playfield? width height crosshair))))
 
@@ -140,7 +140,7 @@
             height playfield-size-gen
             x coordinate-gen
             y coordinate-gen]
-    (let [once (aim (core/new-game {:width width :height height}) x y)
+    (let [once (aim (assoc (core/new-game {:width width :height height}) :screen :playing) x y)
           twice (aim once x y)]
       (= (core/crosshair once) (core/crosshair twice)))))
 
@@ -150,7 +150,7 @@
             height playfield-size-gen
             x coordinate-gen
             y coordinate-gen]
-    (let [before (core/new-game {:width width :height height})
+    (let [before (assoc (core/new-game {:width width :height height}) :screen :playing)
           after (aim before x y)]
       (and (= (core/cities before) (core/cities after))
            (= (core/batteries before) (core/batteries after))
@@ -164,7 +164,7 @@
             y-offset (gen/large-integer* {:min 0 :max 100000})]
     (let [x (mod x-offset width)
           y (mod y-offset height)
-          state (aim (core/new-game {:width width :height height}) x y)]
+          state (aim (assoc (core/new-game {:width width :height height}) :screen :playing) x y)]
       (= {:x x :y y} (core/crosshair state)))))
 
 (defspec resize-reclamps-crosshair
@@ -175,7 +175,7 @@
             h1 playfield-size-gen
             x coordinate-gen
             y coordinate-gen]
-    (let [aimed (aim (core/new-game {:width w0 :height h0}) x y)
+    (let [aimed (aim (assoc (core/new-game {:width w0 :height h0}) :screen :playing) x y)
           resized (core/resize aimed w1 h1)]
       (in-playfield? w1 h1 (core/crosshair resized)))))
 
@@ -186,7 +186,7 @@
             battery-id battery-id-gen
             x coordinate-gen
             y coordinate-gen]
-    (let [before (aim (core/new-game {:width width :height height}) x y)
+    (let [before (aim (assoc (core/new-game {:width width :height height}) :screen :playing) x y)
           aim-point (core/crosshair before)
           bat (core/battery before battery-id)
           result (fire before battery-id)
@@ -208,7 +208,7 @@
   (for-all [width playfield-size-gen
             height playfield-size-gen
             battery-id battery-id-gen]
-    (let [before (core/new-game {:width width :height height})
+    (let [before (assoc (core/new-game {:width width :height height}) :screen :playing)
           after (:state (fire before battery-id))
           others (remove #(= battery-id (:id %)) (core/batteries after))]
       (every? #(= 10 (:missiles %)) others))))
@@ -221,10 +221,10 @@
             mode (gen/elements [:empty :destroyed])]
     (let [before (case mode
                    :empty (core/set-battery-ammo
-                           (core/new-game {:width width :height height})
+                           (assoc (core/new-game {:width width :height height}) :screen :playing)
                            battery-id 0)
                    :destroyed (core/destroy-battery
-                               (core/new-game {:width width :height height})
+                               (assoc (core/new-game {:width width :height height}) :screen :playing)
                                battery-id))
           result (fire before battery-id)
           after (:state result)]
@@ -240,7 +240,7 @@
   (for-all [width playfield-size-gen
             height playfield-size-gen]
     (let [state (reduce (fn [s id] (:state (fire s id)))
-                        (core/new-game {:width width :height height})
+                        (assoc (core/new-game {:width width :height height}) :screen :playing)
                         [:left :center :right])
           by-battery (into {} (map (juxt :battery identity)
                                    (core/defensive-missiles state)))]
@@ -267,7 +267,7 @@
             x-offset (gen/large-integer* {:min 0 :max 100000})
             y coordinate-gen]
     (let [x (mod x-offset width)
-          before (core/new-game {:width width :height height})
+          before (assoc (core/new-game {:width width :height height}) :screen :playing)
           expected-zone (input/click-zone width x)
           result (click before x y)
           after (:state result)
@@ -295,7 +295,7 @@
                     :center (+ third (/ third 2.0))
                     :right (+ (* 2.0 third) (/ third 2.0))))
           before (reduce (fn [s id] (core/set-battery-ammo s id 0))
-                         (core/new-game {:width width :height height})
+                         (assoc (core/new-game {:width width :height height}) :screen :playing)
                          emptied)
           after (:state (click before x 10))
           missile (first (core/defensive-missiles after))]
@@ -311,7 +311,7 @@
             y coordinate-gen]
     (let [x (mod x-offset width)
           before (reduce (fn [s id] (core/set-battery-ammo s id 0))
-                         (core/new-game {:width width :height height})
+                         (assoc (core/new-game {:width width :height height}) :screen :playing)
                          [:left :center :right])
           result (click before x y)
           after (:state result)]
@@ -322,7 +322,7 @@
 
 (defn- fire-and-aim
   [width height battery-id aim-x aim-y]
-  (-> (core/new-game {:width width :height height})
+  (-> (assoc (core/new-game {:width width :height height}) :screen :playing)
       (aim aim-x aim-y)
       (fire battery-id)
       :state))
@@ -425,7 +425,7 @@
 (defspec unintercepted-enemy-destroys-city
   30
   (for-all [city-id city-index-gen]
-    (let [before (spawn-enemy-to-city (core/new-game {:width 800 :height 600}) city-id)
+    (let [before (spawn-enemy-to-city (assoc (core/new-game {:width 800 :height 600}) :screen :playing) city-id)
           after (advance-enemies-until-gone before)]
       (and (not (core/living-city? after city-id))
            (= 5 (count (core/living-cities after)))
@@ -436,7 +436,7 @@
   20
   (for-all [battery-id battery-id-gen]
     (let [before (core/spawn-enemy-targeting-battery
-                  (core/new-game {:width 800 :height 600}) battery-id)
+                  (assoc (core/new-game {:width 800 :height 600}) :screen :playing) battery-id)
           after (advance-enemies-until-gone before)
           bat (core/battery after battery-id)]
       (and (:destroyed? bat)
@@ -448,7 +448,7 @@
 (defspec enemy-in-fireball-is-destroyed-without-impact
   20
   (for-all [city-id city-index-gen]
-    (let [state (core/new-game {:width 800 :height 600})
+    (let [state (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
           city (core/city state city-id)
           mid-y (long (/ (:y city) 2.0))
           before (-> state
@@ -464,7 +464,7 @@
 (defspec enemy-outside-fireball-still-impacts
   15
   (for-all [city-id city-index-gen]
-    (let [state (core/new-game {:width 800 :height 600})
+    (let [state (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
           before (-> state
                      (spawn-enemy-to-city city-id)
                      (core/add-static-fireball 50 50 15.0))
@@ -477,7 +477,7 @@
   15
   (for-all [n (gen/elements [2 3])]
     (let [before (core/spawn-enemies-targeting-distinct-cities
-                  (core/new-game {:width 800 :height 600}) n)
+                  (assoc (core/new-game {:width 800 :height 600}) :screen :playing) n)
           after (advance-enemies-until-gone before)]
       (and (= (- 6 n) (count (core/living-cities after)))
            (empty? (core/enemy-missiles after))))))
@@ -485,7 +485,7 @@
 (defspec enemy-missile-progresses-toward-target
   30
   (for-all [city-id city-index-gen]
-    (let [before (spawn-enemy-to-city (core/new-game {:width 800 :height 600}) city-id)
+    (let [before (spawn-enemy-to-city (assoc (core/new-game {:width 800 :height 600}) :screen :playing) city-id)
           p0 (:progress (first (core/enemy-missiles before)))
           after (:state (core/tick before 0.05))
           enemies (core/enemy-missiles after)]
@@ -500,7 +500,7 @@
   (for-all [city-id city-index-gen
             origin-x origin-x-gen]
     (let [before (core/spawn-enemy-targeting-city-from
-                  (core/new-game {:width 800 :height 600}) origin-x 0 city-id)
+                  (assoc (core/new-game {:width 800 :height 600}) :screen :playing) origin-x 0 city-id)
           m0 (first (core/enemy-missiles before))
           after (:state (core/tick before 0.1))
           m1 (first (core/enemy-missiles after))
@@ -518,19 +518,65 @@
   (for-all [city-id city-index-gen
             origin-x origin-x-gen]
     (let [before (core/spawn-enemy-targeting-city-from
-                  (core/new-game {:width 800 :height 600}) origin-x 0 city-id)
+                  (assoc (core/new-game {:width 800 :height 600}) :screen :playing) origin-x 0 city-id)
           after (advance-enemies-until-gone before)]
       (and (not (core/living-city? after city-id))
            (= 5 (count (core/living-cities after)))
            (empty? (core/enemy-missiles after))
            (= :impact (core/last-enemy-fate after))))))
 
+(defspec wave-enemies-include-city-and-battery-targets
+  25
+  (for-all [n (gen/elements [9 12])]
+    (let [state (core/set-wave-enemies-active
+                 (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+                 n)
+          enemies (core/enemy-missiles state)
+          kinds (set (map :target-kind enemies))
+          city-ids (set (map :target-id (filter #(= :city (:target-kind %)) enemies)))
+          bat-ids (set (map :target-id (filter #(= :battery (:target-kind %)) enemies)))]
+      (and (= n (count enemies))
+           (contains? kinds :city)
+           (contains? kinds :battery)
+           (= #{0 1 2 3 4 5} city-ids)
+           (= #{:left :center :right} bat-ids)))))
+
+(defspec destroyed-batteries-excluded-from-wave-targets
+  20
+  (for-all [battery-id battery-id-gen
+            n (gen/elements [8 9])]
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+                    (core/destroy-battery battery-id)
+                    (core/set-wave-enemies-active n))
+          enemies (core/enemy-missiles state)
+          bat-targets (filter #(= :battery (:target-kind %)) enemies)]
+      (and (= n (count enemies))
+           (every? #(not= battery-id (:target-id %)) bat-targets)
+           (every? (fn [e]
+                     (or (and (= :city (:target-kind e))
+                              (core/living-city? state (:target-id e)))
+                         (and (= :battery (:target-kind e))
+                              (not (:destroyed? (core/battery state (:target-id e)))))))
+                   enemies)))))
+
+(defspec unintercepted-wave-battery-target-destroys-battery
+  15
+  (for-all [battery-id battery-id-gen]
+    (let [before (core/spawn-wave-enemy-targeting-battery
+                  (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+                  battery-id)
+          after (advance-enemies-until-gone before)]
+      (and (:destroyed? (core/battery after battery-id))
+           (empty? (core/enemy-missiles after))
+           (= :impact (core/last-enemy-fate after))
+           (= 6 (count (core/living-cities after)))))))
+
 (defspec wave-enemies-use-varied-sky-origins
   30
   (for-all [n (gen/elements [2 3 4 5])
             width (gen/elements [800 1920])]
     (let [state (core/set-wave-enemies-active
-                 (core/new-game {:width width :height 600}) n)
+                 (assoc (core/new-game {:width width :height 600}) :screen :playing) n)
           enemies (core/enemy-missiles state)
           origin-xs (mapv #(double (:x0 %)) enemies)]
       (and (= n (count enemies))
@@ -543,7 +589,7 @@
   30
   (for-all [width playfield-size-gen
             height playfield-size-gen]
-    (let [state (core/new-game {:width width :height height})
+    (let [state (assoc (core/new-game {:width width :height height}) :screen :playing)
           hud (core/hud state)]
       (and (= 1 (core/wave state))
            (not (core/wave-complete? state))
@@ -558,7 +604,7 @@
   25
   (for-all [wave (gen/elements [1 3 5])
             city-id city-index-gen]
-    (let [state (-> (core/new-game {:width 800 :height 600})
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/set-wave wave)
                     (core/spawn-enemy-targeting-city city-id))
           city (core/city state city-id)
@@ -581,7 +627,7 @@
   20
   (for-all [wave (gen/elements [1 3])
             ammo (gen/elements [0 5 10])]
-    (let [before (-> (core/new-game {:width 800 :height 600})
+    (let [before (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                      (core/set-wave wave)
                      (core/set-non-destroyed-battery-ammo ammo)
                      (core/set-wave-enemies-active 1))
@@ -600,7 +646,7 @@
   30
   (for-all [n (gen/elements [1 2 3])]
     (let [threshold 10000
-          state (-> (core/new-game {:width 800 :height 600})
+          state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/set-bonus-city-threshold threshold)
                     (core/set-score (* n threshold)))]
       (and (= (* n threshold) (core/score state))
@@ -611,7 +657,7 @@
 (defspec bonus-city-restores-destroyed-without-exceeding-six
   25
   (for-all [city-id city-index-gen]
-    (let [state (-> (core/new-game {:width 800 :height 600})
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/destroy-city city-id)
                     (core/set-bonus-city-threshold 10000)
                     (core/set-score 10000))]
@@ -623,6 +669,69 @@
 (defn- destroy-all-cities
   [state]
   (reduce core/destroy-city state (map :id (core/cities state))))
+
+(defspec confirm-end-returns-to-title
+  15
+  (for-all [width (gen/elements [800 1024])]
+    (let [playing (assoc (core/new-game {:width width :height 600}) :screen :playing)
+          ended (-> playing
+                    destroy-all-cities
+                    (core/set-bonus-city-reserve 0)
+                    core/evaluate-game-over)
+          title (core/confirm-end-screen ended)]
+      (and (core/the-end? ended)
+           (core/title? title)
+           (= width (core/playfield-width title))
+           (zero? (core/score title))))))
+
+(defspec new-session-starts-on-title-screen
+  30
+  (for-all [width playfield-size-gen
+            height playfield-size-gen]
+    (let [state (core/new-game {:width width :height height})]
+      (and (core/title? state)
+           (not (core/playing? state))
+           (= "Missile Command" (core/title-game-name-of state))
+           (core/title-shows-start-affordance? state)))))
+
+(defspec start-game-enters-playing-with-fresh-run
+  25
+  (for-all [width (gen/elements [800 1920])
+            height (gen/elements [600 1080])
+            prior-score (gen/elements [0 2500 99999])
+            prior-wave (gen/elements [1 5 12])]
+    (let [prior (-> (core/new-game {:width width :height height})
+                    (core/set-score prior-score)
+                    (core/set-wave prior-wave))
+          after (core/start-game prior)]
+      (and (core/playing? after)
+           (not (core/title? after))
+           (zero? (core/score after))
+           (= 1 (core/wave after))
+           (= 1 (core/multiplier after))
+           (= 6 (count (core/living-cities after)))
+           (= width (core/playfield-width after))
+           (= height (core/playfield-height after))
+           (every? #(= 10 (:missiles %)) (core/batteries after))))))
+
+(defspec fire-is-blocked-on-title-screen
+  20
+  (for-all [battery-id battery-id-gen]
+    (let [state (core/new-game {:width 800 :height 600})
+          after (:state (core/handle state {:type :fire :battery battery-id}))]
+      (and (core/title? after)
+           (empty? (core/defensive-missiles after))))))
+
+(defspec title-tick-is-idle
+  20
+  (for-all [dt (gen/elements [0.05 0.1 1.0])]
+    (let [before (core/new-game {:width 800 :height 600})
+          after (:state (core/tick before dt))]
+      (and (core/title? after)
+           (empty? (core/enemy-missiles after))
+           (empty? (core/defensive-missiles after))
+           (= (count (core/living-cities before))
+              (count (core/living-cities after)))))))
 
 (defspec the-end-enters-only-with-no-cities-and-no-reserve
   25
@@ -669,7 +778,7 @@
 (defspec living-cities-never-exceed-layout-count
   20
   (for-all [n (gen/elements [1 2 3 4])]
-    (let [state (-> (core/new-game {:width 800 :height 600})
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/destroy-city 0)
                     (core/destroy-city 1)
                     (core/set-bonus-city-threshold 1000)
@@ -695,7 +804,7 @@
             child-count (gen/elements [2 3 4])
             split-p (gen/elements [0.3 0.5 0.7])]
     (let [before (core/spawn-mirv-targeting-city
-                  (core/new-game {:width 800 :height 600})
+                  (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                   city-id child-count split-p)
           after (advance-until-no-mirv-parents before)
           children (core/mirv-children after)
@@ -709,7 +818,7 @@
   20
   (for-all [city-id city-index-gen]
     (let [state (core/spawn-mirv-targeting-city
-                 (core/new-game {:width 800 :height 600}) city-id 3 0.5)
+                 (assoc (core/new-game {:width 800 :height 600}) :screen :playing) city-id 3 0.5)
           city (core/city state city-id)
           mid-y (long (/ (:y city) 2.0))
           before (-> state
@@ -724,7 +833,7 @@
 (defspec centered-fireball-destroys-smart-bomb-for-higher-points
   20
   (for-all [city-id city-index-gen]
-    (let [before (-> (core/new-game {:width 800 :height 600})
+    (let [before (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                      (core/spawn-smart-bomb-targeting-city city-id)
                      (core/add-static-fireball 400 250 40.0)
                      (core/route-smart-bomb-centered-in-fireball 400 250 15))
@@ -740,7 +849,7 @@
 (defspec smart-bomb-evades-edge-band-once
   15
   (for-all [city-id (gen/elements [1 2])]
-    (let [before (-> (core/new-game {:width 800 :height 600})
+    (let [before (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                      (core/spawn-smart-bomb-targeting-city city-id)
                      (core/add-static-fireball 400 250 40.0)
                      (core/route-smart-bomb-edge-band-in-fireball 400 250 25 40))
@@ -761,7 +870,7 @@
   (for-all [kind (gen/elements [:bomber :satellite])
             speed (gen/elements [80.0 100.0 140.0])]
     (let [before (core/spawn-flyer
-                  (core/new-game {:width 800 :height 600})
+                  (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                   kind 0 80 800 80 speed)
           after (:state (core/tick before 0.2))
           f (first (core/flyers after))]
@@ -773,7 +882,7 @@
   20
   (for-all [kind (gen/elements [:bomber :satellite])
             wave (gen/elements [1 3 5])]
-    (let [before (-> (core/new-game {:width 800 :height 600})
+    (let [before (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                      (core/set-wave wave)
                      (core/spawn-flyer kind 0 80 800 80 100.0)
                      (core/add-static-fireball 400 80 40.0)
@@ -798,7 +907,7 @@
   15
   (for-all [kind (gen/elements [:bomber :satellite])
             drop-count (gen/elements [1 2])]
-    (let [before (-> (core/new-game {:width 800 :height 600})
+    (let [before (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                      (core/spawn-flyer kind 0 80 800 80 100.0)
                      (core/set-flyer-drops-toward-living-cities drop-count 0.4))
           after (loop [s before n 0]
@@ -815,7 +924,7 @@
   15
   (for-all [city-id city-index-gen]
     (let [before (core/spawn-smart-bomb-targeting-city
-                  (core/new-game {:width 800 :height 600}) city-id)
+                  (assoc (core/new-game {:width 800 :height 600}) :screen :playing) city-id)
           after (advance-enemies-until-gone before)]
       (and (not (core/living-city? after city-id))
            (empty? (core/smart-bombs after))
@@ -826,7 +935,7 @@
   (for-all [city-id city-index-gen
             child-count (gen/elements [2 3])]
     (let [before (core/spawn-mirv-targeting-city
-                  (core/new-game {:width 800 :height 600})
+                  (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                   city-id child-count 0.4)
           after (advance-enemies-until-gone before)
           destroyed (- 6 (count (core/living-cities after)))]
@@ -838,7 +947,7 @@
   25
   (for-all [n (gen/elements [1 2 3])]
     (let [before (core/set-wave-enemies-active
-                  (core/new-game {:width 800 :height 600}) n)
+                  (assoc (core/new-game {:width 800 :height 600}) :screen :playing) n)
           after (:state (core/tick before 0.05))]
       (and (pos? (count (core/enemy-missiles after)))
            (not (core/wave-complete? after))
@@ -848,7 +957,7 @@
   20
   (for-all [n (gen/elements [1 2])]
     (let [before (core/set-wave-enemies-active
-                  (core/new-game {:width 800 :height 600}) n)
+                  (assoc (core/new-game {:width 800 :height 600}) :screen :playing) n)
           after (advance-enemies-until-gone before)]
       (and (core/wave-complete? after)
            (= 2 (core/wave after))
@@ -858,7 +967,7 @@
 (defspec rearm-fills-survivors-and-leaves-destroyed
   20
   (for-all [battery-id battery-id-gen]
-    (let [before (-> (core/new-game {:width 800 :height 600})
+    (let [before (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                      (core/set-non-destroyed-battery-ammo 3)
                      (core/destroy-battery battery-id)
                      (core/set-wave-enemies-active 1))
@@ -896,6 +1005,9 @@
   (is (fn? core/spawn-flyer))
   (is (fn? core/evaluate-game-over))
   (is (fn? core/the-end?))
+  (is (fn? core/title?))
+  (is (fn? core/start-game))
+  (is (fn? core/confirm-end-screen))
   (is (fn? core/multiplier))
   (is (fn? core/wave-mirv-count))
   (is (fn? core/wave-smart-bomb-count))

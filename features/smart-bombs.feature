@@ -10,6 +10,7 @@ Feature: Smart bombs
 
 Background:
   Given a new game with width <width> and height <height>
+  And the player starts the game
 
 Scenario: Smart bombs 01 a smart bomb advances toward its target
   And a smart bomb targeting city <city_index>

@@ -8,6 +8,7 @@ Feature: Playfield resize
 
 Scenario: Playfield resize 01 reflows a fresh game
   Given a new game with width 800 and height 600
+  And the player starts the game
   When the playfield is resized to width <new_width> and height <new_height>
   Then the playfield width is <expected_width>
   And the playfield height is <expected_height>

@@ -14,6 +14,7 @@ Feature: Enemy missiles impacts
 
 Scenario: Enemy missiles impacts 01 enemy missile advances toward its target
   Given a new game with width <width> and height <height>
+  And the player starts the game
   And an enemy missile targeting city <city_index>
   When time advances by 0.1 seconds
   Then the playfield width is <expected_width>
@@ -29,6 +30,7 @@ Examples:
 
 Scenario: Enemy missiles impacts 02 unintercepted enemy destroys a city
   Given a new game with width <width> and height <height>
+  And the player starts the game
   And an enemy missile targeting city <city_index>
   When time advances until enemy missiles impact or are destroyed
   Then the playfield width is <expected_width>
@@ -45,6 +47,7 @@ Examples:
 
 Scenario: Enemy missiles impacts 03 unintercepted enemy destroys a battery
   Given a new game with width 800 and height 600
+  And the player starts the game
   And an enemy missile targeting battery left
   When time advances until enemy missiles impact or are destroyed
   Then the left battery is destroyed
@@ -52,6 +55,7 @@ Scenario: Enemy missiles impacts 03 unintercepted enemy destroys a battery
 
 Scenario: Enemy missiles impacts 03b unintercepted enemy destroys center battery
   Given a new game with width 800 and height 600
+  And the player starts the game
   And an enemy missile targeting battery center
   When time advances until enemy missiles impact or are destroyed
   Then the center battery is destroyed
@@ -59,6 +63,7 @@ Scenario: Enemy missiles impacts 03b unintercepted enemy destroys center battery
 
 Scenario: Enemy missiles impacts 03c unintercepted enemy destroys right battery
   Given a new game with width 800 and height 600
+  And the player starts the game
   And an enemy missile targeting battery right
   When time advances until enemy missiles impact or are destroyed
   Then the right battery is destroyed
@@ -66,6 +71,7 @@ Scenario: Enemy missiles impacts 03c unintercepted enemy destroys right battery
 
 Scenario: Enemy missiles impacts 04 enemy is destroyed inside fireball radius
   Given a new game with width 800 and height 600
+  And the player starts the game
   And an enemy missile targeting city 1
   And a fireball at 400 250 with radius 40
   And the enemy missile path passes within distance 40 of that fireball center
@@ -77,6 +83,7 @@ Scenario: Enemy missiles impacts 04 enemy is destroyed inside fireball radius
 
 Scenario: Enemy missiles impacts 05 enemy outside fireball radius is not destroyed by it
   Given a new game with width 800 and height 600
+  And the player starts the game
   And an enemy missile targeting city 0
   And a fireball at 750 50 with radius 20
   And the enemy missile path stays farther than 20 from that fireball center
@@ -87,6 +94,7 @@ Scenario: Enemy missiles impacts 05 enemy outside fireball radius is not destroy
 
 Scenario: Enemy missiles impacts 06 destroyed battery cannot fire
   Given a new game with width 800 and height 600
+  And the player starts the game
   And an enemy missile targeting battery left
   When time advances until enemy missiles impact or are destroyed
   And the player aims at 400 100
@@ -96,6 +104,7 @@ Scenario: Enemy missiles impacts 06 destroyed battery cannot fire
 
 Scenario: Enemy missiles impacts 07 cities are destroyed independently
   Given a new game with width <width> and height <height>
+  And the player starts the game
   And <spawn_count> enemy missiles each targeting a different living city
   When time advances until enemy missiles impact or are destroyed
   Then the playfield width is <expected_width>

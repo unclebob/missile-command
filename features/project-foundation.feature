@@ -8,6 +8,7 @@ Feature: Project foundation
 
 Scenario: Project foundation 01 new game records playfield size
   Given a new game with width <width> and height <height>
+  And the player starts the game
   Then the playfield width is <expected_width>
   And the playfield height is <expected_height>
 

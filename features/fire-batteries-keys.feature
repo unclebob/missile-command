@@ -12,6 +12,7 @@ Feature: Fire batteries with keys
 
 Scenario: Fire batteries keys 01 stocked battery launches toward crosshair
   Given a new game with width <width> and height <height>
+  And the player starts the game
   And the player aims at <aim_x> <aim_y>
   When the player fires the <battery> battery
   Then the playfield width is <expected_width>
@@ -31,6 +32,7 @@ Examples:
 
 Scenario: Fire batteries keys 02 firing one battery leaves others full
   Given a new game with width 800 and height 600
+  And the player starts the game
   And the player aims at 400 200
   When the player fires the <battery> battery
   Then the <battery> battery has <ammo> missiles
@@ -44,6 +46,7 @@ Examples:
 
 Scenario: Fire batteries keys 03 empty battery does not fire
   Given a new game with width 800 and height 600
+  And the player starts the game
   And the player aims at 400 200
   And the <battery> battery ammo is set to <set_ammo>
   When the player fires the <battery> battery
@@ -58,6 +61,7 @@ Examples:
 
 Scenario: Fire batteries keys 04 destroyed battery does not fire
   Given a new game with width 800 and height 600
+  And the player starts the game
   And the player aims at 400 200
   And the <battery> battery is destroyed
   When the player fires the <battery> battery
@@ -72,6 +76,7 @@ Examples:
 
 Scenario: Fire batteries keys 05 center missile is faster than side missiles
   Given a new game with width <width> and height <height>
+  And the player starts the game
   And the player aims at 400 100
   When the player fires every battery once
   Then the playfield width is <expected_width>

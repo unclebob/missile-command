@@ -40,7 +40,7 @@
 
 (describe "core flyers"
   (it "spawns and ticks a bomber that drops a city-bound missile"
-    (let [state (-> (core/new-game {:width 800 :height 600})
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/spawn-flyer :bomber 0 80 800 80 200)
                     (core/set-flyer-drop-targeting-city 0 0.25))
           after (loop [s state n 0]
@@ -55,7 +55,7 @@
       (should (:dropped-from-flyer? m))))
 
   (it "destroys a flyer with a fireball for flyer points"
-    (let [state (-> (core/new-game {:width 800 :height 600})
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/spawn-flyer :satellite 0 50 800 50 100)
                     (core/add-static-fireball 400 50 40)
                     (core/route-flyer-through-point 400 50))
@@ -71,7 +71,7 @@
       (should= :fireball (core/last-enemy-fate after))))
   (it "scenario flyers support drops"
     (let [state (input/apply-scenario
-                 (core/new-game {:width 800 :height 600})
+                 (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                  {:flyers [{:kind :bomber
                             :from [0 80]
                             :to [800 80]
@@ -87,7 +87,7 @@
 
   (it "scenario flyer uses defaults when path fields are omitted"
     (let [state (input/apply-scenario
-                 (core/new-game {:width 800 :height 600})
+                 (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                  {:flyers [{}]})
           f (first (core/flyers state))]
       (should= 1 (count (core/flyers state)))
