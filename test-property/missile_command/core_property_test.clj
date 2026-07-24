@@ -3,7 +3,8 @@
             [clojure.test.check.clojure-test :refer [defspec]]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :refer [for-all]]
-            [missile-command.core :as core]))
+            [missile-command.core :as core]
+            [missile-command.input :as input]))
 
 ;; Layout math truncates to longs; keep sizes large enough for distinct city xs.
 (def playfield-size-gen
@@ -28,6 +29,10 @@
 (defn- fire
   [state battery-id]
   (core/handle state {:type :fire :battery battery-id}))
+
+(defn- click
+  [state x y]
+  (core/handle state {:type :click :x x :y y}))
 
 (defn- total-ammo
   [state]
@@ -240,8 +245,81 @@
            (> (:speed (by-battery :center)) (:speed (by-battery :left)))
            (> (:speed (by-battery :center)) (:speed (by-battery :right)))))))
 
+(defspec click-zone-partitions-width
+  100
+  (for-all [width playfield-size-gen
+            x-offset (gen/large-integer* {:min 0 :max 100000})]
+    (let [x (mod x-offset width)
+          zone (input/click-zone width x)
+          third (/ (double width) 3.0)]
+      (case zone
+        :left (< x third)
+        :center (and (<= third x) (< x (* 2.0 third)))
+        :right (>= x (* 2.0 third))))))
+
+(defspec click-prefers-zone-battery-when-stocked
+  80
+  (for-all [width playfield-size-gen
+            height playfield-size-gen
+            x-offset (gen/large-integer* {:min 0 :max 100000})
+            y coordinate-gen]
+    (let [x (mod x-offset width)
+          before (core/new-game {:width width :height height})
+          expected-zone (input/click-zone width x)
+          result (click before x y)
+          after (:state result)
+          missile (first (core/defensive-missiles after))
+          aim-point (core/crosshair after)]
+      (and (= expected-zone (:battery missile))
+           (in-playfield? width height aim-point)
+           (= 9 (:missiles (core/battery after expected-zone)))
+           (= (:x aim-point) (:x1 missile))
+           (= (:y aim-point) (:y1 missile))))))
+
+(defspec click-falls-back-along-zone-order
+  60
+  (for-all [width playfield-size-gen
+            height playfield-size-gen
+            zone (gen/elements [:left :center :right])
+            skip-count (gen/elements [1 2])]
+    (let [order (input/click-fallback-order zone)
+          emptied (take skip-count order)
+          expected (nth order skip-count)
+          ;; pick an x firmly inside the zone
+          third (/ (double width) 3.0)
+          x (long (case zone
+                    :left (/ third 2.0)
+                    :center (+ third (/ third 2.0))
+                    :right (+ (* 2.0 third) (/ third 2.0))))
+          before (reduce (fn [s id] (core/set-battery-ammo s id 0))
+                         (core/new-game {:width width :height height})
+                         emptied)
+          after (:state (click before x 10))
+          missile (first (core/defensive-missiles after))]
+      (and (= expected (:battery missile))
+           (= 9 (:missiles (core/battery after expected)))
+           (every? #(= 0 (:missiles (core/battery after %))) emptied)))))
+
+(defspec click-with-no-fireable-battery-only-aims
+  40
+  (for-all [width playfield-size-gen
+            height playfield-size-gen
+            x-offset (gen/large-integer* {:min 0 :max 100000})
+            y coordinate-gen]
+    (let [x (mod x-offset width)
+          before (reduce (fn [s id] (core/set-battery-ammo s id 0))
+                         (core/new-game {:width width :height height})
+                         [:left :center :right])
+          result (click before x y)
+          after (:state result)]
+      (and (empty? (core/defensive-missiles after))
+           (empty? (:events result))
+           (in-playfield? width height (core/crosshair after))
+           (= 0 (total-ammo after))))))
+
 (deftest property-suite-loads
   (is (fn? core/new-game))
   (is (fn? core/resize))
   (is (fn? core/handle))
-  (is (fn? core/on-ground?)))
+  (is (fn? core/on-ground?))
+  (is (fn? input/click-zone)))
