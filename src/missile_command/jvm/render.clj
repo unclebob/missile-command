@@ -3,6 +3,7 @@
   (:require [quil.core :as q]
             [missile-command.core :as core]
             [missile-command.jvm.render-end :as render-end]
+            [missile-command.jvm.render-pause :as render-pause]
             [missile-command.jvm.render-title :as render-title]
             [missile-command.jvm.render-scenery :as scenery]
             [missile-command.world :as world]))
@@ -66,21 +67,23 @@
 
 (defn- hud!
   [state]
-  (let [hud (core/hud state)
-        line (str "Wave:" (:wave hud)
-                  "  Mult:" (:multiplier hud) "x"
-                  "  Ammo L:" (:missiles (core/battery state :left))
-                  " C:" (:missiles (core/battery state :center))
-                  " R:" (:missiles (core/battery state :right))
-                  "  Score:" (:score hud)
-                  "  FB:" (count (core/fireballs state))
-                  "  | Z/1 X/2 C/3 fire  Esc quit")]
-    (q/fill 0 0 0 140)
-    (q/no-stroke)
-    (q/rect 0 0 (core/playfield-width state) 32)
-    (q/fill 240)
-    (q/text-size 14)
-    (q/text line 12 22)))
+  (when (:full-playing-hud? (core/hud state))
+    (let [hud (core/hud state)
+          line (str "Score:" (:score hud)
+                    "  Wave:" (:wave hud)
+                    "  Mult:" (:multiplier hud) "x"
+                    "  Ammo L:" (:left-ammo hud)
+                    " C:" (:center-ammo hud)
+                    " R:" (:right-ammo hud)
+                    "  Cities:" (:living-cities hud)
+                    "  Bonus:" (:bonus-cities hud)
+                    "  | P/Esc pause  Z/X/C fire")]
+      (q/fill 0 0 0 160)
+      (q/no-stroke)
+      (q/rect 0 0 (core/playfield-width state) 36)
+      (q/fill 240)
+      (q/text-size 14)
+      (q/text line 12 24))))
 
 (defn draw-world!
   [state]
@@ -105,7 +108,9 @@
           (scenery/cities! state)
           (scenery/batteries! state)
           (fireballs! state)
-          (hud! state)))))
+          (hud! state)
+          (when (core/paused? state)
+            (render-pause/overlay! state))))))
 
 (defn draw-state!
   ([state]
