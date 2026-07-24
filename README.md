@@ -48,6 +48,35 @@ bb accept
 Runs `gherkin-parser` → project acceptance entrypoint generator → generated
 executable tests.
 
+### Architecture check
+
+```sh
+bb arch-check
+```
+
+Fails if pure core (`.cljc` game rules) requires hosts, acceptance, or IO libs.
+
+### Property tests
+
+```sh
+bb property
+```
+
+Runs generative property tests (`test-property/`) separately from unit coverage.
+
+### Hardening (mutation / CRAP / DRY)
+
+```sh
+bb mutate src/missile_command/core.cljc --max-workers 8
+bb accept-mutate
+bb crap
+bb dry src
+```
+
+Language mutation uses differential manifests embedded in source files.
+Gherkin acceptance mutation uses `gherkin-mutator` with the project runner
+adapter (`clojure -M:acceptance-mutation-runner`).
+
 ## Core smoke API
 
 ```clojure

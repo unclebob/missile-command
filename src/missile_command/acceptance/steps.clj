@@ -41,3 +41,7 @@
     (if-let [[handler matches] (match-handler text)]
       ((:fn handler) world matches example)
       (support/fail! (str "unsupported step: " text)))))
+
+;; clj-mutate-manifest-begin
+;; {:version 1, :tested-at "2026-07-24T09:44:32.740429-05:00", :module-hash "-292796897", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 3, :hash "817333596"} {:id "defn-/assert-playfield-dimension", :kind "defn-", :line 5, :end-line 11, :hash "-1180112229"} {:id "def/step-handlers", :kind "def", :line 13, :end-line 29, :hash "2054280564"} {:id "defn-/match-handler", :kind "defn-", :line 31, :end-line 36, :hash "-760290467"} {:id "defn/dispatch-step", :kind "defn", :line 38, :end-line 43, :hash "-1121977204"}]}
+;; clj-mutate-manifest-end

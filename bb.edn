@@ -18,10 +18,42 @@
    :task (apply shell "clojure" "-M:check" *command-line-args*)}
 
   test
-  {:doc "Run unit tests (Speclj)"
+  {:doc "Run unit tests (Speclj structure check + JVM Speclj)"
    :task (do
            (shell "clojure" "-M:check" "spec")
            (shell "clojure" "-M:test"))}
+
+  spec
+  {:doc "Unit specs for clj-mutate workers (self-contained; no deps.edn required)"
+   :task (shell "clojure"
+                "-Sdeps"
+                "{:paths [\"src\" \"spec\"] :deps {org.clojure/clojure {:mvn/version \"1.12.0\"} org.clojure/data.json {:mvn/version \"2.5.1\"} speclj/speclj {:mvn/version \"3.12.2\"}}}"
+                "-M" "-m" "speclj.main" "-c")}
+
+  mutate
+  {:doc "Language mutation for one source file"
+   :task (apply shell "clojure" "-M:mutate" *command-line-args*)}
+
+  accept-mutate
+  {:doc "Soft Gherkin acceptance mutation via APS gherkin-mutator"
+   :depends [generate-acceptance]
+   :task (apply shell "gherkin-mutator"
+                "--runner-worker" "clojure -M:acceptance-mutation-runner"
+                "--feature" "features/project-foundation.feature"
+                "--work-dir" "build/acceptance-mutation"
+                "--generated-dir" "acceptance/generated"
+                "--level" "soft"
+                "--status-interval" "15s"
+                "--workers" "4"
+                *command-line-args*)}
+
+  crap
+  {:doc "CRAP analysis (coverage + complexity)"
+   :task (apply shell "clojure" "-M:crap" *command-line-args*)}
+
+  dry
+  {:doc "DRY structural duplication analysis"
+   :task (apply shell "clojure" "-M:dry" *command-line-args*)}
 
   parse-acceptance
   {:doc "Parse Gherkin features to JSON IR"
@@ -58,4 +90,12 @@
   accept
   {:doc "Normal acceptance pipeline: parse → generate → run generated tests"
    :depends [generate-acceptance]
-   :task (shell "clojure" "-M:accept")}}}
+   :task (shell "clojure" "-M:accept")}
+
+  arch-check
+  {:doc "Architecture boundary check (pure core vs hosts/IO/acceptance)"
+   :task (shell "bb" "script/arch_check.bb")}
+
+  property
+  {:doc "Property tests (test.check); separate from unit/coverage"
+   :task (shell "clojure" "-X:property")}}}
