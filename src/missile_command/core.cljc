@@ -212,27 +212,41 @@
         (assoc :wave-had-enemies? wave-flag-on
                :wave-complete? wave-starts-complete?))))
 
-(defn spawn-enemy-targeting-city
-  "Spawn an enemy missile from the top of the sky toward a living city."
-  [state city-id]
+(defn spawn-enemy-targeting-city-from
+  "Spawn an enemy missile from an explicit sky origin toward a city."
+  [state origin-x origin-y city-id]
   (let [c (city state city-id)]
     (when-not c
       (throw (ex-info (str "unknown city " city-id) {:city-id city-id})))
     (spawn-enemy-at state
-                    {:x (:x c) :y 0}
+                    {:x origin-x :y origin-y}
                     {:x (:x c) :y (:y c)}
                     :city city-id)))
 
-(defn spawn-enemy-targeting-battery
-  "Spawn an enemy missile from the top of the sky toward a battery."
-  [state battery-id]
+(defn spawn-enemy-targeting-city
+  "Spawn an enemy missile from the top of the sky toward a living city."
+  [state city-id]
+  (if-let [c (city state city-id)]
+    (spawn-enemy-targeting-city-from state (:x c) 0 city-id)
+    (throw (ex-info (str "unknown city " city-id) {:city-id city-id}))))
+
+(defn spawn-enemy-targeting-battery-from
+  "Spawn an enemy missile from an explicit sky origin toward a battery."
+  [state origin-x origin-y battery-id]
   (let [b (battery state battery-id)]
     (when-not b
       (throw (ex-info (str "unknown battery " battery-id) {:battery-id battery-id})))
     (spawn-enemy-at state
-                    {:x (:x b) :y 0}
+                    {:x origin-x :y origin-y}
                     {:x (:x b) :y (:y b)}
                     :battery battery-id)))
+
+(defn spawn-enemy-targeting-battery
+  "Spawn an enemy missile from the top of the sky toward a battery."
+  [state battery-id]
+  (if-let [b (battery state battery-id)]
+    (spawn-enemy-targeting-battery-from state (:x b) 0 battery-id)
+    (throw (ex-info (str "unknown battery " battery-id) {:battery-id battery-id}))))
 
 (defn spawn-enemies-targeting-distinct-cities
   "Spawn n enemy missiles each aimed at a different living city."
@@ -327,12 +341,16 @@
     (throw (ex-info (str "unsupported command: " (:type command))
                     {:command command}))))
 
-(defn- spawn-fireball-from-missile
-  [state missile]
+(defn- spawn-fireball-at
+  "Allocate and attach a expanding fireball centered at x,y."
+  [state x y]
   (let [[fid state] (next-entity-id state)
-        fireball (missiles/make-fireball fid (:x1 missile) (:y1 missile))]
+        fireball (missiles/make-fireball fid x y)]
     (update state :fireballs (fnil conj []) fireball)))
 
+(defn- spawn-fireball-from-missile
+  [state missile]
+  (spawn-fireball-at state (:x1 missile) (:y1 missile)))
 (defn- tick-defensive-missiles
   [state dt]
   (reduce (fn [s missile]
@@ -376,10 +394,7 @@
 (defn- spawn-impact-fireball
   "Visual/game blast at the impact point (ground strike)."
   [state enemy]
-  (let [[fid state] (next-entity-id state)
-        fb (missiles/make-fireball fid (:x1 enemy) (:y1 enemy))]
-    (update state :fireballs (fnil conj []) fb)))
-
+  (spawn-fireball-at state (:x1 enemy) (:y1 enemy)))
 (defn- resolve-enemy-impact
   [state enemy]
   (-> state
@@ -463,11 +478,14 @@
                      :enemy-missiles []
                      :wave-complete? wave-starts-complete?
                      :wave-had-enemies? active?)
-        living (mapv :id (living-cities state))]
-    (reduce (fn [s city-id]
-              (spawn-enemy-targeting-city s city-id))
+        living (mapv :id (living-cities state))
+        targets (vec (wave-targets-for living n))
+        width (playfield-width state)]
+    (reduce (fn [s [i city-id]]
+              (spawn-enemy-targeting-city-from
+               s (waves/sky-origin-x width i n) 0 city-id))
             state
-            (wave-targets-for living n))))
+            (map-indexed vector targets))))
 
 (defn set-non-destroyed-battery-ammo
   "Test helper: set ammo on every non-destroyed battery."
