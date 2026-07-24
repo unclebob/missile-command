@@ -21,7 +21,44 @@
                (set (map :id (core/batteries state))))
       (doseq [b (core/batteries state)]
         (should-not (:destroyed? b))
-        (should= 10 (:missiles b))))))
+        (should= 10 (:missiles b)))))
+
+  (it "starts with score zero and a crosshair on the playfield"
+    (let [state (core/new-game {:width 800 :height 600})
+          crosshair (core/crosshair state)]
+      (should= 0 (core/score state))
+      (should (<= 0 (:x crosshair)))
+      (should (< (:x crosshair) 800))
+      (should (<= 0 (:y crosshair)))
+      (should (< (:y crosshair) 600)))))
+
+(describe "aim"
+  (it "moves the crosshair to an in-bounds point"
+    (let [state (core/new-game {:width 800 :height 600})
+          result (core/handle state {:type :aim :x 100 :y 200})]
+      (should= {:x 100 :y 200} (core/crosshair (:state result)))
+      (should= [] (:events result))))
+
+  (it "clamps aim points outside the playfield"
+    (let [state (core/new-game {:width 800 :height 600})]
+      (should= {:x 0 :y 100}
+               (core/crosshair (:state (core/handle state {:type :aim :x -10 :y 100}))))
+      (should= {:x 799 :y 100}
+               (core/crosshair (:state (core/handle state {:type :aim :x 900 :y 100}))))
+      (should= {:x 100 :y 0}
+               (core/crosshair (:state (core/handle state {:type :aim :x 100 :y -5}))))
+      (should= {:x 100 :y 599}
+               (core/crosshair (:state (core/handle state {:type :aim :x 100 :y 700}))))
+      (should= {:x 799 :y 599}
+               (core/crosshair (:state (core/handle state {:type :aim :x 9999 :y 9999}))))))
+
+  (it "does not change cities batteries ammo or score when aiming"
+    (let [before (core/new-game {:width 800 :height 600})
+          after (:state (core/handle before {:type :aim :x 250 :y 150}))]
+      (should= (core/cities before) (core/cities after))
+      (should= (core/batteries before) (core/batteries after))
+      (should= (core/score before) (core/score after))
+      (should= {:x 250 :y 150} (core/crosshair after)))))
 
 (describe "resize"
   (it "updates playfield size and reflows cities and batteries"

@@ -1,20 +1,33 @@
 (ns missile-command.core
   (:require [missile-command.world :as world]))
 
+(defn- clamp
+  [n lo hi]
+  (max lo (min hi n)))
+
+(defn- clamp-point
+  [width height x y]
+  {:x (clamp x 0 (dec width))
+   :y (clamp y 0 (dec height))})
+
 (defn new-game
   "Create a new game state for the given playfield size."
   [{:keys [width height]}]
   (merge {:width width
-          :height height}
+          :height height
+          :score 0
+          :crosshair (clamp-point width height (quot width 2) (quot height 2))}
          (world/apply-layout width height)))
 
 (defn resize
   "Reflow layout for a new playfield size, preserving entity progress fields."
   [state width height]
-  (merge state
-         {:width width
-          :height height}
-         (world/apply-layout width height state)))
+  (let [crosshair (or (:crosshair state) {:x 0 :y 0})]
+    (merge state
+           {:width width
+            :height height
+            :crosshair (clamp-point width height (:x crosshair) (:y crosshair))}
+           (world/apply-layout width height state))))
 
 (defn playfield-width
   [state]
@@ -43,3 +56,26 @@
 (defn city-on-ground?
   [state city]
   (world/in-ground-band? (:y city) (playfield-height state)))
+
+(defn crosshair
+  [state]
+  (:crosshair state))
+
+(defn score
+  [state]
+  (:score state))
+
+(defn handle
+  "Apply a player command. Returns {:state s :events [...]}."
+  [state command]
+  (case (:type command)
+    :aim
+    {:state (assoc state :crosshair
+                   (clamp-point (playfield-width state)
+                                (playfield-height state)
+                                (:x command)
+                                (:y command)))
+     :events []}
+
+    (throw (ex-info (str "unsupported command: " (:type command))
+                    {:command command}))))

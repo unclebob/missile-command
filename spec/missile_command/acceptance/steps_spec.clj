@@ -64,4 +64,29 @@
                    {"new_width" "1920" "new_height" "1080"})]
       (should= 1920 (core/playfield-width (:state resized)))
       (should= 1080 (core/playfield-height (:state resized)))
-      (should= 6 (count (core/living-cities (:state resized)))))))
+      (should= 6 (count (core/living-cities (:state resized))))))
+
+  (it "aims the crosshair"
+    (let [world {:state (core/new-game {:width 800 :height 600})}
+          aimed (steps/dispatch-step
+                 world
+                 {:text "the player aims at <x> <y>"}
+                 {"x" "100" "y" "200"})]
+      (should= {:x 100 :y 200} (core/crosshair (:state aimed)))))
+
+  (it "asserts the crosshair position"
+    (let [world {:state (:state (core/handle (core/new-game {:width 800 :height 600})
+                                             {:type :aim :x 100 :y 200}))}]
+      (should= world
+               (steps/dispatch-step
+                world
+                {:text "the crosshair is at <expected_x> <expected_y>"}
+                {"expected_x" "100" "expected_y" "200"}))))
+
+  (it "asserts the score"
+    (let [world {:state (core/new-game {:width 800 :height 600})}]
+      (should= world
+               (steps/dispatch-step
+                world
+                {:text "the score is <score>"}
+                {"score" "0"})))))

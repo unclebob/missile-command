@@ -205,6 +205,33 @@
                 span (- (apply max xs) (apply min xs))]
             (when-not (< span width)
               (support/fail! (str "city span " span " not < " width))))
+          world)}
+
+   {:pattern #"^the player aims at <([A-Za-z0-9_]+)> <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ x-param y-param] example]
+          (let [result (core/handle (:state world)
+                                    {:type :aim
+                                     :x (support/example-int example x-param "x")
+                                     :y (support/example-int example y-param "y")})]
+            (assoc world :state (:state result))))}
+
+   {:pattern #"^the crosshair is at <([A-Za-z0-9_]+)> <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ x-param y-param] example]
+          (let [expected-x (support/example-int example x-param "x")
+                expected-y (support/example-int example y-param "y")
+                actual (core/crosshair (:state world))]
+            (when-not (and (= expected-x (:x actual))
+                           (= expected-y (:y actual)))
+              (support/fail! (str "crosshair " actual " expected "
+                                  {:x expected-x :y expected-y}))))
+          world)}
+
+   {:pattern #"^the score is <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ score-param] example]
+          (let [expected (support/example-int example score-param "score")
+                actual (core/score (:state world))]
+            (when-not (= expected actual)
+              (support/fail! (str "score " actual " expected " expected))))
           world)}])
 
 (defn- match-handler
