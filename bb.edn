@@ -65,6 +65,7 @@
                    "missile_command/world"
                    "missile_command/batteries"
                    "missile_command/missiles"
+                   "missile_command/input"
                    "missile_command/acceptance"
                    "missile_command/jvm/input"]))}
 
@@ -77,6 +78,7 @@
                    "src/missile_command/world.cljc"
                    "src/missile_command/batteries.cljc"
                    "src/missile_command/missiles.cljc"
+                   "src/missile_command/input.cljc"
                    "src/missile_command/acceptance"
                    "src/missile_command/jvm/input.clj"]))}
 
