@@ -35,17 +35,38 @@
       (when (> bh 14)
         (q/rect left (+ top 8) (- right left) 2)))))
 
+(defn- city-rubble!
+  "Destroyed city: plaza + broken building stubs (rubble), not empty ground."
+  [x y]
+  (q/no-stroke)
+  ;; scorched pad
+  (q/fill 55 45 40)
+  (q/rect (- x 18) (- y 4) 36 6)
+  ;; rubble piles
+  (q/fill 90 80 70)
+  (q/triangle (- x 14) y (- x 8) (- y 10) (- x 2) y)
+  (q/triangle (- x 4) y (+ x 2) (- y 14) (+ x 8) y)
+  (q/triangle (+ x 4) y (+ x 12) (- y 8) (+ x 16) y)
+  ;; charred stubs
+  (q/fill 70 60 55)
+  (q/rect (- x 12) (- y 8) 5 6)
+  (q/rect (+ x 4) (- y 6) 4 4)
+  (q/fill 40 30 28)
+  (q/ellipse x (- y 2) 10 4))
+
 (defn- cities!
   [state]
   (doseq [city (core/cities state)]
-    (when (:alive? city)
-      (let [x (:x city)
-            y (:y city)]
-        (city-building! (- x 10) y 8 22)
-        (city-building! x y 10 30)
-        (city-building! (+ x 11) y 7 18)
-        (q/fill 90 100 110)
-        (q/rect (- x 16) (- y 3) 32 4)))))
+    (let [x (:x city)
+          y (:y city)]
+      (if (:alive? city)
+        (do
+          (city-building! (- x 10) y 8 22)
+          (city-building! x y 10 30)
+          (city-building! (+ x 11) y 7 18)
+          (q/fill 90 100 110)
+          (q/rect (- x 16) (- y 3) 32 4))
+        (city-rubble! x y)))))
 
 (defn- launcher!
   [x y destroyed?]
@@ -108,6 +129,19 @@
     (q/no-stroke)
     (q/ellipse (:x t) (:y t) 12 12)))
 
+(defn- enemies!
+  [state]
+  (doseq [e (core/enemy-missiles state)]
+    (let [x (double (or (:x e) (:x0 e)))
+          y (double (or (:y e) (:y0 e)))]
+      (q/stroke 255 80 80)
+      (q/stroke-weight 2)
+      (q/line (:x0 e) (:y0 e) x y)
+      (q/fill 255 60 60)
+      (q/no-stroke)
+      (q/ellipse x y 8 8)))
+  (q/no-stroke))
+
 (defn crosshair-at!
   [x y]
   (q/stroke 255 70 70)
@@ -138,6 +172,7 @@
   (let [w (core/playfield-width state)
         h (core/playfield-height state)]
     (sky! w h)
+    (enemies! state)
     (missiles! state)
     (fireballs! state)
     (targets! state)

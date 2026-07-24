@@ -194,6 +194,68 @@
           after (:state (core/handle state {:type :click :x 500 :y 100}))]
       (should= :left (:battery (first (core/defensive-missiles after)))))))
 
+(describe "enemy missiles"
+  (it "spawns city-bound enemies from the top of the sky"
+    (let [state (core/spawn-enemy-targeting-city
+                 (core/new-game {:width 800 :height 600}) 0)
+          m (first (core/enemy-missiles state))]
+      (should= 0.0 (double (:y0 m)))
+      (should= 0.0 (double (:y m)))
+      (should= 0 (:id (first (filter #(= 0 (:id %)) (core/cities state)))))))
+
+  (it "spawns battery-bound enemies from the top of the sky"
+    (let [state (core/spawn-enemy-targeting-battery
+                 (core/new-game {:width 800 :height 600}) :left)
+          m (first (core/enemy-missiles state))]
+      (should= 0.0 (double (:y0 m)))
+      (should= 0.0 (double (:y m)))
+      (should= :battery (:target-kind m))
+      (should= :left (:target-id m))))
+
+  (it "route-enemy-through-point is a no-op without enemies"
+    (let [state (core/new-game {:width 800 :height 600})
+          after (core/route-enemy-through-point state 10 20)]
+      (should= [] (core/enemy-missiles after))))
+
+  (it "destroys a city on impact"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (core/spawn-enemy-targeting-city 0))
+          after (loop [s state n 0]
+                  (if (or (empty? (core/enemy-missiles s)) (> n 2000))
+                    s
+                    (recur (:state (core/tick s 0.05)) (inc n))))]
+      (should-not (core/living-city? after 0))
+      (should= 5 (count (core/living-cities after)))
+      (should= :impact (core/last-enemy-fate after))
+      (should (pos? (count (core/fireballs after))))))
+
+  (it "destroys a battery on impact"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (core/spawn-enemy-targeting-battery :left))
+          after (loop [s state n 0]
+                  (if (or (empty? (core/enemy-missiles s)) (> n 2000))
+                    s
+                    (recur (:state (core/tick s 0.05)) (inc n))))]
+      (should (:destroyed? (core/battery after :left)))
+      (should= :impact (core/last-enemy-fate after))
+      (should (pos? (count (core/fireballs after))))))
+
+  (it "is destroyed by a fireball without impacting its target"
+    (let [city (first (core/cities (core/new-game {:width 800 :height 600})))
+          state (-> (core/new-game {:width 800 :height 600})
+                    (core/spawn-enemy-targeting-city (:id city))
+                    (core/add-static-fireball (:x city) 200 50)
+                    (core/route-enemy-through-point (:x city) 200))
+          after (loop [s state n 0]
+                  (if (or (empty? (core/enemy-missiles s))
+                          (= :fireball (core/last-enemy-fate s))
+                          (> n 2000))
+                    s
+                    (recur (:state (core/tick s 0.01)) (inc n))))]
+      (should= :fireball (core/last-enemy-fate after))
+      (should (core/living-city? after (:id city)))
+      (should= 0 (count (core/enemy-missiles after))))))
+
 (describe "tick defensive missiles and fireballs"
   (it "advances defensive missiles toward the aim point"
     (let [state (-> (core/new-game {:width 800 :height 600})
