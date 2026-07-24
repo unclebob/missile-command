@@ -9,6 +9,7 @@
             [missile-command.acceptance.defensive-steps :as defensive-steps]
             [missile-command.acceptance.title-steps :as title-steps]
             [missile-command.acceptance.pause-steps :as pause-steps]
+            [missile-command.acceptance.hud-steps :as hud-steps]
             [missile-command.core :as core]))
 
 (defn- assert-playfield-dimension
@@ -1019,7 +1020,8 @@
         city-steps/handlers
         defensive-steps/handlers
         title-steps/handlers
-        pause-steps/handlers)))
+        pause-steps/handlers
+        hud-steps/handlers)))
 
 (defn- match-handler
   [text]

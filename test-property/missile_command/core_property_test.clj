@@ -728,6 +728,51 @@
   ([w h]
    (core/start-game (core/new-game {:width w :height h}))))
 
+(defspec hud-matches-core-fields-while-playing
+  25
+  (for-all [score (gen/elements [0 25 2500 12500])
+            wave (gen/elements [1 3 5 11])
+            city-id city-index-gen
+            reserve (gen/elements [0 1 2])]
+    (let [state (-> (playing-state)
+                    (core/set-score score)
+                    (core/set-wave wave)
+                    (core/destroy-city city-id)
+                    (core/set-bonus-city-reserve reserve))
+          h (core/hud state)]
+      (and (:full-playing-hud? h)
+           (= (core/score state) (:score h))
+           (= (core/wave state) (:wave h))
+           (= (core/multiplier state) (:multiplier h))
+           (= (core/bonus-cities state) (:bonus-cities h))
+           (= (count (core/living-cities state)) (:living-cities h))
+           (= (long (:missiles (core/battery state :left))) (:left-ammo h))
+           (= (long (:missiles (core/battery state :center))) (:center-ammo h))
+           (= (long (:missiles (core/battery state :right))) (:right-ammo h))))))
+
+(defspec hud-full-flag-false-on-title-true-when-paused
+  20
+  (for-all []
+    (let [title (core/new-game {:width 800 :height 600})
+          playing (playing-state)
+          paused (core/pause-game playing)]
+      (and (not (:full-playing-hud? (core/hud title)))
+           (:full-playing-hud? (core/hud playing))
+           (:full-playing-hud? (core/hud paused))
+           (= (core/score playing) (:score (core/hud paused)))
+           (= (core/wave playing) (:wave (core/hud paused)))))))
+
+(defspec hud-ammo-tracks-fire
+  20
+  (for-all [battery-id battery-id-gen]
+    (let [before (playing-state)
+          after (:state (core/handle before {:type :fire :battery battery-id}))
+          h (core/hud after)
+          ammo-key (keyword (str (name battery-id) "-ammo"))]
+      (and (= 9 (get h ammo-key))
+           (= (long (:missiles (core/battery after battery-id)))
+              (get h ammo-key))))))
+
 (defspec pause-from-playing-enters-paused
   25
   (for-all [width (gen/elements [800 1920])]
@@ -1068,6 +1113,7 @@
   (is (fn? core/pause-game))
   (is (fn? core/resume-game))
   (is (fn? core/paused?))
+  (is (fn? core/hud))
   (is (fn? core/multiplier))
   (is (fn? core/wave-mirv-count))
   (is (fn? core/wave-smart-bomb-count))
