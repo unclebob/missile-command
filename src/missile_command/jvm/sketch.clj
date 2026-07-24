@@ -20,8 +20,12 @@
 
 (defn update-state
   [state]
-  (input/resize-if-needed state (q/width) (q/height)
-                          core/resize core/playfield-width core/playfield-height))
+  ;; Aim every frame from the current pointer so the crosshair does not lag
+  ;; behind mouse-moved event delivery.
+  (-> state
+      (input/resize-if-needed (q/width) (q/height)
+                              core/resize core/playfield-width core/playfield-height)
+      (as-> s (apply-command s (input/aim-command (q/mouse-x) (q/mouse-y))))))
 
 (defn draw
   [state]

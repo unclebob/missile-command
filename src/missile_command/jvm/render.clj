@@ -48,32 +48,32 @@
         (q/rect (- x 16) (- y 3) 32 4)))))
 
 (defn- launcher!
+  "Draw a battery as a standing defensive missile on a small pad."
   [x y destroyed?]
+  (q/no-stroke)
   (if destroyed?
     (do
       (q/fill 70 35 35)
-      (q/rect (- x 16) (- y 8) 32 8)
-      (q/fill 50 25 25)
-      (q/rect (- x 4) (- y 18) 8 12))
+      (q/rect (- x 12) (- y 6) 24 6)
+      (q/fill 55 30 30)
+      (q/triangle x (- y 22) (- x 6) (- y 6) (+ x 6) (- y 6)))
     (do
-      ;; concrete pad
-      (q/fill 95 95 100)
-      (q/rect (- x 18) (- y 6) 36 8)
-      ;; bunker body
-      (q/fill 150 145 130)
-      (q/rect (- x 14) (- y 16) 28 12)
-      ;; launch tube / silo
-      (q/fill 70 75 85)
-      (q/rect (- x 4) (- y 34) 8 20)
-      ;; tube rim
-      (q/fill 200 190 80)
-      (q/ellipse x (- y 34) 12 6)
-      ;; small radar dish
-      (q/stroke 180 180 190)
-      (q/stroke-weight 1)
-      (q/no-fill)
-      (q/arc (+ x 10) (- y 20) 10 10 q/PI q/TWO-PI)
-      (q/no-stroke))))
+      ;; pad
+      (q/fill 90 90 95)
+      (q/rect (- x 14) (- y 5) 28 6)
+      ;; body
+      (q/fill 210 205 190)
+      (q/rect (- x 5) (- y 28) 10 24)
+      ;; nose cone
+      (q/fill 200 80 70)
+      (q/triangle x (- y 40) (- x 5) (- y 28) (+ x 5) (- y 28))
+      ;; fins
+      (q/fill 170 165 150)
+      (q/triangle (- x 5) (- y 10) (- x 12) (- y 4) (- x 5) (- y 4))
+      (q/triangle (+ x 5) (- y 10) (+ x 12) (- y 4) (+ x 5) (- y 4))
+      ;; stripe
+      (q/fill 60 90 160)
+      (q/rect (- x 5) (- y 18) 10 3))))
 
 (defn- batteries!
   [state]
