@@ -1,8 +1,8 @@
 (ns missile-command.missiles)
 
 (def max-dt 0.05)
-(def fireball-expand-seconds 0.4)
-(def fireball-contract-seconds 0.4)
+(def fireball-expand-seconds 1.2)
+(def fireball-contract-seconds 1.2)
 (def fireball-max-radius 40.0)
 (def static-fireball-flag true)
 (def default-enemy-speed 120.0)

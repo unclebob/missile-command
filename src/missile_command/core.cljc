@@ -373,10 +373,18 @@
   [state]
   (assoc state :last-enemy-fate :fireball))
 
+(defn- spawn-impact-fireball
+  "Visual/game blast at the impact point (ground strike)."
+  [state enemy]
+  (let [[fid state] (next-entity-id state)
+        fb (missiles/make-fireball fid (:x1 enemy) (:y1 enemy))]
+    (update state :fireballs (fnil conj []) fb)))
+
 (defn- resolve-enemy-impact
   [state enemy]
   (-> state
       (impact-target enemy)
+      (spawn-impact-fireball enemy)
       (assoc :last-enemy-fate :impact)))
 
 (defn- keep-flying-enemy
