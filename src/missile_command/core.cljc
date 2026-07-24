@@ -1146,24 +1146,52 @@
   [state]
   (map-living-batteries state #(batteries/set-ammo % waves/full-ammo)))
 
+(defn- non-destroyed-batteries
+  [state]
+  (filterv (complement :destroyed?) (batteries state)))
+
+(defn- wave-target-pool
+  "Eligible wave targets: living cities then non-destroyed batteries."
+  [state]
+  (into (mapv (fn [c] [:city (:id c)]) (living-cities state))
+        (mapv (fn [b] [:battery (:id b)]) (non-destroyed-batteries state))))
+
 (defn- wave-targets-for
-  [living n]
-  (if (seq living) (take n (cycle living)) []))
+  "Take n targets cycling the eligible city+battery pool."
+  [pool n]
+  (if (seq pool) (vec (take n (cycle pool))) []))
+
+(defn- spawn-wave-enemy
+  "Spawn one wave enemy toward a city or battery from a sky origin."
+  [state origin-x target-spec]
+  (let [[kind id] target-spec]
+    (case kind
+      :city (spawn-enemy-targeting-city-from state origin-x 0 id)
+      :battery (spawn-enemy-targeting-battery-from state origin-x 0 id)
+      state)))
+
+(defn spawn-wave-enemy-targeting-battery
+  "Spawn a single wave-style enemy aimed at a battery from a sky origin."
+  [state battery-id]
+  (let [width (playfield-width state)
+        ox (waves/sky-origin-x width 0 1)]
+    (spawn-wave-enemy state ox [:battery battery-id])))
 
 (defn set-wave-enemies-active
-  "Test helper: replace in-flight enemies with n scheduled wave enemies."
+  "Replace in-flight enemies with n scheduled wave enemies.
+  Targets cycle living cities and non-destroyed batteries."
   [state n]
   (let [active? (pos? n)
         state (assoc state
                      :enemy-missiles []
                      :wave-complete? wave-starts-complete?
                      :wave-had-enemies? active?)
-        living (mapv :id (living-cities state))
-        targets (vec (wave-targets-for living n))
+        pool (wave-target-pool state)
+        targets (wave-targets-for pool n)
         width (playfield-width state)]
-    (reduce (fn [s [i city-id]]
-              (spawn-enemy-targeting-city-from
-               s (waves/sky-origin-x width i n) 0 city-id))
+    (reduce (fn [s [i target-spec]]
+              (spawn-wave-enemy
+               s (waves/sky-origin-x width i n) target-spec))
             state
             (map-indexed vector targets))))
 

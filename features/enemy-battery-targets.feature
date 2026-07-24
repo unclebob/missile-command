@@ -6,6 +6,7 @@ Feature: Enemy battery targets
 
 Background:
   Given a new game with width <width> and height <height>
+  And the player starts the game
 
 Scenario: Enemy battery targets 01 wave enemies choose among cities and batteries
   And the current wave has <remaining> scheduled enemies still active
