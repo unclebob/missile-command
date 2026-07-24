@@ -1,6 +1,6 @@
 # US-16 — Pause and resume
 
-**Status:** backlog  
+**Status:** in-specifier  
 **Depends on:** US-15  
 **Design:** §5.1, §5.3, §6.3
 
