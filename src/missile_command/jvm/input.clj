@@ -83,8 +83,18 @@
   [s]
   (Double/parseDouble (str s)))
 
+(defn- parse-qa-speed
+  "Positive sim-time multiplier (default 1.0). Speeds wall-clock QA waits."
+  [s]
+  (let [n (parse-float-token s)]
+    (when-not (and (double? n) (pos? n) (Double/isFinite n))
+      (throw (ex-info (str "invalid --qa-speed (need positive number): " s)
+                      {:arg s})))
+    n))
+
 (def ^:private switch-handlers
   {"--" (fn [opts xs] [opts (rest xs)])
+   "--qa" (fn [opts xs] [(assoc opts :qa-telemetry? true) (rest xs)])
    "--qa-telemetry" (fn [opts xs] [(assoc opts :qa-telemetry? true) (rest xs)])
    "--destroy-batteries"
    (fn [opts xs]
@@ -93,6 +103,12 @@
    "--qa-events"
    (fn [opts xs]
      [(assoc opts :qa-events (second xs)) (drop 2 xs)])
+   "--qa-scenario"
+   (fn [opts xs]
+     [(assoc opts :qa-scenario (second xs)) (drop 2 xs)])
+   "--qa-speed"
+   (fn [opts xs]
+     [(assoc opts :qa-speed (parse-qa-speed (second xs))) (drop 2 xs)])
    "--qa-target"
    (fn [opts xs]
      [(update opts :qa-targets (fnil conj []) (parse-xy-pair (second xs)))
@@ -135,8 +151,10 @@
           opts {:width default-width
                 :height default-height
                 :qa-telemetry? false
+                :qa-speed 1.0
                 :destroy-batteries []
                 :qa-events nil
+                :qa-scenario nil
                 :qa-targets []
                 :qa-enemies []
                 :qa-fireballs []}]
@@ -215,12 +233,14 @@
                                 (str "enemy_target_y=" (:y1 e))
                                 (str "enemy_target=" (enemy-target-label e))])
                              enemies)
-        bat-fields [(str "battery_left_destroyed="
-                         (boolean (:destroyed? (core/battery state :left))))
-                    (str "battery_center_destroyed="
-                         (boolean (:destroyed? (core/battery state :center))))
-                    (str "battery_right_destroyed="
-                         (boolean (:destroyed? (core/battery state :right))))]
+        bat-fields (mapcat (fn [id]
+                             (let [b (core/battery state id)]
+                               [(str "battery_" (name id) "_destroyed="
+                                     (boolean (:destroyed? b)))
+                                (str "battery_" (name id) "_ammo="
+                                     (long (or (:missiles b) 0)))]))
+                           [:left :center :right])
+        metrics (core/wave-schedule-metrics (core/wave state))
         tgt-fields (mapcat (fn [t]
                              [(str "target_id=" (:id t))
                               (str "target_x=" (:x t))
@@ -232,6 +252,10 @@
     (str/join
      " "
      (concat [(str "qa-sim t=" (core/sim-time state))
+              (str "wave=" (core/wave state))
+              (str "wave_complete=" (boolean (core/wave-complete? state)))
+              (str "wave_enemy_count=" (:enemy-count metrics))
+              (str "wave_enemy_speed=" (:enemy-speed metrics))
               (str "missiles_in_flight=" (count missiles))
               (str "fireballs=" (count fireballs))
               (str "enemy_missiles=" (count enemies))
@@ -241,6 +265,50 @@
              enemy-fields
              tgt-fields
              fate))))
+
+(defn load-scenario-edn
+  "Read a QA scenario EDN map from path."
+  [path]
+  (when path
+    (read-string (slurp path))))
+
+(defn apply-scenario
+  "Apply documented scenario keys onto a new-game state."
+  [state scenario]
+  (let [state (if-let [w (:wave scenario)]
+                (core/set-wave state w)
+                state)
+        state (if-let [w (:width scenario)]
+                (core/resize state w (or (:height scenario) (core/playfield-height state)))
+                state)
+        state (reduce (fn [s [id opts]]
+                        (let [s (if (:destroyed opts)
+                                  (core/destroy-battery s id)
+                                  s)]
+                          (if (contains? opts :ammo)
+                            (core/set-battery-ammo s id (:ammo opts))
+                            s)))
+                      state
+                      (or (:batteries scenario) {}))
+        state (reduce core/destroy-city state
+                      (or (get-in scenario [:cities :destroyed]) []))
+        state (reduce (fn [s t]
+                        (core/add-destroyable-target s (:x t) (:y t)))
+                      state
+                      (or (:targets scenario) []))
+        enemies (or (:enemies scenario) [])
+        state (if (seq enemies)
+                (assoc state :wave-had-enemies? true :wave-complete? false)
+                state)
+        state (reduce (fn [s e]
+                        (let [[kind id] (:target e)]
+                          (case kind
+                            :city (core/spawn-enemy-targeting-city s id)
+                            :battery (core/spawn-enemy-targeting-battery s id)
+                            s)))
+                      state
+                      enemies)]
+    state))
 
 (defn format-fireball-phase-line
   "Phase timing line for one fireball."

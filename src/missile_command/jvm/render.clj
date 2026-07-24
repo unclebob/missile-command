@@ -68,8 +68,36 @@
           (q/rect (- x 16) (- y 3) 32 4))
         (city-rubble! x y)))))
 
+(defn- ammo-triangle-positions
+  "Classic 10-missile triangle under a battery: rows 4-3-2-1 bottom→top.
+  Returns positions bottom-left first so depleting ammo removes the apex first."
+  [cx base-y]
+  (let [row-counts [4 3 2 1]
+        spacing 5
+        row-h 5
+        ;; first row sits just below the launcher pad
+        y0 (+ base-y 8)]
+    (vec
+     (mapcat (fn [row n]
+               (let [y (+ y0 (* row row-h))
+                     width (* (dec n) spacing)
+                     x0 (- cx (quot width 2))]
+                 (map (fn [i] [(+ x0 (* i spacing)) y]) (range n))))
+             (range)
+             row-counts))))
+
+(defn- ammo-dots!
+  "Draw remaining missiles as a triangle of dots under the battery."
+  [cx base-y ammo]
+  (let [n (max 0 (min 10 (long ammo)))
+        dots (take n (ammo-triangle-positions cx base-y))]
+    (q/no-stroke)
+    (q/fill 240 230 120)
+    (doseq [[dx dy] dots]
+      (q/ellipse dx dy 3 3))))
+
 (defn- launcher!
-  [x y destroyed?]
+  [x y destroyed? ammo]
   (q/no-stroke)
   (if destroyed?
     (do
@@ -88,12 +116,13 @@
       (q/triangle (- x 5) (- y 10) (- x 12) (- y 4) (- x 5) (- y 4))
       (q/triangle (+ x 5) (- y 10) (+ x 12) (- y 4) (+ x 5) (- y 4))
       (q/fill 60 90 160)
-      (q/rect (- x 5) (- y 18) 10 3))))
+      (q/rect (- x 5) (- y 18) 10 3)
+      (ammo-dots! x y (or ammo 0)))))
 
 (defn- batteries!
   [state]
   (doseq [bat (core/batteries state)]
-    (launcher! (:x bat) (:y bat) (:destroyed? bat))))
+    (launcher! (:x bat) (:y bat) (:destroyed? bat) (:missiles bat))))
 
 (defn- missiles!
   "Trail from launch to current progress tip (not full instantaneous line)."
@@ -176,11 +205,12 @@
     (sky! w h)
     (enemies! state)
     (missiles! state)
-    (fireballs! state)
     (targets! state)
     (ground! state)
     (cities! state)
     (batteries! state)
+    ;; Fireballs last among world so city/battery impacts draw on top of scenery.
+    (fireballs! state)
     (hud! state)))
 
 (defn draw-state!
