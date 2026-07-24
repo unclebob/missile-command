@@ -14,6 +14,7 @@ Feature: Waves and rearm
 
 Scenario: Waves and rearm 01 new game starts at wave one
   Given a new game with width <width> and height <height>
+  And the player starts the game
   Then the playfield width is <expected_width>
   And the playfield height is <expected_height>
   And the wave number is <wave>
@@ -27,6 +28,7 @@ Examples:
 
 Scenario: Waves and rearm 02 wave does not complete while enemies remain
   Given a new game with width <width> and height <height>
+  And the player starts the game
   And the current wave has <remaining> scheduled enemies still active
   When time advances by 0.05 seconds
   Then the playfield width is <expected_width>
@@ -46,6 +48,7 @@ Examples:
 
 Scenario: Waves and rearm 03 wave completes when all enemies are gone
   Given a new game with width <width> and height <height>
+  And the player starts the game
   And the current wave has <remaining> scheduled enemies still active
   When time advances until all wave enemies are destroyed or have impacted
   Then the playfield width is <expected_width>
@@ -63,6 +66,7 @@ Examples:
 
 Scenario: Waves and rearm 07 hud shows the current wave number
   Given a new game with width <width> and height <height>
+  And the player starts the game
   Then the playfield width is <expected_width>
   And the playfield height is <expected_height>
   And the wave number is <wave>
@@ -75,6 +79,7 @@ Examples:
 
 Scenario: Waves and rearm 04 surviving batteries rearm to full after wave
   Given a new game with width <width> and height <height>
+  And the player starts the game
   And every non-destroyed battery has <spent_ammo> missiles
   And each non-destroyed battery has <expected_spent_ammo> missiles
   And the current wave has <remaining> scheduled enemies still active
@@ -95,6 +100,7 @@ Examples:
 
 Scenario: Waves and rearm 05 destroyed batteries stay destroyed after rearm
   Given a new game with width <width> and height <height>
+  And the player starts the game
   And the <battery> battery has been destroyed
   And the current wave has <remaining> scheduled enemies still active
   And there are <expected_remaining> enemy missiles in flight
@@ -115,6 +121,7 @@ Examples:
 
 Scenario: Waves and rearm 06 higher waves schedule more or faster enemies
   Given a new game with width <width> and height <height>
+  And the player starts the game
   And wave <low_wave> enemy schedule metrics are recorded
   When the game is at wave <high_wave>
   Then the playfield width is <expected_width>

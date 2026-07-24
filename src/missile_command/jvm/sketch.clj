@@ -149,9 +149,12 @@
                   apply-qa-targets
                   apply-qa-enemies
                   apply-qa-fireballs
-                  ;; Normal play: wave 1 attacks begin immediately unless
-                  ;; QA already staged enemies via scenario/flags.
-                  ensure-wave-enemies)]
+                  ;; Scenario may stage zero cities → enter THE END even from title.
+                  core/evaluate-game-over)
+        ;; Only spawn wave attacks when already playing (not on title/end).
+        state (if (core/playing? state)
+                (ensure-wave-enemies state)
+                state)]
     (when (:qa-telemetry? @launch-options)
       (emit! (input/format-sim-telemetry-line state)))
     state))
@@ -187,6 +190,7 @@
   [state]
   (let [budget (frame-dt-seconds)
         wave-before (core/wave state)
+        screen-before (core/screen state)
         step-max (double missiles/max-dt)
         [state' completed-any?]
         (loop [s state
@@ -201,11 +205,13 @@
                     (seq (core/enemy-missiles state'))
                     (seq (core/destroyable-targets state')))
         wave-changed? (not= wave-before (core/wave state'))
+        screen-changed? (not= screen-before (core/screen state'))
         ;; THE END screen-fill fireball lives on :end-fireball, not :fireballs.
         end-sequence? (core/the-end? state')]
     (emit-fireball-phases! state')
     (when (and (:qa-telemetry? @launch-options)
-               (or active? completed-any? wave-changed? end-sequence?))
+               (or active? completed-any? wave-changed? end-sequence?
+                   screen-changed?))
       (emit! (input/format-sim-telemetry-line state')))
     (when (and (:qa-telemetry? @launch-options)
                (core/last-enemy-fate state')
@@ -245,11 +251,41 @@
           (do
             (reset! pending-qa-events (vec (rest events)))
             (case (:type ev)
-              :click (apply-handle state (input/click-command (:x ev) (:y ev)))
+              :click (let [s (apply-handle state (input/click-command (:x ev) (:y ev)))
+                           s (if (and (core/playing? s) (not (core/playing? state)))
+                               (-> s apply-destroy-options ensure-wave-enemies)
+                               s)]
+                       (when (and (:qa-telemetry? @launch-options)
+                                  (not= (core/screen state) (core/screen s)))
+                         (emit! (input/format-sim-telemetry-line s)))
+                       s)
               :aim (apply-handle state (input/aim-command (:x ev) (:y ev)))
-              :key (if-let [cmd (input/key-char->command (:ch ev))]
-                     (apply-handle state cmd)
-                     state)
+              :start (let [s (apply-handle state {:type :start})
+                           s (cond-> s
+                               (core/playing? s) apply-destroy-options
+                               ;; Skip auto wave if QA will stage enemies next.
+                               (and (core/playing? s)
+                                    (empty? (:qa-enemies @launch-options))
+                                    (not-any? #(= :enemy (:type %))
+                                              @pending-qa-events))
+                               ensure-wave-enemies)]
+                       (when (:qa-telemetry? @launch-options)
+                         (emit! (input/format-sim-telemetry-line s)))
+                       s)
+              :confirm (let [s (apply-handle state {:type :confirm})]
+                         (when (:qa-telemetry? @launch-options)
+                           (emit! (input/format-sim-telemetry-line s)))
+                         s)
+              :key (cond
+                     (input/key-char->command (:ch ev))
+                     (apply-handle state (input/key-char->command (:ch ev)))
+                     (or (= \newline (:ch ev)) (= \return (:ch ev)))
+                     (cond
+                       (core/title? state)
+                       (ensure-wave-enemies (apply-handle state {:type :start}))
+                       (core/the-end? state) (apply-handle state {:type :confirm})
+                       :else state)
+                     :else state)
               :enemy (apply-enemy-spec state (:spec ev))
               :fireball (let [{:keys [x y radius]} (:spec ev)]
                           (core/add-static-fireball state x y radius))
@@ -298,6 +334,13 @@
     (cond
       (input/escape-key? ch)
       (do (q/exit) state)
+
+      (or (= \newline ch) (= \return ch) (= (int 10) (int ch)))
+      (cond
+        (core/title? state)
+        (ensure-wave-enemies (apply-handle state {:type :start}))
+        (core/the-end? state) (apply-handle state {:type :confirm})
+        :else state)
 
       (input/key-char->command ch)
       (apply-handle state (input/key-char->command ch))

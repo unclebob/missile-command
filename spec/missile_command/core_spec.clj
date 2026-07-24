@@ -4,17 +4,17 @@
 
 (describe "new-game"
   (it "records the playfield width and height"
-    (let [state (core/new-game {:width 800 :height 600})]
+    (let [state (assoc (core/new-game {:width 800 :height 600}) :screen :playing)]
       (should= 800 (core/playfield-width state))
       (should= 600 (core/playfield-height state))))
 
   (it "records other playfield sizes"
-    (let [state (core/new-game {:width 1920 :height 1080})]
+    (let [state (assoc (core/new-game {:width 1920 :height 1080}) :screen :playing)]
       (should= 1920 (core/playfield-width state))
       (should= 1080 (core/playfield-height state))))
 
   (it "starts with six living cities and three full batteries"
-    (let [state (core/new-game {:width 800 :height 600})]
+    (let [state (assoc (core/new-game {:width 800 :height 600}) :screen :playing)]
       (should= 6 (count (core/living-cities state)))
       (should= 3 (count (core/batteries state)))
       (should= #{:left :center :right}
@@ -28,7 +28,7 @@
         (should (core/on-ground? state b)))))
 
   (it "starts with score zero, one times multiplier, and a crosshair on the playfield"
-    (let [state (core/new-game {:width 800 :height 600})
+    (let [state (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
           crosshair (core/crosshair state)]
       (should= 0 (core/score state))
       (should= 1 (core/multiplier state))
@@ -43,13 +43,13 @@
 
 (describe "aim"
   (it "moves the crosshair to an in-bounds point"
-    (let [state (core/new-game {:width 800 :height 600})
+    (let [state (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
           result (core/handle state {:type :aim :x 100 :y 200})]
       (should= {:x 100 :y 200} (core/crosshair (:state result)))
       (should= [] (:events result))))
 
   (it "clamps aim points outside the playfield"
-    (let [state (core/new-game {:width 800 :height 600})]
+    (let [state (assoc (core/new-game {:width 800 :height 600}) :screen :playing)]
       (should= {:x 0 :y 100}
                (core/crosshair (:state (core/handle state {:type :aim :x -10 :y 100}))))
       (should= {:x 799 :y 100}
@@ -62,7 +62,7 @@
                (core/crosshair (:state (core/handle state {:type :aim :x 9999 :y 9999}))))))
 
   (it "does not change cities batteries ammo or score when aiming"
-    (let [before (core/new-game {:width 800 :height 600})
+    (let [before (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
           after (:state (core/handle before {:type :aim :x 250 :y 150}))]
       (should= (core/cities before) (core/cities after))
       (should= (core/batteries before) (core/batteries after))
@@ -70,13 +70,13 @@
       (should= {:x 250 :y 150} (core/crosshair after))))
 
   (it "rejects unsupported commands"
-    (let [state (core/new-game {:width 800 :height 600})]
+    (let [state (assoc (core/new-game {:width 800 :height 600}) :screen :playing)]
       (should-throw Exception #"unsupported command: :dance"
         (core/handle state {:type :dance})))))
 
 (describe "fire battery"
   (it "launches a defensive missile toward the crosshair and spends ammo"
-    (let [state (-> (core/new-game {:width 800 :height 600})
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/handle {:type :aim :x 400 :y 200})
                     :state)
           result (core/handle state {:type :fire :battery :left})
@@ -95,7 +95,7 @@
       (should= (:missile-speed (core/battery state :left)) (:speed missile))))
 
   (it "assigns increasing entity ids to successive launches"
-    (let [state (-> (core/new-game {:width 800 :height 600})
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/handle {:type :aim :x 400 :y 200})
                     :state)
           after (->> [:left :center :right]
@@ -107,7 +107,7 @@
       (should= 3 (:next-entity-id after))))
 
   (it "starts entity ids from zero when next-entity-id is missing"
-    (let [state (-> (core/new-game {:width 800 :height 600})
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (dissoc :next-entity-id)
                     (core/handle {:type :aim :x 10 :y 20})
                     :state)
@@ -117,7 +117,7 @@
       (should= 1 (:next-entity-id after))))
 
   (it "does not spend ammo on other batteries"
-    (let [state (-> (core/new-game {:width 800 :height 600})
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/handle {:type :aim :x 400 :y 200})
                     :state
                     (#(:state (core/handle % {:type :fire :battery :center}))))]
@@ -126,14 +126,14 @@
       (should= 10 (:missiles (core/battery state :right)))))
 
   (it "does nothing when the battery is empty"
-    (let [state (-> (core/new-game {:width 800 :height 600})
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/set-battery-ammo :left 0))
           after (:state (core/handle state {:type :fire :battery :left}))]
       (should= 0 (:missiles (core/battery after :left)))
       (should= 0 (count (core/defensive-missiles after)))))
 
   (it "does nothing when the battery is destroyed"
-    (let [state (-> (core/new-game {:width 800 :height 600})
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/destroy-battery :center))
           after (:state (core/handle state {:type :fire :battery :center}))]
       (should= 0 (count (core/defensive-missiles after)))
@@ -141,7 +141,7 @@
       (should (:destroyed? (core/battery after :center)))))
 
   (it "gives center missiles higher speed than side missiles"
-    (let [state (-> (core/new-game {:width 800 :height 600})
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/handle {:type :aim :x 400 :y 100})
                     :state)
           after (->> [:left :center :right]
@@ -158,7 +158,7 @@
 
 (describe "click zone fire"
   (it "maps horizontal thirds to batteries and aims at the click"
-    (let [state (core/new-game {:width 900 :height 600})
+    (let [state (assoc (core/new-game {:width 900 :height 600}) :screen :playing)
           left (:state (core/handle state {:type :click :x 0 :y 100}))
           center (:state (core/handle state {:type :click :x 300 :y 100}))
           right (:state (core/handle state {:type :click :x 600 :y 100}))]
@@ -168,14 +168,14 @@
       (should= :right (:battery (first (core/defensive-missiles right))))))
 
   (it "falls back along the zone order when preferred battery cannot fire"
-    (let [state (-> (core/new-game {:width 900 :height 600})
+    (let [state (-> (assoc (core/new-game {:width 900 :height 600}) :screen :playing)
                     (core/set-battery-ammo :left 0))
           after (:state (core/handle state {:type :click :x 100 :y 100}))]
       (should= :center (:battery (first (core/defensive-missiles after))))
       (should= 9 (:missiles (core/battery after :center)))))
 
   (it "updates the crosshair but launches nothing when no battery can fire"
-    (let [state (-> (core/new-game {:width 900 :height 600})
+    (let [state (-> (assoc (core/new-game {:width 900 :height 600}) :screen :playing)
                     (core/set-battery-ammo :left 0)
                     (core/set-battery-ammo :center 0)
                     (core/set-battery-ammo :right 0))
@@ -184,7 +184,7 @@
       (should= {:x 450 :y 100} (core/crosshair after))))
 
   (it "keeps key fire as a no-op for empty batteries without fallback"
-    (let [state (-> (core/new-game {:width 900 :height 600})
+    (let [state (-> (assoc (core/new-game {:width 900 :height 600}) :screen :playing)
                     (core/set-battery-ammo :left 0)
                     (core/handle {:type :aim :x 100 :y 100})
                     :state)
@@ -192,14 +192,14 @@
       (should= 0 (count (core/defensive-missiles after)))))
 
   (it "recomputes zones after resize"
-    (let [state (-> (core/new-game {:width 900 :height 600})
+    (let [state (-> (assoc (core/new-game {:width 900 :height 600}) :screen :playing)
                     (core/resize 1800 600))
           after (:state (core/handle state {:type :click :x 500 :y 100}))]
       (should= :left (:battery (first (core/defensive-missiles after)))))))
 
 (describe "waves and rearm"
   (it "starts at wave one with full ammo and incomplete wave flags"
-    (let [state (core/new-game {:width 800 :height 600})]
+    (let [state (assoc (core/new-game {:width 800 :height 600}) :screen :playing)]
       (should= false core/wave-flag-off)
       (should= true core/wave-flag-on)
       (should= false core/wave-starts-complete?)
@@ -220,7 +220,7 @@
 
   (it "marks that enemies have been seen and wave is not complete after spawn"
     (let [state (core/spawn-enemy-targeting-city
-                 (core/new-game {:width 800 :height 600}) 0)]
+                 (assoc (core/new-game {:width 800 :height 600}) :screen :playing) 0)]
       (should (:wave-had-enemies? state))
       (should= true (:wave-had-enemies? state))
       (should-not (core/wave-complete? state))
@@ -228,7 +228,7 @@
       (should= 1 (count (core/enemy-missiles state)))))
 
   (it "completes a wave when enemies are cleared and advances the number"
-    (let [state (-> (core/new-game {:width 800 :height 600})
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/set-wave-enemies-active 1))
           after (loop [s state n 0]
                   (if (or (core/wave-complete? s) (> n 5000))
@@ -241,7 +241,7 @@
       (should (empty? (core/enemy-missiles after)))))
 
   (it "does not complete a wave while enemies remain"
-    (let [state (-> (core/new-game {:width 800 :height 600})
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/set-wave-enemies-active 1))
           after (:state (core/tick state 0.05))]
       (should-not (core/wave-complete? after))
@@ -250,20 +250,20 @@
       (should= 1 (count (core/enemy-missiles after)))))
 
   (it "does not complete when enemies never appeared"
-    (let [state (core/new-game {:width 800 :height 600})
+    (let [state (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
           after (:state (core/tick state 0.1))]
       (should-not (core/wave-complete? after))
       (should= 1 (core/wave after))))
 
   (it "set-wave-enemies-active with zero does not mark enemies seen"
     (let [state (core/set-wave-enemies-active
-                 (core/new-game {:width 800 :height 600}) 0)]
+                 (assoc (core/new-game {:width 800 :height 600}) :screen :playing) 0)]
       (should= false (:wave-had-enemies? state))
       (should= false (:wave-complete? state))
       (should (empty? (core/enemy-missiles state)))))
 
   (it "set-wave clears enemies and wave flags"
-    (let [state (-> (core/new-game {:width 800 :height 600})
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/set-wave-enemies-active 2)
                     (core/set-wave 4))]
       (should= 4 (core/wave state))
@@ -272,7 +272,7 @@
       (should (empty? (core/enemy-missiles state)))))
 
   (it "start-next-wave rearms and clears complete flags"
-    (let [state (-> (core/new-game {:width 800 :height 600})
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/set-non-destroyed-battery-ammo 1)
                     (assoc :wave-complete? true
                            :wave-had-enemies? true
@@ -285,7 +285,7 @@
         (should= 10 (:missiles b)))))
 
   (it "rearms surviving batteries but not destroyed ones"
-    (let [state (-> (core/new-game {:width 800 :height 600})
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/set-battery-ammo :left 3)
                     (core/destroy-battery :left)
                     (core/set-non-destroyed-battery-ammo 2)
@@ -302,19 +302,31 @@
       (should-not (core/harder-wave? high low))))
 
   (it "throws on unknown city or battery spawn targets"
-    (let [state (core/new-game {:width 800 :height 600})]
+    (let [state (assoc (core/new-game {:width 800 :height 600}) :screen :playing)]
       (should-throw (core/spawn-enemy-targeting-city state 99))
       (should-throw (core/spawn-enemy-targeting-battery state :missing))))
 
-  (it "set-wave-enemies-active with no living cities leaves no enemies"
-    (let [state (-> (core/new-game {:width 800 :height 600})
+  (it "set-wave-enemies-active with no living cities still targets batteries"
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (assoc :cities [])
+                    (core/set-wave-enemies-active 2))
+          enemies (core/enemy-missiles state)]
+      (should= 2 (count enemies))
+      (should (every? #(= :battery (:target-kind %)) enemies))
+      (should (:wave-had-enemies? state))))
+
+  (it "set-wave-enemies-active with no eligible targets leaves no enemies"
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+                    (assoc :cities [])
+                    (core/destroy-battery :left)
+                    (core/destroy-battery :center)
+                    (core/destroy-battery :right)
                     (core/set-wave-enemies-active 2))]
       (should (empty? (core/enemy-missiles state)))
       (should (:wave-had-enemies? state))))
 
   (it "resize reclamps when crosshair is missing"
-    (let [state (-> (core/new-game {:width 800 :height 600})
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (dissoc :crosshair)
                     (core/resize 400 300))
           ch (core/crosshair state)]
@@ -325,7 +337,7 @@
 
   (it "add-destroyable-target starts not destroyed"
     (let [state (core/add-destroyable-target
-                 (core/new-game {:width 800 :height 600}) 10 20)
+                 (assoc (core/new-game {:width 800 :height 600}) :screen :playing) 10 20)
           t (first (core/destroyable-targets state))]
       (should= false (:destroyed? t))
       (should= 10 (:x t))
@@ -334,7 +346,7 @@
 (describe "enemy missiles"
   (it "spawns city-bound enemies from the top of the sky"
     (let [state (core/spawn-enemy-targeting-city
-                 (core/new-game {:width 800 :height 600}) 0)
+                 (assoc (core/new-game {:width 800 :height 600}) :screen :playing) 0)
           m (first (core/enemy-missiles state))]
       (should= 0.0 (double (:y0 m)))
       (should= 0.0 (double (:y m)))
@@ -342,7 +354,7 @@
 
   (it "spawns battery-bound enemies from the top of the sky"
     (let [state (core/spawn-enemy-targeting-battery
-                 (core/new-game {:width 800 :height 600}) :left)
+                 (assoc (core/new-game {:width 800 :height 600}) :screen :playing) :left)
           m (first (core/enemy-missiles state))]
       (should= 0.0 (double (:y0 m)))
       (should= 0.0 (double (:y m)))
@@ -351,7 +363,7 @@
 
   (it "spawns a city-bound enemy from an explicit angled sky origin"
     (let [state (core/spawn-enemy-targeting-city-from
-                 (core/new-game {:width 800 :height 600}) 50 0 0)
+                 (assoc (core/new-game {:width 800 :height 600}) :screen :playing) 50 0 0)
           city (core/city state 0)
           m (first (core/enemy-missiles state))]
       (should= 50.0 (double (:x0 m)))
@@ -363,7 +375,7 @@
 
   (it "moves an angled enemy toward its target on both axes"
     (let [state (core/spawn-enemy-targeting-city-from
-                 (core/new-game {:width 800 :height 600}) 50 0 0)
+                 (assoc (core/new-game {:width 800 :height 600}) :screen :playing) 50 0 0)
           before (first (core/enemy-missiles state))
           after (:state (core/tick state 0.1))
           m (first (core/enemy-missiles after))]
@@ -373,7 +385,7 @@
 
   (it "destroys a city when an angled enemy impacts unintercepted"
     (let [state (core/spawn-enemy-targeting-city-from
-                 (core/new-game {:width 800 :height 600}) 50 0 0)
+                 (assoc (core/new-game {:width 800 :height 600}) :screen :playing) 50 0 0)
           after (loop [s state n 0]
                   (if (or (empty? (core/enemy-missiles s)) (> n 5000))
                     s
@@ -385,7 +397,7 @@
 
   (it "destroys a battery when an angled enemy impacts unintercepted"
     (let [state (core/spawn-enemy-targeting-battery-from
-                 (core/new-game {:width 800 :height 600}) 200 0 :left)
+                 (assoc (core/new-game {:width 800 :height 600}) :screen :playing) 200 0 :left)
           after (loop [s state n 0]
                   (if (or (empty? (core/enemy-missiles s)) (> n 5000))
                     s
@@ -396,7 +408,7 @@
 
   (it "wave schedule uses varied sky origins not locked to targets"
     (let [state (core/set-wave-enemies-active
-                 (core/new-game {:width 800 :height 600}) 3)
+                 (assoc (core/new-game {:width 800 :height 600}) :screen :playing) 3)
           enemies (core/enemy-missiles state)
           origin-xs (mapv #(double (:x0 %)) enemies)
           width (core/playfield-width state)]
@@ -407,12 +419,12 @@
       (should (some #(not= (double (:x0 %)) (double (:x1 %))) enemies))))
 
   (it "route-enemy-through-point is a no-op without enemies"
-    (let [state (core/new-game {:width 800 :height 600})
+    (let [state (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
           after (core/route-enemy-through-point state 10 20)]
       (should= [] (core/enemy-missiles after))))
 
   (it "destroys a city on impact"
-    (let [state (-> (core/new-game {:width 800 :height 600})
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/spawn-enemy-targeting-city 0))
           after (loop [s state n 0]
                   (if (or (empty? (core/enemy-missiles s)) (> n 2000))
@@ -424,7 +436,7 @@
       (should (pos? (count (core/fireballs after))))))
 
   (it "destroys a battery on impact"
-    (let [state (-> (core/new-game {:width 800 :height 600})
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/spawn-enemy-targeting-battery :left))
           after (loop [s state n 0]
                   (if (or (empty? (core/enemy-missiles s)) (> n 2000))
@@ -435,8 +447,8 @@
       (should (pos? (count (core/fireballs after))))))
 
   (it "is destroyed by a fireball without impacting its target"
-    (let [city (first (core/cities (core/new-game {:width 800 :height 600})))
-          state (-> (core/new-game {:width 800 :height 600})
+    (let [city (first (core/cities (assoc (core/new-game {:width 800 :height 600}) :screen :playing)))
+          state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/spawn-enemy-targeting-city (:id city))
                     (core/add-static-fireball (:x city) 200 50)
                     (core/route-enemy-through-point (:x city) 200))
@@ -454,13 +466,13 @@
 
 (describe "scoring and multiplier"
   (it "tracks multiplier from the current wave"
-    (should= 1 (core/multiplier (core/set-wave (core/new-game {:width 800 :height 600}) 1)))
-    (should= 2 (core/multiplier (core/set-wave (core/new-game {:width 800 :height 600}) 3)))
-    (should= 6 (core/multiplier (core/set-wave (core/new-game {:width 800 :height 600}) 11)))
-    (should= 6 (core/multiplier (core/set-wave (core/new-game {:width 800 :height 600}) 20))))
+    (should= 1 (core/multiplier (core/set-wave (assoc (core/new-game {:width 800 :height 600}) :screen :playing) 1)))
+    (should= 2 (core/multiplier (core/set-wave (assoc (core/new-game {:width 800 :height 600}) :screen :playing) 3)))
+    (should= 6 (core/multiplier (core/set-wave (assoc (core/new-game {:width 800 :height 600}) :screen :playing) 11)))
+    (should= 6 (core/multiplier (core/set-wave (assoc (core/new-game {:width 800 :height 600}) :screen :playing) 20))))
 
   (it "awards twenty five times multiplier for a fireball kill without completing the wave"
-    (let [state (-> (core/new-game {:width 800 :height 600})
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/set-wave 3)
                     (core/set-wave-enemies-active 2)
                     (core/add-static-fireball 400 250 40)
@@ -477,7 +489,7 @@
       (should= 50 (core/score after))))
 
   (it "awards unused ammo and living cities at wave end times multiplier"
-    (let [state (-> (core/new-game {:width 800 :height 600})
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/set-wave 1)
                     (core/set-non-destroyed-battery-ammo 10)
                     (core/set-wave-enemies-active 1))
@@ -490,7 +502,7 @@
       (should= 650 (core/score after))))
 
   (it "does not decrease score when aiming after a kill"
-    (let [state (-> (core/new-game {:width 800 :height 600})
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/set-wave-enemies-active 2)
                     (core/add-static-fireball 400 250 40)
                     (core/route-enemy-through-point 400 250))
@@ -503,14 +515,58 @@
       (should= 25 (core/score after-kill))
       (should= 25 (core/score after-aim)))))
 
+(describe "wave enemy battery targets"
+  (it "schedules enemies against cities and batteries"
+    (let [state (core/set-wave-enemies-active
+                 (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+                 9)
+          enemies (core/enemy-missiles state)
+          kinds (set (map :target-kind enemies))]
+      (should= 9 (count enemies))
+      (should (contains? kinds :city))
+      (should (contains? kinds :battery))
+      (should= 6 (count (filter #(= :city (:target-kind %)) enemies)))
+      (should= 3 (count (filter #(= :battery (:target-kind %)) enemies)))))
+
+  (it "skips destroyed batteries when scheduling wave enemies"
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+                    (core/destroy-battery :left)
+                    (core/set-wave-enemies-active 8))
+          enemies (core/enemy-missiles state)]
+      (should= 8 (count enemies))
+      (should-not (some #(and (= :battery (:target-kind %))
+                              (= :left (:target-id %)))
+                        enemies))))
+
+  (it "spawn-wave-enemy-targeting-battery uses centered sky origin at y 0"
+    (let [width 800
+          state (core/spawn-wave-enemy-targeting-battery
+                 (assoc (core/new-game {:width width :height 600}) :screen :playing)
+                 :center)
+          enemy (first (core/enemy-missiles state))]
+      (should= 1 (count (core/enemy-missiles state)))
+      (should= :battery (:target-kind enemy))
+      (should= :center (:target-id enemy))
+      (should= 0.0 (double (:y0 enemy)))
+      (should= (* width 0.5) (double (:x0 enemy)))))
+
+  (it "wave enemies targeting batteries spawn from sky y 0"
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+                    (assoc :cities [])
+                    (core/set-wave-enemies-active 3))
+          enemies (core/enemy-missiles state)]
+      (should= 3 (count enemies))
+      (should (every? #(= :battery (:target-kind %)) enemies))
+      (should (every? #(= 0.0 (double (:y0 %))) enemies)))))
+
 (describe "THE END"
   (it "does not end a new game"
-    (let [state (core/new-game {:width 800 :height 600})]
+    (let [state (assoc (core/new-game {:width 800 :height 600}) :screen :playing)]
       (should-not (core/the-end? state))
       (should-not (core/the-end? (core/evaluate-game-over state)))))
 
   (it "enters THE END when all cities are gone and reserve is empty"
-    (let [state (-> (core/new-game {:width 800 :height 600})
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (#(reduce core/destroy-city % (map :id (core/cities %))))
                     (core/set-bonus-city-reserve 0)
                     core/evaluate-game-over)]
@@ -521,7 +577,7 @@
       (should= 0 (core/final-score state))))
 
   (it "restores from reserve instead of ending"
-    (let [state (-> (core/new-game {:width 800 :height 600})
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (#(reduce core/destroy-city % (map :id (core/cities %))))
                     (core/set-bonus-city-reserve 2)
                     core/evaluate-game-over)]
@@ -530,7 +586,7 @@
       (should= 0 (core/bonus-cities state))))
 
   (it "blocks firing after THE END"
-    (let [state (-> (core/new-game {:width 800 :height 600})
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (#(reduce core/destroy-city % (map :id (core/cities %))))
                     (core/set-bonus-city-reserve 0)
                     core/evaluate-game-over)
@@ -539,7 +595,7 @@
       (should (empty? (core/defensive-missiles after)))))
 
   (it "expands the end fireball to fill the playfield"
-    (let [state (-> (core/new-game {:width 800 :height 600})
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (#(reduce core/destroy-city % (map :id (core/cities %))))
                     (core/set-bonus-city-reserve 0)
                     core/evaluate-game-over)
@@ -555,7 +611,7 @@
 (describe "smart bombs"
   (it "advances toward its city target"
     (let [state (core/spawn-smart-bomb-targeting-city
-                 (core/new-game {:width 800 :height 600}) 0)
+                 (assoc (core/new-game {:width 800 :height 600}) :screen :playing) 0)
           after (:state (core/tick state 0.1))
           b (first (core/smart-bombs after))]
       (should= 1 (count (core/smart-bombs after)))
@@ -563,7 +619,7 @@
       (should= core/enemy-kind-smart (:enemy-kind b))))
 
   (it "is destroyed by a well-centered fireball for smart-bomb points"
-    (let [state (-> (core/new-game {:width 800 :height 600})
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/spawn-smart-bomb-targeting-city 1)
                     (core/add-static-fireball 400 250 40)
                     (core/route-smart-bomb-centered-in-fireball 400 250 15))
@@ -580,7 +636,7 @@
       (should= 6 (count (core/living-cities after)))))
 
   (it "evades an edge-of-blast fireball once and stays a threat"
-    (let [state (-> (core/new-game {:width 800 :height 600})
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/spawn-smart-bomb-targeting-city 1)
                     (core/add-static-fireball 400 250 40)
                     (core/route-smart-bomb-edge-band-in-fireball 400 250 25 40))
@@ -598,7 +654,7 @@
 
   (it "destroys its city when unintercepted"
     (let [state (core/spawn-smart-bomb-targeting-city
-                 (core/new-game {:width 800 :height 600}) 0)
+                 (assoc (core/new-game {:width 800 :height 600}) :screen :playing) 0)
           after (loop [s state n 0]
                   (if (or (empty? (core/enemy-missiles s)) (> n 10000))
                     s
@@ -609,7 +665,7 @@
 (describe "MIRV warheads"
   (it "flies as a single parent before the split progress"
     (let [state (core/spawn-mirv-targeting-city
-                 (core/new-game {:width 800 :height 600}) 0 3 0.5)
+                 (assoc (core/new-game {:width 800 :height 600}) :screen :playing) 0 3 0.5)
           after (:state (core/tick state 0.05))
           m (first (core/enemy-missiles after))]
       (should= 1 (count (core/enemy-missiles after)))
@@ -619,7 +675,7 @@
 
   (it "splits into child warheads with independent city targets"
     (let [state (core/spawn-mirv-targeting-city
-                 (core/new-game {:width 800 :height 600}) 0 3 0.5)
+                 (assoc (core/new-game {:width 800 :height 600}) :screen :playing) 0 3 0.5)
           after (loop [s state n 0]
                   (if (or (and (empty? (core/mirv-parents s))
                                (seq (core/mirv-children s)))
@@ -634,7 +690,7 @@
       (should (every? #(= core/enemy-kind-mirv-child (:enemy-kind %)) children))))
 
   (it "destroys a MIRV parent with a fireball before children appear"
-    (let [state (-> (core/new-game {:width 800 :height 600})
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/spawn-mirv-targeting-city 1 3 0.5)
                     (core/add-static-fireball 400 100 40)
                     (core/route-enemy-through-point 400 100))
@@ -649,7 +705,7 @@
 
   (it "lets unintercepted children destroy their target cities"
     (let [state (core/spawn-mirv-targeting-city
-                 (core/new-game {:width 800 :height 600}) 0 2 0.5)
+                 (assoc (core/new-game {:width 800 :height 600}) :screen :playing) 0 2 0.5)
           after (loop [s state n 0]
                   (if (or (and (empty? (core/enemy-missiles s))
                                (core/wave-complete? s))
@@ -662,7 +718,7 @@
 
   (it "route-first-mirv-child-through-point retargets only the first child"
     (let [state (core/spawn-mirv-targeting-city
-                 (core/new-game {:width 800 :height 600}) 0 3 0.4)
+                 (assoc (core/new-game {:width 800 :height 600}) :screen :playing) 0 3 0.4)
           after-split (loop [s state n 0]
                         (if (or (and (empty? (core/mirv-parents s))
                                      (seq (core/mirv-children s)))
@@ -681,7 +737,7 @@
 
   (it "route-first-mirv-child-through-point is a no-op without MIRV children"
     (let [state (core/spawn-enemy-targeting-city
-                 (core/new-game {:width 800 :height 600}) 0)
+                 (assoc (core/new-game {:width 800 :height 600}) :screen :playing) 0)
           after (core/route-first-mirv-child-through-point state 10 20)
           m (first (core/enemy-missiles after))]
       (should= 1 (count (core/enemy-missiles after)))
@@ -689,16 +745,16 @@
 
 (describe "bonus cities"
   (it "starts with empty reserve and default threshold"
-    (let [state (core/new-game {:width 800 :height 600})]
+    (let [state (assoc (core/new-game {:width 800 :height 600}) :screen :playing)]
       (should= 0 (core/bonus-cities state))
       (should= 10000 (core/bonus-city-threshold state))
       (should= 0 (core/bonus-city-earned-events state))
       (should= 0 (:bonus-cities (core/hud state)))))
 
   (it "awards reserve when score crosses the threshold and keeps six living cities"
-    (let [under (core/set-score (core/new-game {:width 800 :height 600}) 9999)
-          at (core/set-score (core/new-game {:width 800 :height 600}) 10000)
-          multi (core/set-score (core/new-game {:width 800 :height 600}) 30000)]
+    (let [under (core/set-score (assoc (core/new-game {:width 800 :height 600}) :screen :playing) 9999)
+          at (core/set-score (assoc (core/new-game {:width 800 :height 600}) :screen :playing) 10000)
+          multi (core/set-score (assoc (core/new-game {:width 800 :height 600}) :screen :playing) 30000)]
       (should= 0 (core/bonus-cities under))
       (should= 0 (core/bonus-city-earned-events under))
       (should= 1 (core/bonus-cities at))
@@ -708,7 +764,7 @@
       (should= 3 (core/bonus-city-earned-events multi))))
 
   (it "restores the lowest destroyed city when a bonus is earned"
-    (let [state (-> (core/new-game {:width 800 :height 600})
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/destroy-city 0)
                     (core/set-score 10000))]
       (should (core/living-city? state 0))
@@ -716,7 +772,7 @@
       (should= 0 (core/bonus-cities state))))
 
   (it "never places more than six living cities"
-    (let [state (-> (core/new-game {:width 800 :height 600})
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/destroy-city 0)
                     (core/destroy-city 1)
                     (core/set-score 30000))]
@@ -724,7 +780,7 @@
       (should= 1 (core/bonus-cities state))))
 
   (it "applies remaining reserve after wave resolution"
-    (let [state (-> (core/new-game {:width 800 :height 600})
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/destroy-city 0)
                     (core/destroy-city 1)
                     (core/set-bonus-city-reserve 3)
@@ -734,7 +790,7 @@
 
 (describe "tick defensive missiles and fireballs"
   (it "advances defensive missiles toward the aim point"
-    (let [state (-> (core/new-game {:width 800 :height 600})
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/handle {:type :aim :x 400 :y 100})
                     :state
                     (#(:state (core/handle % {:type :fire :battery :center})))
@@ -745,7 +801,7 @@
       (should= 0.05 (core/last-applied-dt state))))
 
   (it "clamps large time steps so a missile does not instantly arrive"
-    (let [state (-> (core/new-game {:width 800 :height 600})
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/handle {:type :aim :x 400 :y 100})
                     :state
                     (#(:state (core/handle % {:type :fire :battery :center})))
@@ -756,7 +812,7 @@
       (should (< (:progress m) 1.0))))
 
   (it "turns arrived missiles into fireballs at the aim point"
-    (let [state (loop [s (-> (core/new-game {:width 800 :height 600})
+    (let [state (loop [s (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                              (core/handle {:type :aim :x 400 :y 100})
                              :state
                              (#(:state (core/handle % {:type :fire :battery :center}))))
@@ -771,7 +827,7 @@
       (should= 100 (:y fb))))
 
   (it "destroys targets inside a fireball and leaves distant targets alone"
-    (let [base (-> (core/new-game {:width 800 :height 600})
+    (let [base (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                    (core/handle {:type :aim :x 400 :y 200})
                    :state
                    (#(:state (core/handle % {:type :fire :battery :center})))
@@ -795,7 +851,7 @@
 
 (describe "resize"
   (it "updates playfield size and reflows cities and batteries"
-    (let [state (-> (core/new-game {:width 800 :height 600})
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/resize 1920 1080))
           city-xs (mapv :x (core/cities state))
           left (core/battery state :left)
@@ -811,13 +867,13 @@
         (should= 10 (:missiles b)))))
 
   (it "does not leave city positions from the previous size"
-    (let [before (core/new-game {:width 800 :height 600})
+    (let [before (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
           after (core/resize before 1600 600)]
       (should-not= (mapv :x (core/cities before))
                    (mapv :x (core/cities after)))))
 
   (it "preserves city alive flags and battery ammo across resize"
-    (let [before (-> (core/new-game {:width 800 :height 600})
+    (let [before (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                      (update :cities (fn [cs]
                                        (mapv #(if (zero? (:id %))
                                                 (assoc % :alive? false)
@@ -837,22 +893,22 @@
       (should (every? #(core/city-on-ground? after %) (core/cities after)))))
 
   (it "reclamps the crosshair into the new playfield"
-    (let [before (:state (core/handle (core/new-game {:width 800 :height 600})
+    (let [before (:state (core/handle (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                                       {:type :aim :x 790 :y 590}))
           after (core/resize before 400 300)
           crosshair (core/crosshair after)]
       (should= {:x 399 :y 299} crosshair)))
 
   (it "uses a zero origin when reclamp finds no crosshair"
-    (let [before (dissoc (core/new-game {:width 800 :height 600}) :crosshair)
+    (let [before (dissoc (assoc (core/new-game {:width 800 :height 600}) :screen :playing) :crosshair)
           after (core/resize before 800 600)]
       (should= {:x 0 :y 0} (core/crosshair after))))
 
 
   (it "spawns MIRV and smart bombs from sky origin with flags"
-    (let [mirv (core/spawn-mirv-targeting-city (core/new-game {:width 800 :height 600}) 0 3 0.5)
+    (let [mirv (core/spawn-mirv-targeting-city (assoc (core/new-game {:width 800 :height 600}) :screen :playing) 0 3 0.5)
           m (first (core/enemy-missiles mirv))
-          smart (core/spawn-smart-bomb-targeting-city (core/new-game {:width 800 :height 600}) 1)
+          smart (core/spawn-smart-bomb-targeting-city (assoc (core/new-game {:width 800 :height 600}) :screen :playing) 1)
           s (first (core/enemy-missiles smart))]
       (should= 0.0 (double (:y0 m)))
       (should= 0.0 (double (:y0 s)))
@@ -862,7 +918,7 @@
       (should= core/enemy-kind-smart (:enemy-kind s))))
 
   (it "configures flyer drops only toward living cities"
-    (let [base (core/new-game {:width 800 :height 600})
+    (let [base (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
           empty (-> base
                     (core/destroy-city 0)
                     (core/destroy-city 1)
@@ -889,7 +945,7 @@
       (should= 2 (get-in d [:target 1]))))
 
   (it "routes smart bomb edge band east of the fireball center"
-    (let [state (-> (core/new-game {:width 800 :height 600})
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/spawn-smart-bomb-targeting-city 0)
                     (core/route-smart-bomb-edge-band-in-fireball 400 200 25.0 40.0))
           m (first (core/enemy-missiles state))]
@@ -903,4 +959,36 @@
     (should-not (@#'core/smart-bomb-edge-band? 40.1 40.0))
     (should-not (@#'core/smart-bomb-edge-band? 20.0 40.0)))
 )
+
+(describe "title screen"
+  (it "starts a new game on the title screen"
+    (let [state (core/new-game {:width 800 :height 600})]
+      (should (core/title? state))
+      (should-not (core/playing? state))
+      (should= "Missile Command" (core/title-game-name-of state))
+      (should (core/title-shows-start-affordance? state))))
+
+  (it "starts playing from title and ignores fire until started"
+    (let [title (core/new-game {:width 800 :height 600})
+          fired (:state (core/handle title {:type :fire :battery :left}))
+          started (:state (core/handle title {:type :start}))
+          clicked (:state (core/handle title {:type :click :x 100 :y 100}))]
+      (should (core/title? fired))
+      (should (empty? (core/defensive-missiles fired)))
+      (should (core/playing? started))
+      (should= 0 (core/score started))
+      (should= 1 (core/wave started))
+      (should (core/playing? clicked))))
+
+  (it "returns to title when THE END is confirmed"
+    (let [ended (core/evaluate-game-over
+                 (reduce core/destroy-city
+                         (core/new-game {:width 800 :height 600})
+                         (range 6)))
+          ;; ensure no bonus reserve
+          ended (core/set-bonus-city-reserve ended 0)
+          ended (core/evaluate-game-over ended)
+          back (:state (core/handle ended {:type :confirm}))]
+      (should (core/the-end? ended))
+      (should (core/title? back)))))
 

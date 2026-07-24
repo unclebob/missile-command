@@ -9,6 +9,7 @@ Feature: Bombers and satellites
 
 Background:
   Given a new game with width <width> and height <height>
+  And the player starts the game
 
 Scenario: Bombers and satellites 01 a flyer moves across the playfield
   And a <flyer_kind> flyer from <start_x> <start_y> toward <end_x> <end_y> at speed <speed>

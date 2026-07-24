@@ -11,6 +11,7 @@ Feature: Enemy missile angles
 
 Background:
   Given a new game with width <width> and height <height>
+  And the player starts the game
 
 Scenario: Enemy missile angles 01 angled enemy advances toward its target
   And an enemy missile from <origin_x> 0 targeting city <city_index>

@@ -13,6 +13,7 @@ Feature: Defensive missiles and fireballs
 
 Scenario: Defensive missiles fireballs 01 missile advances toward the aim point
   Given a new game with width <width> and height <height>
+  And the player starts the game
   And the player aims at <aim_x> <aim_y>
   And the player fires the <battery> battery
   When time advances by 0.1 seconds
@@ -30,6 +31,7 @@ Examples:
 
 Scenario: Defensive missiles fireballs 02 missile becomes a fireball on arrival
   Given a new game with width <width> and height <height>
+  And the player starts the game
   And the player aims at <aim_x> <aim_y>
   And the player fires the <battery> battery
   When time advances until defensive missiles arrive
@@ -48,6 +50,7 @@ Examples:
 
 Scenario: Defensive missiles fireballs 03 fireball expands then contracts then disappears
   Given a new game with width 800 and height 600
+  And the player starts the game
   And the player aims at 400 100
   And the player fires the center battery
   When time advances until defensive missiles arrive
@@ -65,6 +68,7 @@ Scenario: Defensive missiles fireballs 03 fireball expands then contracts then d
 
 Scenario: Defensive missiles fireballs 04 destroyable target inside fireball is destroyed
   Given a new game with width 800 and height 600
+  And the player starts the game
   And the player aims at 400 200
   And the player fires the center battery
   And a destroyable target at 400 200
@@ -75,6 +79,7 @@ Scenario: Defensive missiles fireballs 04 destroyable target inside fireball is 
 
 Scenario: Defensive missiles fireballs 04b destroyable near aim is destroyed
   Given a new game with width 800 and height 600
+  And the player starts the game
   And the player aims at 400 200
   And the player fires the center battery
   And a destroyable target at 405 200
@@ -85,6 +90,7 @@ Scenario: Defensive missiles fireballs 04b destroyable near aim is destroyed
 
 Scenario: Defensive missiles fireballs 05 destroyable target outside fireball survives
   Given a new game with width 800 and height 600
+  And the player starts the game
   And the player aims at 400 200
   And the player fires the center battery
   And a destroyable target at 50 50
@@ -95,6 +101,7 @@ Scenario: Defensive missiles fireballs 05 destroyable target outside fireball su
 
 Scenario: Defensive missiles fireballs 05b far target survives on the right
   Given a new game with width 800 and height 600
+  And the player starts the game
   And the player aims at 400 200
   And the player fires the center battery
   And a destroyable target at 750 50
@@ -105,6 +112,7 @@ Scenario: Defensive missiles fireballs 05b far target survives on the right
 
 Scenario: Defensive missiles fireballs 06 large time steps are clamped
   Given a new game with width <width> and height <height>
+  And the player starts the game
   And the player aims at <aim_x> <aim_y>
   And the player fires the <battery> battery
   When time advances by 1.0 seconds
