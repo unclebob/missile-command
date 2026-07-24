@@ -64,13 +64,14 @@
 
    {:pattern #"^time advances until the end fireball reaches max radius$"
     :fn (fn [world _ _]
-          (loop [s (:state world) n 0]
-            (let [fb (core/end-fireball s)]
-              (cond
-                (nil? fb) (support/fail! "missing end fireball")
-                (core/end-fireball-fills-playfield? s) (assoc world :state s)
-                (> n 20000) (support/fail! "end fireball never reached max")
-                :else (recur (:state (core/tick s 0.05)) (inc n))))))}
+          (when-not (core/end-fireball (:state world))
+            (support/fail! "missing end fireball"))
+          (support/advance-until world
+                                 core/end-fireball-fills-playfield?
+                                 core/tick
+                                 0.05
+                                 20000
+                                 "end fireball never reached max"))}
 
    {:pattern #"^the end fireball radius fills the playfield$"
     :fn (fn [world _ _]
@@ -81,17 +82,20 @@
 
    {:pattern #"^time advances into the end fireball shrink phase$"
     :fn (fn [world _ _]
-          (loop [s (:state world) n 0]
-            (let [fb (core/end-fireball s)
-                  age (double (:age fb 0.0))
-                  expand (double (:expand-seconds fb))]
-              (cond
-                (nil? fb) (support/fail! "missing end fireball")
-                (and (> age expand)
-                     (< (double (:radius fb)) (double (:max-radius fb))))
-                (assoc world :state s)
-                (> n 20000) (support/fail! "end fireball never shrank")
-                :else (recur (:state (core/tick s 0.05)) (inc n))))))}
+          (when-not (core/end-fireball (:state world))
+            (support/fail! "missing end fireball"))
+          (support/advance-until
+           world
+           (fn [s]
+             (let [fb (core/end-fireball s)
+                   age (double (:age fb 0.0))
+                   expand (double (:expand-seconds fb))]
+               (and (> age expand)
+                    (< (double (:radius fb)) (double (:max-radius fb))))))
+           core/tick
+           0.05
+           20000
+           "end fireball never shrank"))}
 
    {:pattern #"^the end fireball radius is less than its max radius$"
     :fn (fn [world _ _]
@@ -115,19 +119,45 @@
                                     "end message not centered")
           world)}
 
+   {:pattern #"^time advances until the end fireball radius is (\d+)$"
+    :fn (fn [world [_ r-text] _]
+          (let [target (support/parse-int r-text "partial radius")]
+            (when-not (core/end-fireball (:state world))
+              (support/fail! "missing end fireball"))
+            (let [advanced (support/advance-until
+                            world
+                            (fn [s]
+                              (>= (double (:radius (core/end-fireball s) 0.0))
+                                  target))
+                            core/tick
+                            0.01
+                            20000
+                            "end fireball radius never reached")]
+              (assoc advanced :end-reveal-at-partial
+                     (core/end-message-reveal (:state advanced))))))}
+
+   {:pattern #"^the end message is not Game_Over$"
+    :fn (fn [world _ _]
+          (support/assert-condition (not= "Game Over" (core/end-message (:state world)))
+                                    "end message should not be Game Over")
+          world)}
+
    {:pattern #"^time advances until the end fireball radius is <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ r-param] example]
           (let [target (support/example-int example r-param "partial radius")]
-            (loop [s (:state world) n 0]
-              (let [fb (core/end-fireball s)
-                    r (double (:radius fb 0.0))]
-                (cond
-                  (nil? fb) (support/fail! "missing end fireball")
-                  (>= r target) (assoc world :state s
-                                       :end-reveal-at-partial
-                                       (core/end-message-reveal s))
-                  (> n 20000) (support/fail! "end fireball radius never reached")
-                  :else (recur (:state (core/tick s 0.01)) (inc n)))))))}
+            (when-not (core/end-fireball (:state world))
+              (support/fail! "missing end fireball"))
+            (let [advanced (support/advance-until
+                            world
+                            (fn [s]
+                              (>= (double (:radius (core/end-fireball s) 0.0))
+                                  target))
+                            core/tick
+                            0.01
+                            20000
+                            "end fireball radius never reached")]
+              (assoc advanced :end-reveal-at-partial
+                     (core/end-message-reveal (:state advanced))))))}
 
    {:pattern #"^the end message visibility is clipped to the end fireball disk$"
     :fn (fn [world _ _]
@@ -159,3 +189,7 @@
                                            before " -> " reveal)))
           world)}
 ])
+
+;; clj-mutate-manifest-begin
+;; {:version 1, :tested-at "2026-07-24T15:39:32.660582-05:00", :module-hash "2143778125", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 5, :hash "725814157"} {:id "def/handlers", :kind "def", :line 6, :end-line 168, :hash "461917026"}]}
+;; clj-mutate-manifest-end

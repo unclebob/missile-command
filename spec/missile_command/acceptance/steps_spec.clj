@@ -1,6 +1,7 @@
 (ns missile-command.acceptance.steps-spec
   (:require [speclj.core :refer :all]
             [missile-command.acceptance.enemy-steps :as enemy-steps]
+            [missile-command.acceptance.fireball-steps :as fireball-steps]
             [missile-command.acceptance.steps :as steps]
             [missile-command.core :as core]))
 (defn- fresh-world
@@ -371,11 +372,11 @@
                             [{:id 1 :x 0 :y 0 :radius (* 0.999 cap)}])
           shrinking (assoc-in (fresh-world) [:state :fireballs]
                               [{:id 1 :x 0 :y 0 :radius (* 0.5 cap)}])]
-      (should-not (@#'steps/fireball-reached-peak? (:state below)))
-      (should (@#'steps/fireball-reached-peak? (:state at-peak)))
-      (should (@#'steps/fireball-in-shrink-phase? (:state shrinking)))
-      (should (@#'steps/fireball-radius-at-least? (:state at-peak) (* 0.999 cap)))
-      (should= 0.0 (@#'steps/max-fireball-radius (:state (fresh-world))))))
+      (should-not (fireball-steps/fireball-reached-peak? (:state below)))
+      (should (fireball-steps/fireball-reached-peak? (:state at-peak)))
+      (should (fireball-steps/fireball-in-shrink-phase? (:state shrinking)))
+      (should (fireball-steps/fireball-radius-at-least? (:state at-peak) (* 0.999 cap)))
+      (should= 0.0 (fireball-steps/max-live-fireball-radius (:state (fresh-world))))))
 
   (it "empties all batteries so no battery can fire"
     (let [world (dispatch (fresh-world) "no battery can fire" {})]
