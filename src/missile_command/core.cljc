@@ -1,5 +1,6 @@
 (ns missile-command.core
   (:require [missile-command.batteries :as batteries]
+            [missile-command.input :as input]
             [missile-command.missiles :as missiles]
             [missile-command.world :as world]))
 
@@ -130,11 +131,34 @@
                        (playfield-height state)
                        x y))))
 
+(defn click-zone
+  "Horizontal third for a playfield x coordinate: :left, :center, or :right."
+  [width x]
+  (input/click-zone width x))
+
+(defn click-fallback-order
+  "Battery preference order for a click zone, preferred first."
+  [zone]
+  (input/click-fallback-order zone))
+
+(defn- click-fire
+  "Aim at the click point, then fire preferred zone battery with adjacent fallback."
+  [state x y]
+  (let [aimed (:state (aim state x y))
+        zone (input/click-zone (playfield-width aimed) (:x (crosshair aimed)))
+        battery-id (input/first-preferred
+                    zone
+                    #(batteries/can-fire? (battery aimed %)))]
+    (if battery-id
+      (fire-battery aimed battery-id)
+      (no-events aimed))))
+
 (defn handle
   "Apply a player command. Returns {:state s :events [...]}."
   [state command]
   (case (:type command)
     :aim (aim state (:x command) (:y command))
     :fire (fire-battery state (:battery command))
+    :click (click-fire state (:x command) (:y command))
     (throw (ex-info (str "unsupported command: " (:type command))
                     {:command command}))))

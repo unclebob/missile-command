@@ -127,6 +127,47 @@
       (should (> (:speed (by-battery :center))
                  (:speed (by-battery :right)))))))
 
+(describe "click zone fire"
+  (it "maps horizontal thirds to batteries and aims at the click"
+    (let [state (core/new-game {:width 900 :height 600})
+          left (:state (core/handle state {:type :click :x 0 :y 100}))
+          center (:state (core/handle state {:type :click :x 300 :y 100}))
+          right (:state (core/handle state {:type :click :x 600 :y 100}))]
+      (should= :left (:battery (first (core/defensive-missiles left))))
+      (should= {:x 0 :y 100} (core/crosshair left))
+      (should= :center (:battery (first (core/defensive-missiles center))))
+      (should= :right (:battery (first (core/defensive-missiles right))))))
+
+  (it "falls back along the zone order when preferred battery cannot fire"
+    (let [state (-> (core/new-game {:width 900 :height 600})
+                    (core/set-battery-ammo :left 0))
+          after (:state (core/handle state {:type :click :x 100 :y 100}))]
+      (should= :center (:battery (first (core/defensive-missiles after))))
+      (should= 9 (:missiles (core/battery after :center)))))
+
+  (it "updates the crosshair but launches nothing when no battery can fire"
+    (let [state (-> (core/new-game {:width 900 :height 600})
+                    (core/set-battery-ammo :left 0)
+                    (core/set-battery-ammo :center 0)
+                    (core/set-battery-ammo :right 0))
+          after (:state (core/handle state {:type :click :x 450 :y 100}))]
+      (should= 0 (count (core/defensive-missiles after)))
+      (should= {:x 450 :y 100} (core/crosshair after))))
+
+  (it "keeps key fire as a no-op for empty batteries without fallback"
+    (let [state (-> (core/new-game {:width 900 :height 600})
+                    (core/set-battery-ammo :left 0)
+                    (core/handle {:type :aim :x 100 :y 100})
+                    :state)
+          after (:state (core/handle state {:type :fire :battery :left}))]
+      (should= 0 (count (core/defensive-missiles after)))))
+
+  (it "recomputes zones after resize"
+    (let [state (-> (core/new-game {:width 900 :height 600})
+                    (core/resize 1800 600))
+          after (:state (core/handle state {:type :click :x 500 :y 100}))]
+      (should= :left (:battery (first (core/defensive-missiles after)))))))
+
 (describe "resize"
   (it "updates playfield size and reflows cities and batteries"
     (let [state (-> (core/new-game {:width 800 :height 600})
