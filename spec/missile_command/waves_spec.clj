@@ -65,4 +65,14 @@
     (should= 6 (waves/multiplier 11))
     (should= 6 (waves/multiplier 12))
     (should= 6 (waves/multiplier 13))
-    (should= 6 (waves/multiplier 20))))
+    (should= 6 (waves/multiplier 20)))
+
+  (it "spreads sky entry origins across the playfield"
+    (let [width 800.0
+          xs (mapv #(waves/sky-origin-x width % 3) [0 1 2])]
+      (should= (* width (/ 0.5 3.0)) (nth xs 0))
+      (should= (* width (/ 1.5 3.0)) (nth xs 1))
+      (should= (* width (/ 2.5 3.0)) (nth xs 2))
+      (should (every? #(and (<= 0.0 %) (< % width)) xs))
+      (should= 3 (count (set xs)))
+      (should= 0.0 (waves/sky-origin-x width 0 0)))))

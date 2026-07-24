@@ -67,6 +67,14 @@
   (or (> (:enemy-count high-metrics) (:enemy-count low-metrics))
       (> (:enemy-speed high-metrics) (:enemy-speed low-metrics))))
 
+(defn sky-origin-x
+  "Deterministic sky entry x for the i-th of n wave enemies across playfield width."
+  [width i n]
+  (let [w (double width)]
+    (if (pos? n)
+      (* w (/ (+ (double i) 0.5) (double n)))
+      0.0)))
+
 ;; clj-mutate-manifest-begin
-;; {:version 1, :tested-at "2026-07-24T13:09:05.499805-05:00", :module-hash "-1289698230", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 1, :hash "644944117"} {:id "def/initial-wave", :kind "def", :line 3, :end-line 3, :hash "-1132024059"} {:id "def/full-ammo", :kind "def", :line 4, :end-line 4, :hash "1169396743"} {:id "defn/enemy-count", :kind "defn", :line 6, :end-line 9, :hash "761033334"} {:id "defn/enemy-speed", :kind "defn", :line 11, :end-line 14, :hash "-1246023165"} {:id "defn/schedule-metrics", :kind "defn", :line 16, :end-line 21, :hash "1068899611"} {:id "defn/harder?", :kind "defn", :line 23, :end-line 27, :hash "346906739"}]}
+;; {:version 1, :tested-at "2026-07-24T14:10:39.833022-05:00", :module-hash "-1295517291", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 1, :hash "644944117"} {:id "def/initial-wave", :kind "def", :line 3, :end-line 3, :hash "-1132024059"} {:id "def/full-ammo", :kind "def", :line 4, :end-line 4, :hash "1169396743"} {:id "def/base-enemy-speed", :kind "def", :line 8, :end-line 8, :hash "-227771228"} {:id "def/enemy-speed-wave-factor", :kind "def", :line 9, :end-line 9, :hash "-600801268"} {:id "defn/enemy-count", :kind "defn", :line 11, :end-line 14, :hash "761033334"} {:id "defn/enemy-speed", :kind "defn", :line 16, :end-line 19, :hash "-341813790"} {:id "defn/schedule-metrics", :kind "defn", :line 21, :end-line 26, :hash "1068899611"} {:id "defn/harder?", :kind "defn", :line 28, :end-line 32, :hash "346906739"} {:id "defn/sky-origin-x", :kind "defn", :line 34, :end-line 40, :hash "-107469784"}]}
 ;; clj-mutate-manifest-end
