@@ -232,7 +232,13 @@ qa-sim t=1.5 missiles_in_flight=0 fireballs=1 enemy_missiles=1 center_x=200 cent
 | `wave=` / `wave_complete=` | Wave lifecycle |
 | `wave_enemy_count=` / `wave_enemy_speed=` | Scheduled hardness metrics for current wave |
 | `score=` | Running score (starts at 0) |
+| `final_score=` | Score frozen at THE END (else current score) |
 | `multiplier=` | Score multiplier for the current wave (1–6) |
+| `bonus_cities=` | Usable bonus-city reserve |
+| `the_end=` | `true` when THE END sequence is active |
+| `end_message=` | End copy as one token (`THE_END` or `none`); never `Game_Over` |
+| `end_fireball_radius=` | Screen-fill end blast radius (0 when not in THE END) |
+| `end_message_reveal=` | 0–1 reveal fraction for THE END lettering |
 | Destroyable targets | position and `destroyed=true\|false` |
 
 Fireball phase order for one blast: `start.t` ≤ `max.t` ≤ `shrink.t` ≤ `end.t`.
