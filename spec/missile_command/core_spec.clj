@@ -306,9 +306,21 @@
       (should-throw (core/spawn-enemy-targeting-city state 99))
       (should-throw (core/spawn-enemy-targeting-battery state :missing))))
 
-  (it "set-wave-enemies-active with no living cities leaves no enemies"
+  (it "set-wave-enemies-active with no living cities still targets batteries"
     (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (assoc :cities [])
+                    (core/set-wave-enemies-active 2))
+          enemies (core/enemy-missiles state)]
+      (should= 2 (count enemies))
+      (should (every? #(= :battery (:target-kind %)) enemies))
+      (should (:wave-had-enemies? state))))
+
+  (it "set-wave-enemies-active with no eligible targets leaves no enemies"
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+                    (assoc :cities [])
+                    (core/destroy-battery :left)
+                    (core/destroy-battery :center)
+                    (core/destroy-battery :right)
                     (core/set-wave-enemies-active 2))]
       (should (empty? (core/enemy-missiles state)))
       (should (:wave-had-enemies? state))))
@@ -502,6 +514,29 @@
           after-aim (:state (core/handle after-kill {:type :aim :x 100 :y 100}))]
       (should= 25 (core/score after-kill))
       (should= 25 (core/score after-aim)))))
+
+(describe "wave enemy battery targets"
+  (it "schedules enemies against cities and batteries"
+    (let [state (core/set-wave-enemies-active
+                 (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+                 9)
+          enemies (core/enemy-missiles state)
+          kinds (set (map :target-kind enemies))]
+      (should= 9 (count enemies))
+      (should (contains? kinds :city))
+      (should (contains? kinds :battery))
+      (should= 6 (count (filter #(= :city (:target-kind %)) enemies)))
+      (should= 3 (count (filter #(= :battery (:target-kind %)) enemies)))))
+
+  (it "skips destroyed batteries when scheduling wave enemies"
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+                    (core/destroy-battery :left)
+                    (core/set-wave-enemies-active 8))
+          enemies (core/enemy-missiles state)]
+      (should= 8 (count enemies))
+      (should-not (some #(and (= :battery (:target-kind %))
+                              (= :left (:target-id %)))
+                        enemies)))))
 
 (describe "THE END"
   (it "does not end a new game"
