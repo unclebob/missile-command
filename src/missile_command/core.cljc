@@ -1,5 +1,7 @@
 (ns missile-command.core
-  (:require [missile-command.world :as world]))
+  (:require [missile-command.batteries :as batteries]
+            [missile-command.missiles :as missiles]
+            [missile-command.world :as world]))
 
 (defn- clamp
   [n lo hi]
@@ -21,13 +23,7 @@
 
 (defn- update-battery
   [state battery-id f]
-  (update state :batteries
-          (fn [batteries]
-            (mapv (fn [battery]
-                    (if (= battery-id (:id battery))
-                      (f battery)
-                      battery))
-                  batteries))))
+  (update state :batteries #(batteries/update-battery % battery-id f)))
 
 (defn- next-entity-id
   [state]
@@ -106,40 +102,24 @@
 (defn set-battery-ammo
   "Test/setup helper: set remaining missiles for a battery."
   [state battery-id ammo]
-  (update-battery state battery-id #(assoc % :missiles ammo)))
+  (update-battery state battery-id #(batteries/set-ammo % ammo)))
 
 (defn destroy-battery
   "Test/setup helper: mark a battery destroyed."
   [state battery-id]
-  (update-battery state battery-id #(assoc % :destroyed? true)))
-
-(defn- can-fire?
-  [battery]
-  (and battery
-       (not (:destroyed? battery))
-       (pos? (:missiles battery))))
-
-(defn- make-defensive-missile
-  [missile-id battery-id bat aim]
-  {:id missile-id
-   :battery battery-id
-   :x0 (:x bat)
-   :y0 (:y bat)
-   :x1 (:x aim)
-   :y1 (:y aim)
-   :speed (:missile-speed bat)})
+  (update-battery state battery-id batteries/destroy))
 
 (defn- fire-battery
   [state battery-id]
   (let [bat (battery state battery-id)]
-    (if-not (can-fire? bat)
+    (if-not (batteries/can-fire? bat)
       (no-events state)
       (let [[missile-id state] (next-entity-id state)
-            missile (make-defensive-missile missile-id battery-id bat
-                                            (crosshair state))]
+            missile (missiles/make-defensive missile-id battery-id bat
+                                             (crosshair state))]
         {:state (-> state
                     (update :defensive-missiles (fnil conj []) missile)
-                    (update-battery battery-id #(update % :missiles dec)))
+                    (update-battery battery-id batteries/spend-ammo))
          :events [{:type :sfx/launch :battery battery-id}]}))))
 
 (defn- aim
