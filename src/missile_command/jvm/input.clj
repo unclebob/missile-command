@@ -341,7 +341,26 @@
                 state)
         state (if (contains? scenario :score)
                 (core/set-score state (:score scenario))
-                state)]
+                state)
+        state (reduce (fn [s flyer]
+                        (let [kind (or (:kind flyer) :bomber)
+                              [x0 y0] (or (:from flyer) [0 80])
+                              [x1 y1] (or (:to flyer) [800 80])
+                              speed (or (:speed flyer) 100)
+                              s (core/spawn-flyer s kind x0 y0 x1 y1 speed)
+                              drops (or (:drops flyer) [])]
+                          (if (seq drops)
+                            (core/set-flyer-drops
+                             s
+                             (mapv (fn [i d]
+                                     {:id i
+                                      :at-progress (double (or (:at-progress d) 0.5))
+                                      :target (or (:target d) [:city 0])})
+                                   (range (count drops))
+                                   drops))
+                            s)))
+                      state
+                      (or (:flyers scenario) []))]
     state))
 
 (defn format-fireball-phase-line
