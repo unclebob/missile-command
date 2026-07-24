@@ -79,7 +79,7 @@ click the game window when you want to type into it. Mouse moves the crosshair
 (clamped to the playfield). **Click** fires by horizontal third (with empty/destroyed
 fallback). Default fire keys: left `Z`/`1`, center `X`/`2`, right `C`/`3`. Esc quits.
 OS cursor is hidden; only the game crosshair is shown. Host only draws and routes
-input; rules stay in the pure core.
+input; rules stay in the pure core. The HUD includes ammo, score, and **wave**.
 
 ### QA mode (CLI affordances)
 
@@ -179,8 +179,8 @@ qa-fireball id=3 phase=start t=1.20 center_x=200 center_y=120 radius=1
 qa-fireball id=3 phase=max t=1.45 center_x=200 center_y=120 radius=40
 qa-fireball id=3 phase=shrink t=1.55 center_x=200 center_y=120 radius=28
 qa-fireball id=3 phase=end t=1.80
-qa-sim t=1.5 missiles_in_flight=0 fireballs=1 enemy_missiles=1 center_x=200 center_y=120 radius=20.0
-  enemy_x=... enemy_y=... enemy_target=city:0 cities_alive=6
+qa-sim t=1.5 missiles_in_flight=0 fireballs=1 enemy_missiles=1 wave=2 wave_complete=false
+  center_x=200 center_y=120 radius=20.0 enemy_x=... enemy_y=... enemy_target=city:0 cities_alive=6
 ```
 
 | Field | Meaning |

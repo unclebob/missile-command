@@ -3,10 +3,18 @@
             [missile-command.cities :as cities]
             [missile-command.input :as input]
             [missile-command.missiles :as missiles]
+            [missile-command.waves :as waves]
             [missile-command.world :as world]))
 
 (def initial-score 0)
 (def initial-entity-id 0)
+(def wave-flag-off false)
+(def wave-flag-on true)
+(def wave-starts-complete? wave-flag-off)
+(def wave-starts-with-enemies? wave-flag-off)
+(def clamp-lo 0)
+(def default-crosshair {:x clamp-lo :y clamp-lo})
+(def target-starts-destroyed? wave-flag-off)
 
 (defn- clamp
   [n lo hi]
@@ -14,8 +22,8 @@
 
 (defn- clamp-point
   [width height x y]
-  {:x (clamp x 0 (dec width))
-   :y (clamp y 0 (dec height))})
+  {:x (clamp x clamp-lo (dec width))
+   :y (clamp y clamp-lo (dec height))})
 
 (defn- center-crosshair
   [width height]
@@ -23,7 +31,7 @@
 
 (defn- reclamp-crosshair
   [state width height]
-  (let [crosshair (or (:crosshair state) {:x 0 :y 0})]
+  (let [crosshair (or (:crosshair state) default-crosshair)]
     (clamp-point width height (:x crosshair) (:y crosshair))))
 
 (defn- update-battery
@@ -45,6 +53,9 @@
   (merge {:width width
           :height height
           :score initial-score
+          :wave waves/initial-wave
+          :wave-complete? wave-starts-complete?
+          :wave-had-enemies? wave-starts-with-enemies?
           :crosshair (center-crosshair width height)
           :defensive-missiles []
           :fireballs []
@@ -106,6 +117,20 @@
   [state]
   (:score state))
 
+(defn wave
+  [state]
+  (or (:wave state) waves/initial-wave))
+
+(defn wave-complete?
+  [state]
+  (boolean (:wave-complete? state)))
+
+(defn hud
+  "Minimal HUD projection for hosts and tests."
+  [state]
+  {:wave (wave state)
+   :score (score state)})
+
 (defn defensive-missiles
   [state]
   (or (:defensive-missiles state) []))
@@ -160,7 +185,7 @@
   "Test/setup helper: place a fireball-vulnerable stub at x,y."
   [state x y]
   (let [[id state] (next-entity-id state)
-        target {:id id :x x :y y :destroyed? false}]
+        target {:id id :x x :y y :destroyed? target-starts-destroyed?}]
     (update state :destroyable-targets (fnil conj []) target)))
 
 (defn- update-city
@@ -171,14 +196,21 @@
   [state city-id]
   (update-city state city-id cities/destroy))
 
+(defn- enemy-speed-for-state
+  [state]
+  (waves/enemy-speed (wave state)))
+
 (defn spawn-enemy-at
   "Spawn an enemy missile from origin toward a target point."
   [state origin target target-kind target-id]
   (let [[mid state] (next-entity-id state)
         missile (missiles/make-enemy mid origin target
-                                     missiles/default-enemy-speed
+                                     (enemy-speed-for-state state)
                                      target-kind target-id)]
-    (update state :enemy-missiles (fnil conj []) missile)))
+    (-> state
+        (update :enemy-missiles (fnil conj []) missile)
+        (assoc :wave-had-enemies? wave-flag-on
+               :wave-complete? wave-starts-complete?))))
 
 (defn spawn-enemy-targeting-city
   "Spawn an enemy missile from the top of the sky toward a living city."
@@ -385,6 +417,88 @@
             (assoc state :enemy-missiles [])
             (enemy-missiles state))))
 
+(defn- wave-ready-to-complete?
+  [state]
+  (boolean
+   (and (:wave-had-enemies? state)
+        (not (:wave-complete? state))
+        (empty? (enemy-missiles state)))))
+
+(defn- mark-wave-complete
+  [state]
+  (-> state
+      (assoc :wave-complete? wave-flag-on
+             :wave-had-enemies? wave-starts-with-enemies?)
+      (update :wave (fnil inc waves/initial-wave))))
+
+(defn- maybe-complete-wave
+  "When all active wave enemies are gone, mark the wave complete and advance."
+  [state]
+  (if (wave-ready-to-complete? state) (mark-wave-complete state) state))
+
+(defn- transform-living-battery
+  [battery f]
+  (if (:destroyed? battery) battery (f battery)))
+
+(defn- map-living-batteries
+  [state f]
+  (update state :batteries
+          (fn [bs]
+            (mapv #(transform-living-battery % f) bs))))
+
+(defn rearm-surviving-batteries
+  "Refill non-destroyed batteries to full ammo."
+  [state]
+  (map-living-batteries state #(batteries/set-ammo % waves/full-ammo)))
+
+(defn- wave-targets-for
+  [living n]
+  (if (seq living) (take n (cycle living)) []))
+
+(defn set-wave-enemies-active
+  "Test helper: replace in-flight enemies with n scheduled wave enemies."
+  [state n]
+  (let [active? (pos? n)
+        state (assoc state
+                     :enemy-missiles []
+                     :wave-complete? wave-starts-complete?
+                     :wave-had-enemies? active?)
+        living (mapv :id (living-cities state))]
+    (reduce (fn [s city-id]
+              (spawn-enemy-targeting-city s city-id))
+            state
+            (wave-targets-for living n))))
+
+(defn set-non-destroyed-battery-ammo
+  "Test helper: set ammo on every non-destroyed battery."
+  [state ammo]
+  (map-living-batteries state #(batteries/set-ammo % ammo)))
+
+(defn wave-schedule-metrics
+  [wave-number]
+  (waves/schedule-metrics wave-number))
+
+(defn harder-wave?
+  [low-metrics high-metrics]
+  (waves/harder? low-metrics high-metrics))
+
+(defn set-wave
+  "Test helper: jump to a wave number without auto-completing."
+  [state wave-number]
+  (assoc state
+         :wave wave-number
+         :wave-complete? wave-starts-complete?
+         :wave-had-enemies? wave-starts-with-enemies?
+         :enemy-missiles []))
+
+(defn start-next-wave
+  "Begin the next wave: rearm survivors; wave number already advanced on complete."
+  [state]
+  (-> state
+      (assoc :wave-complete? wave-starts-complete?
+             :wave-had-enemies? wave-starts-with-enemies?)
+      (rearm-surviving-batteries)))
+
 (defn tick
   "Advance simulation by dt seconds (clamped). Returns {:state s :events [...]}."
   [state dt]
@@ -395,9 +509,10 @@
                   (tick-defensive-missiles applied)
                   (tick-fireballs applied)
                   (destroy-targets-in-fireballs)
-                  (tick-enemy-missiles applied))]
+                  (tick-enemy-missiles applied)
+                  (maybe-complete-wave))]
     {:state state :events []}))
 
 ;; clj-mutate-manifest-begin
-;; {:version 1, :tested-at "2026-07-24T12:47:17.848203-05:00", :module-hash "-703830912", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 6, :hash "452595998"} {:id "def/initial-score", :kind "def", :line 8, :end-line 8, :hash "485183318"} {:id "def/initial-entity-id", :kind "def", :line 9, :end-line 9, :hash "-2006662704"} {:id "defn-/clamp", :kind "defn-", :line 11, :end-line 13, :hash "1680610514"} {:id "defn-/clamp-point", :kind "defn-", :line 15, :end-line 18, :hash "-1082243884"} {:id "defn-/center-crosshair", :kind "defn-", :line 20, :end-line 22, :hash "502710703"} {:id "defn-/reclamp-crosshair", :kind "defn-", :line 24, :end-line 27, :hash "-777862263"} {:id "defn-/update-battery", :kind "defn-", :line 29, :end-line 31, :hash "-630735181"} {:id "defn-/next-entity-id", :kind "defn-", :line 33, :end-line 36, :hash "-611923035"} {:id "defn-/no-events", :kind "defn-", :line 38, :end-line 40, :hash "652168329"} {:id "defn/new-game", :kind "defn", :line 42, :end-line 57, :hash "1683099286"} {:id "defn/resize", :kind "defn", :line 59, :end-line 66, :hash "-1344415357"} {:id "defn/playfield-width", :kind "defn", :line 68, :end-line 70, :hash "-1043537513"} {:id "defn/playfield-height", :kind "defn", :line 72, :end-line 74, :hash "344252362"} {:id "defn/cities", :kind "defn", :line 76, :end-line 78, :hash "1240083502"} {:id "defn/living-cities", :kind "defn", :line 80, :end-line 82, :hash "416648848"} {:id "defn/batteries", :kind "defn", :line 84, :end-line 86, :hash "206298614"} {:id "defn/battery", :kind "defn", :line 88, :end-line 90, :hash "-1555624967"} {:id "defn/on-ground?", :kind "defn", :line 92, :end-line 95, :hash "1609612027"} {:id "defn/city-on-ground?", :kind "defn", :line 97, :end-line 99, :hash "-1878088970"} {:id "defn/crosshair", :kind "defn", :line 101, :end-line 103, :hash "-2027795649"} {:id "defn/score", :kind "defn", :line 105, :end-line 107, :hash "-1700557235"} {:id "defn/defensive-missiles", :kind "defn", :line 109, :end-line 111, :hash "-1457861839"} {:id "defn/fireballs", :kind "defn", :line 113, :end-line 115, :hash "-47675919"} {:id "defn/enemy-missiles", :kind "defn", :line 117, :end-line 119, :hash "-1649887754"} {:id "defn/destroyable-targets", :kind "defn", :line 121, :end-line 123, :hash "-2146081921"} {:id "defn/last-enemy-fate", :kind "defn", :line 125, :end-line 127, :hash "-1164295963"} {:id "defn/city", :kind "defn", :line 129, :end-line 131, :hash "417115868"} {:id "defn/living-city?", :kind "defn", :line 133, :end-line 135, :hash "808122796"} {:id "defn/sim-time", :kind "defn", :line 137, :end-line 139, :hash "1526499425"} {:id "defn/last-applied-dt", :kind "defn", :line 141, :end-line 143, :hash "-1011651673"} {:id "defn/max-fireball-radius", :kind "defn", :line 145, :end-line 147, :hash "421742428"} {:id "defn/set-battery-ammo", :kind "defn", :line 149, :end-line 152, :hash "975933252"} {:id "defn/destroy-battery", :kind "defn", :line 154, :end-line 157, :hash "674766162"} {:id "defn/add-destroyable-target", :kind "defn", :line 159, :end-line 164, :hash "1896236082"} {:id "defn-/update-city", :kind "defn-", :line 166, :end-line 168, :hash "-2016100813"} {:id "defn/destroy-city", :kind "defn", :line 170, :end-line 172, :hash "1888198826"} {:id "defn/spawn-enemy-at", :kind "defn", :line 174, :end-line 181, :hash "-487725036"} {:id "defn/spawn-enemy-targeting-city", :kind "defn", :line 183, :end-line 192, :hash "49686352"} {:id "defn/spawn-enemy-targeting-battery", :kind "defn", :line 194, :end-line 203, :hash "1983609581"} {:id "defn/spawn-enemies-targeting-distinct-cities", :kind "defn", :line 205, :end-line 209, :hash "314430177"} {:id "defn/add-static-fireball", :kind "defn", :line 211, :end-line 216, :hash "2053229248"} {:id "defn/route-enemy-through-point", :kind "defn", :line 218, :end-line 232, :hash "-439948960"} {:id "defn-/impact-target", :kind "defn-", :line 234, :end-line 239, :hash "-984684299"} {:id "defn-/enemy-hit-by-fireball?", :kind "defn-", :line 241, :end-line 243, :hash "-583076826"} {:id "defn-/fire-battery", :kind "defn-", :line 245, :end-line 256, :hash "-618779090"} {:id "defn-/aim", :kind "defn-", :line 258, :end-line 264, :hash "242968114"} {:id "defn/click-zone", :kind "defn", :line 266, :end-line 269, :hash "943238228"} {:id "defn/click-fallback-order", :kind "defn", :line 271, :end-line 274, :hash "-1791151582"} {:id "defn-/click-fire", :kind "defn-", :line 276, :end-line 286, :hash "-533006603"} {:id "defn/handle", :kind "defn", :line 288, :end-line 296, :hash "-1723942109"} {:id "defn-/spawn-fireball-from-missile", :kind "defn-", :line 298, :end-line 302, :hash "1462937916"} {:id "defn-/tick-defensive-missiles", :kind "defn-", :line 304, :end-line 312, :hash "465906604"} {:id "defn-/tick-fireballs", :kind "defn-", :line 314, :end-line 322, :hash "-1794535937"} {:id "defn-/target-hit-by-fireball?", :kind "defn-", :line 324, :end-line 326, :hash "-18018455"} {:id "defn-/destroy-targets-in-fireballs", :kind "defn-", :line 328, :end-line 338, :hash "-1920073096"} {:id "defn-/destroy-enemy-by-fireball", :kind "defn-", :line 340, :end-line 342, :hash "650263139"} {:id "defn-/resolve-enemy-impact", :kind "defn-", :line 344, :end-line 348, :hash "-69074775"} {:id "defn-/keep-flying-enemy", :kind "defn-", :line 350, :end-line 352, :hash "-1439807545"} {:id "defn-/tick-one-enemy", :kind "defn-", :line 354, :end-line 370, :hash "56096190"} {:id "defn-/tick-enemy-missiles", :kind "defn-", :line 372, :end-line 378, :hash "-1658169989"} {:id "defn/tick", :kind "defn", :line 380, :end-line 391, :hash "-608187191"}]}
+;; {:version 1, :tested-at "2026-07-24T13:09:08.286057-05:00", :module-hash "-1598427011", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 7, :hash "-1338775330"} {:id "def/initial-score", :kind "def", :line 9, :end-line 9, :hash "485183318"} {:id "def/initial-entity-id", :kind "def", :line 10, :end-line 10, :hash "-2006662704"} {:id "def/wave-flag-off", :kind "def", :line 11, :end-line 11, :hash "1734145513"} {:id "def/wave-flag-on", :kind "def", :line 12, :end-line 12, :hash "1660732832"} {:id "def/wave-starts-complete?", :kind "def", :line 13, :end-line 13, :hash "1259204240"} {:id "def/wave-starts-with-enemies?", :kind "def", :line 14, :end-line 14, :hash "929188796"} {:id "def/clamp-lo", :kind "def", :line 15, :end-line 15, :hash "-224595111"} {:id "def/default-crosshair", :kind "def", :line 16, :end-line 16, :hash "-249046571"} {:id "def/target-starts-destroyed?", :kind "def", :line 17, :end-line 17, :hash "224311611"} {:id "defn-/clamp", :kind "defn-", :line 19, :end-line 21, :hash "1680610514"} {:id "defn-/clamp-point", :kind "defn-", :line 23, :end-line 26, :hash "-1550073030"} {:id "defn-/center-crosshair", :kind "defn-", :line 28, :end-line 30, :hash "502710703"} {:id "defn-/reclamp-crosshair", :kind "defn-", :line 32, :end-line 35, :hash "-495207193"} {:id "defn-/update-battery", :kind "defn-", :line 37, :end-line 39, :hash "-630735181"} {:id "defn-/next-entity-id", :kind "defn-", :line 41, :end-line 44, :hash "-611923035"} {:id "defn-/no-events", :kind "defn-", :line 46, :end-line 48, :hash "652168329"} {:id "defn/new-game", :kind "defn", :line 50, :end-line 68, :hash "1405822368"} {:id "defn/resize", :kind "defn", :line 70, :end-line 77, :hash "-1344415357"} {:id "defn/playfield-width", :kind "defn", :line 79, :end-line 81, :hash "-1043537513"} {:id "defn/playfield-height", :kind "defn", :line 83, :end-line 85, :hash "344252362"} {:id "defn/cities", :kind "defn", :line 87, :end-line 89, :hash "1240083502"} {:id "defn/living-cities", :kind "defn", :line 91, :end-line 93, :hash "416648848"} {:id "defn/batteries", :kind "defn", :line 95, :end-line 97, :hash "206298614"} {:id "defn/battery", :kind "defn", :line 99, :end-line 101, :hash "-1555624967"} {:id "defn/on-ground?", :kind "defn", :line 103, :end-line 106, :hash "1609612027"} {:id "defn/city-on-ground?", :kind "defn", :line 108, :end-line 110, :hash "-1878088970"} {:id "defn/crosshair", :kind "defn", :line 112, :end-line 114, :hash "-2027795649"} {:id "defn/score", :kind "defn", :line 116, :end-line 118, :hash "-1700557235"} {:id "defn/wave", :kind "defn", :line 120, :end-line 122, :hash "1109090166"} {:id "defn/wave-complete?", :kind "defn", :line 124, :end-line 126, :hash "-334236383"} {:id "defn/hud", :kind "defn", :line 128, :end-line 132, :hash "1267084367"} {:id "defn/defensive-missiles", :kind "defn", :line 134, :end-line 136, :hash "-1457861839"} {:id "defn/fireballs", :kind "defn", :line 138, :end-line 140, :hash "-47675919"} {:id "defn/enemy-missiles", :kind "defn", :line 142, :end-line 144, :hash "-1649887754"} {:id "defn/destroyable-targets", :kind "defn", :line 146, :end-line 148, :hash "-2146081921"} {:id "defn/last-enemy-fate", :kind "defn", :line 150, :end-line 152, :hash "-1164295963"} {:id "defn/city", :kind "defn", :line 154, :end-line 156, :hash "417115868"} {:id "defn/living-city?", :kind "defn", :line 158, :end-line 160, :hash "808122796"} {:id "defn/sim-time", :kind "defn", :line 162, :end-line 164, :hash "1526499425"} {:id "defn/last-applied-dt", :kind "defn", :line 166, :end-line 168, :hash "-1011651673"} {:id "defn/max-fireball-radius", :kind "defn", :line 170, :end-line 172, :hash "421742428"} {:id "defn/set-battery-ammo", :kind "defn", :line 174, :end-line 177, :hash "975933252"} {:id "defn/destroy-battery", :kind "defn", :line 179, :end-line 182, :hash "674766162"} {:id "defn/add-destroyable-target", :kind "defn", :line 184, :end-line 189, :hash "-1701043486"} {:id "defn-/update-city", :kind "defn-", :line 191, :end-line 193, :hash "-2016100813"} {:id "defn/destroy-city", :kind "defn", :line 195, :end-line 197, :hash "1888198826"} {:id "defn-/enemy-speed-for-state", :kind "defn-", :line 199, :end-line 201, :hash "-677140217"} {:id "defn/spawn-enemy-at", :kind "defn", :line 203, :end-line 213, :hash "-191047273"} {:id "defn/spawn-enemy-targeting-city", :kind "defn", :line 215, :end-line 224, :hash "49686352"} {:id "defn/spawn-enemy-targeting-battery", :kind "defn", :line 226, :end-line 235, :hash "1983609581"} {:id "defn/spawn-enemies-targeting-distinct-cities", :kind "defn", :line 237, :end-line 241, :hash "314430177"} {:id "defn/add-static-fireball", :kind "defn", :line 243, :end-line 248, :hash "2053229248"} {:id "defn/route-enemy-through-point", :kind "defn", :line 250, :end-line 264, :hash "-439948960"} {:id "defn-/impact-target", :kind "defn-", :line 266, :end-line 271, :hash "-984684299"} {:id "defn-/enemy-hit-by-fireball?", :kind "defn-", :line 273, :end-line 275, :hash "-583076826"} {:id "defn-/fire-battery", :kind "defn-", :line 277, :end-line 288, :hash "-618779090"} {:id "defn-/aim", :kind "defn-", :line 290, :end-line 296, :hash "242968114"} {:id "defn/click-zone", :kind "defn", :line 298, :end-line 301, :hash "943238228"} {:id "defn/click-fallback-order", :kind "defn", :line 303, :end-line 306, :hash "-1791151582"} {:id "defn-/click-fire", :kind "defn-", :line 308, :end-line 318, :hash "-533006603"} {:id "defn/handle", :kind "defn", :line 320, :end-line 328, :hash "-1723942109"} {:id "defn-/spawn-fireball-from-missile", :kind "defn-", :line 330, :end-line 334, :hash "1462937916"} {:id "defn-/tick-defensive-missiles", :kind "defn-", :line 336, :end-line 344, :hash "465906604"} {:id "defn-/tick-fireballs", :kind "defn-", :line 346, :end-line 354, :hash "-1794535937"} {:id "defn-/target-hit-by-fireball?", :kind "defn-", :line 356, :end-line 358, :hash "-18018455"} {:id "defn-/destroy-targets-in-fireballs", :kind "defn-", :line 360, :end-line 370, :hash "-1920073096"} {:id "defn-/destroy-enemy-by-fireball", :kind "defn-", :line 372, :end-line 374, :hash "650263139"} {:id "defn-/resolve-enemy-impact", :kind "defn-", :line 376, :end-line 380, :hash "-69074775"} {:id "defn-/keep-flying-enemy", :kind "defn-", :line 382, :end-line 384, :hash "-1439807545"} {:id "defn-/tick-one-enemy", :kind "defn-", :line 386, :end-line 402, :hash "56096190"} {:id "defn-/tick-enemy-missiles", :kind "defn-", :line 404, :end-line 410, :hash "-1658169989"} {:id "defn-/wave-ready-to-complete?", :kind "defn-", :line 412, :end-line 417, :hash "-1319953137"} {:id "defn-/mark-wave-complete", :kind "defn-", :line 419, :end-line 424, :hash "746013251"} {:id "defn-/maybe-complete-wave", :kind "defn-", :line 426, :end-line 429, :hash "1290373418"} {:id "defn-/transform-living-battery", :kind "defn-", :line 431, :end-line 433, :hash "-703267492"} {:id "defn-/map-living-batteries", :kind "defn-", :line 435, :end-line 439, :hash "-1924229694"} {:id "defn/rearm-surviving-batteries", :kind "defn", :line 441, :end-line 444, :hash "1499444922"} {:id "defn-/wave-targets-for", :kind "defn-", :line 446, :end-line 448, :hash "-1532070143"} {:id "defn/set-wave-enemies-active", :kind "defn", :line 450, :end-line 462, :hash "322414878"} {:id "defn/set-non-destroyed-battery-ammo", :kind "defn", :line 464, :end-line 467, :hash "510144529"} {:id "defn/wave-schedule-metrics", :kind "defn", :line 469, :end-line 471, :hash "-550911174"} {:id "defn/harder-wave?", :kind "defn", :line 473, :end-line 475, :hash "-1219120849"} {:id "defn/set-wave", :kind "defn", :line 477, :end-line 484, :hash "1005128065"} {:id "defn/start-next-wave", :kind "defn", :line 486, :end-line 492, :hash "98352319"} {:id "defn/tick", :kind "defn", :line 494, :end-line 506, :hash "-1833206829"}]}
 ;; clj-mutate-manifest-end
