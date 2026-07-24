@@ -1,0 +1,16 @@
+{:paths ["src"]
+ :deps {org.clojure/clojure {:mvn/version "1.12.0"}
+        org.clojure/data.json {:mvn/version "2.5.1"}}
+ :aliases
+ {:test {:extra-paths ["spec"]
+         :extra-deps {speclj/speclj {:mvn/version "3.12.1"}}
+         :main-opts ["-m" "speclj.main" "-c"]}
+  :accept {:extra-paths ["acceptance/generated"]
+           :extra-deps {io.github.cognitect-labs/test-runner
+                        {:git/tag "v0.5.1" :git/sha "dfb30dd"}}
+           :main-opts ["-m" "cognitect.test-runner"
+                       "-d" "acceptance/generated"]}
+  :check {:extra-deps {io.github.unclebob/speclj-structure-check
+                       {:git/url "https://github.com/unclebob/speclj-structure-check.git"
+                        :git/sha "6bdc1621e96bcf90f84849e2c48d750ae6bc7297"}}
+          :main-opts ["-m" "speclj-structure-check.core"]}}}

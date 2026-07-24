@@ -1,6 +1,6 @@
 # US-01 — Project foundation and acceptance harness
 
-**Status:** backlog  
+**Status:** in-implementation  
 **Depends on:** —  
 **Design:** §3, §9, §10
 

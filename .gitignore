@@ -9,3 +9,7 @@ target/
 .calva/
 .lsp/
 .clj-kondo/
+build/
+acceptance/generated/
+tmp/
+.cpcache/
