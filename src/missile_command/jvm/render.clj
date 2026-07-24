@@ -3,6 +3,7 @@
   (:require [quil.core :as q]
             [missile-command.core :as core]
             [missile-command.jvm.render-end :as render-end]
+            [missile-command.jvm.render-pause :as render-pause]
             [missile-command.jvm.render-title :as render-title]
             [missile-command.jvm.render-scenery :as scenery]
             [missile-command.world :as world]))
@@ -105,9 +106,11 @@
           (scenery/cities! state)
           (scenery/batteries! state)
           (fireballs! state)
-          (hud! state)))))
+          (hud! state)
+          (when (core/paused? state)
+            (render-pause/overlay! state))))))
 
-(defn draw-state!(defn draw-state!
+(defn draw-state!
   ([state]
    (let [ch (core/crosshair state)]
      (draw-state! state (:x ch) (:y ch))))
