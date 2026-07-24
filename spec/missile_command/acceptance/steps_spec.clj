@@ -18,6 +18,11 @@
       (should= 800 (core/playfield-width (:state world)))
       (should= 600 (core/playfield-height (:state world)))))
 
+  (it "creates a new game from literal dimensions"
+    (let [world (dispatch {} "a new game with width 1024 and height 768" {})]
+      (should= 1024 (core/playfield-width (:state world)))
+      (should= 768 (core/playfield-height (:state world)))))
+
   (it "asserts playfield width"
     (let [world (fresh-world)]
       (should= world (dispatch world "the playfield width is <width>" {"width" "800"}))))
@@ -85,6 +90,62 @@
                (dispatch world
                          "the rightmost city x is greater than two thirds of width <width>"
                          ex))))
+
+  (it "accepts city x of zero and rejects exclusive upper edge"
+    (let [world (fresh-world)
+          cities (core/cities (:state world))
+          zero (assoc (first cities) :x 0)
+          edge (assoc (first cities) :x 800)
+          world-zero (assoc-in world [:state :cities]
+                               (mapv (fn [c] (if (= (:id c) (:id zero)) zero c)) cities))
+          world-edge (assoc-in world [:state :cities]
+                               (mapv (fn [c] (if (= (:id c) (:id edge)) edge c)) cities))]
+      (should= world-zero
+               (dispatch world-zero
+                         "every city x is between 0 inclusive and <width> exclusive"
+                         {"width" "800"}))
+      (should-throw Exception #"not in \[0,800\)"
+        (dispatch world-edge
+                  "every city x is between 0 inclusive and <width> exclusive"
+                  {"width" "800"}))))
+
+  (it "fails open inequalities when values equal the bound"
+    (let [world (fresh-world)
+          left (core/battery (:state world) :left)
+          center (core/battery (:state world) :center)
+          right (core/battery (:state world) :right)
+          one-third (/ 800 3.0)
+          two-thirds (* 800 (/ 2.0 3))
+          eq-left-center (assoc-in world [:state :batteries]
+                                   [(assoc left :x 400.0)
+                                    (assoc center :x 400.0)
+                                    right])
+          eq-left-third (assoc-in world [:state :batteries]
+                                  [(assoc left :x one-third) center right])
+          eq-center-lo (assoc-in world [:state :batteries]
+                                 [left (assoc center :x one-third) right])
+          eq-center-hi (assoc-in world [:state :batteries]
+                                 [left (assoc center :x two-thirds) right])
+          eq-right-two-thirds (assoc-in world [:state :batteries]
+                                        [left center (assoc right :x two-thirds)])]
+      (should-throw Exception #"left battery x not less than center"
+        (dispatch eq-left-center "the left battery x is less than the center battery x" {}))
+      (should-throw Exception #"left battery x"
+        (dispatch eq-left-third
+                  "the left battery x is less than one third of width <width>"
+                  {"width" "800"}))
+      (should-throw Exception #"center battery x"
+        (dispatch eq-center-lo
+                  "the center battery x is between one third and two thirds of width <width>"
+                  {"width" "800"}))
+      (should-throw Exception #"center battery x"
+        (dispatch eq-center-hi
+                  "the center battery x is between one third and two thirds of width <width>"
+                  {"width" "800"}))
+      (should-throw Exception #"right battery x"
+        (dispatch eq-right-two-thirds
+                  "the right battery x is greater than two thirds of width <width>"
+                  {"width" "800"}))))
 
   (it "asserts battery placement and speeds"
     (let [world (fresh-world)
