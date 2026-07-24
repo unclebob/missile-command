@@ -1,6 +1,8 @@
 (ns missile-command.jvm.input
   "Pure host input mapping: UI events → core commands, CLI, telemetry. No Quil."
-  (:require [clojure.string :as str]))
+  (:require [clojure.string :as str]
+            [missile-command.core :as core]
+            [missile-command.missiles :as missiles]))
 
 (def default-fire-keys
   {\z :left \Z :left \1 :left
@@ -43,6 +45,13 @@
        (map keyword)
        vec))
 
+(defn parse-xy-pair
+  "Parse \"x,y\" into {:x :y}."
+  [s]
+  (let [[xs ys] (str/split (str s) #"," 2)]
+    {:x (Integer/parseInt (str/trim xs))
+     :y (Integer/parseInt (str/trim ys))}))
+
 (defn- int-token?
   [s]
   (boolean (re-matches #"-?\d+" (str s))))
@@ -50,6 +59,10 @@
 (defn- parse-int-token
   [s]
   (Integer/parseInt (str s)))
+
+(defn- parse-float-token
+  [s]
+  (Double/parseDouble (str s)))
 
 (def ^:private switch-handlers
   {"--" (fn [opts xs] [opts (rest xs)])
@@ -60,7 +73,11 @@
       (drop 2 xs)])
    "--qa-events"
    (fn [opts xs]
-     [(assoc opts :qa-events (second xs)) (drop 2 xs)])})
+     [(assoc opts :qa-events (second xs)) (drop 2 xs)])
+   "--qa-target"
+   (fn [opts xs]
+     [(update opts :qa-targets (fnil conj []) (parse-xy-pair (second xs)))
+      (drop 2 xs)])})
 
 (defn- apply-switch
   "Consume one CLI switch from xs. Returns [opts remaining-xs] or nil."
@@ -83,8 +100,7 @@
         :else nil))))
 
 (defn parse-cli-args
-  "Parse launch args: optional width height, then switches.
-  Switches: --qa-telemetry, --destroy-batteries LIST, --qa-events PATH"
+  "Parse launch args: optional width height, then switches."
   ([args]
    (parse-cli-args args 800 600))
   ([args default-width default-height]
@@ -93,7 +109,8 @@
                 :height default-height
                 :qa-telemetry? false
                 :destroy-batteries []
-                :qa-events nil}]
+                :qa-events nil
+                :qa-targets []}]
      (if-not xs
        (dissoc opts :width-set? :height-set?)
        (if-let [[opts' xs'] (or (apply-switch opts xs)
@@ -103,13 +120,11 @@
                          {:arg (first xs)})))))))
 
 (defn parse-window-size
-  "Legacy helper: numeric width/height only (no switches)."
   [args default-width default-height]
   (let [opts (parse-cli-args args default-width default-height)]
     [(:width opts) (:height opts)]))
 
 (defn resize-if-needed
-  "Return reflowed state when playfield size changed; else unchanged state."
   [state width height resize-fn playfield-width-fn playfield-height-fn]
   (if (or (not= width (playfield-width-fn state))
           (not= height (playfield-height-fn state)))
@@ -117,7 +132,6 @@
     state))
 
 (defn battery-from-events
-  "Extract fired battery from core events, or :none."
   [events]
   (or (some (fn [e]
               (when (= :sfx/launch (:type e))
@@ -125,32 +139,114 @@
             events)
       :none))
 
+(defn- missile-vector-fields
+  [m]
+  [(str "origin_x=" (:x0 m))
+   (str "origin_y=" (:y0 m))
+   (str "target_x=" (:x1 m))
+   (str "target_y=" (:y1 m))])
+
 (defn format-telemetry-line
   "Build a parseable qa-fire telemetry line from a handle result."
   [result]
   (let [state (:state result)
         battery (name (battery-from-events (:events result)))
-        missiles (or (:defensive-missiles state) [])
-        vectors (mapcat (fn [m]
-                          [(str "origin_x=" (:x0 m))
-                           (str "origin_y=" (:y0 m))
-                           (str "target_x=" (:x1 m))
-                           (str "target_y=" (:y1 m))])
-                        missiles)]
+        missiles (core/defensive-missiles state)
+        vectors (mapcat missile-vector-fields missiles)]
     (str/join
      " "
      (into [(str "qa-fire battery=" battery)
             (str "missiles_in_flight=" (count missiles))]
            vectors))))
 
+(defn format-sim-telemetry-line
+  "Periodic simulation snapshot line."
+  [state]
+  (let [missiles (core/defensive-missiles state)
+        fireballs (core/fireballs state)
+        targets (core/destroyable-targets state)
+        fb-fields (mapcat (fn [fb]
+                            [(str "center_x=" (:x fb))
+                             (str "center_y=" (:y fb))
+                             (str "radius=" (:radius fb))])
+                          fireballs)
+        tgt-fields (mapcat (fn [t]
+                             [(str "target_id=" (:id t))
+                              (str "target_x=" (:x t))
+                              (str "target_y=" (:y t))
+                              (str "destroyed=" (boolean (:destroyed? t)))])
+                           targets)]
+    (str/join
+     " "
+     (concat [(str "qa-sim t=" (core/sim-time state))
+              (str "missiles_in_flight=" (count missiles))
+              (str "fireballs=" (count fireballs))]
+             fb-fields
+             tgt-fields))))
+
+(defn format-fireball-phase-line
+  "Phase timing line for one fireball."
+  [state fireball phase]
+  (str/join
+   " "
+   [(str "qa-fireball id=" (:id fireball))
+    (str "phase=" (name phase))
+    (str "t=" (core/sim-time state))
+    (str "center_x=" (:x fireball))
+    (str "center_y=" (:y fireball))
+    (str "radius=" (double (:radius fireball 0.0)))]))
+
+(defn fireball-report-phase
+  "Map fireball age to a reportable QA phase: start (incl. expand), shrink, or end."
+  [fireball]
+  (let [age (double (:age fireball 0.0))
+        expand (double (:expand-seconds fireball))
+        contract (double (:contract-seconds fireball 0.0))]
+    (cond
+      (< age expand) :start
+      (< age (+ expand contract)) :shrink
+      :else :end)))
+
+(defn- live-phase-events
+  [prev-phases fireball]
+  (let [id (:id fireball)
+        prev (get prev-phases id)
+        phase (fireball-report-phase fireball)]
+    (cond
+      (= prev phase) []
+      (and (= phase :shrink) (not (#{:max :shrink} prev)))
+      [{:id id :phase :max :fireball fireball}
+       {:id id :phase :shrink :fireball fireball}]
+      :else
+      [{:id id :phase phase :fireball fireball}])))
+
+(defn detect-fireball-phase-events
+  "Given previous phase map id->phase and current fireballs, return
+  [events next-phase-map] where events are {:id :phase :fireball}."
+  [prev-phases fireballs]
+  (let [current-ids (set (map :id fireballs))
+        ended (for [[id phase] prev-phases
+                    :when (and (not (current-ids id))
+                               (not= phase :end))]
+                {:id id :phase :end :fireball {:id id :x 0 :y 0 :radius 0.0}})
+        live (mapcat #(live-phase-events prev-phases %) fireballs)
+        events (vec (concat ended live))
+        next-map (reduce (fn [m e] (assoc m (:id e) (:phase e)))
+                         (into {} (map (fn [fb]
+                                         [(:id fb) (fireball-report-phase fb)])
+                                       fireballs))
+                         events)]
+    [events next-map]))
+
 (def ^:private qa-event-parsers
   {"click" (fn [a b] {:type :click :x (parse-int-token a) :y (parse-int-token b)})
    "aim" (fn [a b] {:type :aim :x (parse-int-token a) :y (parse-int-token b)})
    "key" (fn [a _] {:type :key :ch (first a)})
+   "wait" (fn [a _] {:type :wait :seconds (parse-float-token a)})
    "quit" (fn [_ _] {:type :quit})})
 
 (defn parse-qa-event-line
-  "Parse one host automation event line: click X Y | key CHAR | quit"
+  "Parse host automation: click X Y | aim X Y | key CHAR | wait SECONDS | quit"
   [line]
   (let [line (str/trim (str line))]
     (when (seq line)
