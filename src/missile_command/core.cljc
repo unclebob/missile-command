@@ -411,13 +411,13 @@
   "Visual/game blast at the impact point (ground strike)."
   [state enemy]
   (spawn-fireball-at state (:x1 enemy) (:y1 enemy)))
+
 (defn- resolve-enemy-impact
   [state enemy]
   (-> state
       (impact-target enemy)
       (spawn-impact-fireball enemy)
       (assoc :last-enemy-fate :impact)))
-
 (defn- keep-flying-enemy
   [state enemy]
   (update state :enemy-missiles (fnil conj []) enemy))
@@ -458,23 +458,22 @@
 (defn- unused-defensive-missiles
   "Sum of remaining ammo on non-destroyed batteries (before rearm)."
   [state]
-  (reduce (fn [n b]
-            (if (:destroyed? b)
-              n
-              (+ n (long (or (:missiles b) 0)))))
-          0
-          (batteries state)))
+  (->> (batteries state)
+       (remove :destroyed?)
+       (map #(long (or (:missiles %) 0)))
+       (reduce + 0)))
 
 (defn- award-wave-end-bonuses
   "Unused missiles and surviving cities × multiplier for the completing wave."
   [state]
   (let [mult (multiplier state)
-        ammo (unused-defensive-missiles state)
-        cities (count (living-cities state))
-        points (+ (* ammo waves/points-unused-missile mult)
-                  (* cities waves/points-surviving-city mult))]
-    (add-score state points)))
-
+        ammo-points (* (unused-defensive-missiles state)
+                       waves/points-unused-missile
+                       mult)
+        city-points (* (count (living-cities state))
+                       waves/points-surviving-city
+                       mult)]
+    (add-score state (+ ammo-points city-points))))
 (defn- mark-wave-complete
   [state]
   (-> state
