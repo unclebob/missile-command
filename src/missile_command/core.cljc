@@ -3,6 +3,7 @@
             [missile-command.cities :as cities]
             [missile-command.input :as input]
             [missile-command.missiles :as missiles]
+            [missile-command.scoring :as scoring]
             [missile-command.waves :as waves]
             [missile-command.world :as world]))
 
@@ -397,15 +398,10 @@
   [state points]
   (update state :score (fnil + initial-score) (long points)))
 
-(defn- award-points
-  "Add base points times the current multiplier."
-  [state base-points]
-  (add-score state (* (long base-points) (multiplier state))))
-
 (defn- destroy-enemy-by-fireball
   [state]
   (-> state
-      (award-points waves/points-enemy-missile)
+      (add-score (scoring/enemy-kill-points (multiplier state)))
       (assoc :last-enemy-fate :fireball)))
 
 (defn- spawn-impact-fireball
@@ -419,6 +415,7 @@
       (impact-target enemy)
       (spawn-impact-fireball enemy)
       (assoc :last-enemy-fate :impact)))
+
 (defn- keep-flying-enemy
   [state enemy]
   (update state :enemy-missiles (fnil conj []) enemy))
@@ -467,14 +464,12 @@
 (defn- award-wave-end-bonuses
   "Unused missiles and surviving cities × multiplier for the completing wave."
   [state]
-  (let [mult (multiplier state)
-        ammo-points (* (unused-defensive-missiles state)
-                       waves/points-unused-missile
-                       mult)
-        city-points (* (count (living-cities state))
-                       waves/points-surviving-city
-                       mult)]
-    (add-score state (+ ammo-points city-points))))
+  (add-score state
+             (scoring/wave-end-points
+              (unused-defensive-missiles state)
+              (count (living-cities state))
+              (multiplier state))))
+
 (defn- mark-wave-complete
   [state]
   (-> state

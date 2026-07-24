@@ -3,9 +3,6 @@
 (def initial-wave 1)
 (def full-ammo 10)
 (def max-multiplier 6)
-(def points-enemy-missile 25)
-(def points-unused-missile 5)
-(def points-surviving-city 100)
 
 ;; Wave-1 base speed (px/s). Kept moderate so early play is defendable on
 ;; a ~600px playfield (~11s sky→ground at 50 px/s). Higher waves ramp 25%/step.
