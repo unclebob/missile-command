@@ -3,6 +3,7 @@
   (:require [quil.core :as q]
             [missile-command.core :as core]
             [missile-command.jvm.render-end :as render-end]
+            [missile-command.jvm.render-title :as render-title]
             [missile-command.jvm.render-scenery :as scenery]
             [missile-command.world :as world]))
 
@@ -83,23 +84,6 @@
       (q/text-size 14)
       (q/text line 12 24))))
 
-(defn- title-overlay!
-  [state]
-  (let [w (core/playfield-width state)
-        h (core/playfield-height state)
-        name (core/title-game-name-of state)
-        prompt (or (:title-start-affordance state) "Press Enter or click to start")]
-    (q/fill 0 0 0 160)
-    (q/no-stroke)
-    (q/rect 0 0 w h)
-    (q/fill 255 220 80)
-    (q/text-align :center :center)
-    (q/text-size 48)
-    (q/text name (/ w 2.0) (/ h 2.0))
-    (q/fill 220)
-    (q/text-size 18)
-    (q/text prompt (/ w 2.0) (+ (/ h 2.0) 60))
-    (q/text-align :left :baseline)))
 
 (defn draw-world!
   [state]
@@ -109,7 +93,7 @@
     (cond
       (core/title? state)
       (do (scenery/ground! state)
-          (title-overlay! state))
+          (render-title/overlay! state))
 
       (core/the-end? state)
       (do (scenery/ground! state)
@@ -134,7 +118,6 @@
             (q/text-size 36)
             (q/text "PAUSED" (/ w 2.0) (/ h 2.0))
             (q/text-align :left :baseline))))))
-
 
 (defn draw-state!
   ([state]

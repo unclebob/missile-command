@@ -33,6 +33,20 @@
     (and (= (if (>= w 8) 1 0) (waves/bomber-count w))
          (= (if (>= w 9) 1 0) (waves/satellite-count w)))))
 
+(defspec cycle-targets-covers-pool-then-wraps
+  40
+  (for-all [n-cities (gen/large-integer* {:min 1 :max 6})
+            n-bats (gen/large-integer* {:min 0 :max 3})
+            n (gen/large-integer* {:min 1 :max 20})]
+    (let [cities (vec (range n-cities))
+          bats (vec (take n-bats [:left :center :right]))
+          pool (waves/target-pool cities bats)
+          cycled (waves/cycle-targets pool n)]
+      (and (= (+ n-cities n-bats) (count pool))
+           (= n (count cycled))
+           (every? (set pool) cycled)
+           (= (first pool) (first cycled))))))
+
 (defspec smart-bomb-count-zero-early-then-nondecreasing
   40
   (for-all [w (gen/large-integer* {:min 1 :max 25})]

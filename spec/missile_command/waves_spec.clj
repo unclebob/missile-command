@@ -55,6 +55,15 @@
     (should= (:smart-bomb-count (waves/schedule-metrics 7))
              (waves/smart-bomb-count 7)))
 
+  (it "builds a wave target pool from cities and batteries"
+    (let [pool (waves/target-pool [0 1 2] [:left :center])]
+      (should= [[:city 0] [:city 1] [:city 2] [:battery :left] [:battery :center]]
+               pool)
+      (should= [[:city 0] [:city 1] [:city 2] [:battery :left] [:battery :center]
+                [:city 0] [:city 1]]
+               (waves/cycle-targets pool 7))
+      (should= [] (waves/cycle-targets [] 3))))
+
   (it "raises multiplier every two waves up to six"
     (should= 1 (waves/multiplier 1))
     (should= 1 (waves/multiplier 2))

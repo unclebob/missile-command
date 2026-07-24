@@ -7,6 +7,7 @@
             [missile-command.acceptance.fireball-steps :as fireball-steps]
             [missile-command.acceptance.city-steps :as city-steps]
             [missile-command.acceptance.defensive-steps :as defensive-steps]
+            [missile-command.acceptance.title-steps :as title-steps]
             [missile-command.core :as core]
             [missile-command.high-scores :as high-scores]
             [missile-command.options :as options]))
@@ -1991,6 +1992,7 @@
               (> n 10000) (support/fail! "enemy missiles never finished")
               :else (recur (:state (core/tick s 0.05)) (inc n)))))}
 
+
    {:pattern #"^time advances until the enemy missile is inside the fireball radius or has impacted$"
     :fn (fn [world _ _]
           (loop [s (:state world) n 0]
@@ -2394,7 +2396,9 @@
    wave-steps/handlers
    fireball-steps/handlers
    city-steps/handlers
-   defensive-steps/handlers)))
+   defensive-steps/handlers
+   title-steps/handlers)))
+
 
 (defn- match-handler
   [text]
@@ -2423,5 +2427,5 @@
       (support/fail! (str "unsupported step: " text)))))
 
 ;; clj-mutate-manifest-begin
-;; {:version 1, :tested-at "2026-07-24T14:33:10.063191-05:00", :module-hash "347503470", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 4, :hash "692061305"} {:id "defn-/assert-playfield-dimension", :kind "defn-", :line 6, :end-line 12, :hash "-1180112229"} {:id "defn-/living-cities", :kind "defn-", :line 14, :end-line 16, :hash "-548423997"} {:id "defn-/batteries", :kind "defn-", :line 18, :end-line 20, :hash "2112668418"} {:id "defn-/battery", :kind "defn-", :line 22, :end-line 25, :hash "-1798101236"} {:id "defn-/city-xs", :kind "defn-", :line 27, :end-line 29, :hash "-1231463410"} {:id "defn-/city-span", :kind "defn-", :line 31, :end-line 34, :hash "-826397513"} {:id "defn-/example-width", :kind "defn-", :line 36, :end-line 38, :hash "1667157547"} {:id "defn-/example-height", :kind "defn-", :line 40, :end-line 42, :hash "-1096613354"} {:id "defn-/one-third", :kind "defn-", :line 44, :end-line 46, :hash "1669847708"} {:id "defn-/two-thirds", :kind "defn-", :line 48, :end-line 50, :hash "1105411976"} {:id "defn-/assert-entities-in-ground-band", :kind "defn-", :line 52, :end-line 58, :hash "-247193944"} {:id "defn-/assert-xs-in-playfield", :kind "defn-", :line 60, :end-line 65, :hash "-807069005"} {:id "defn-/assert-between-open", :kind "defn-", :line 67, :end-line 69, :hash "1230020693"} {:id "defn-/earlier-fallback-batteries", :kind "defn-", :line 70, :end-line 76, :hash "113626062"} {:id "defn-/disable-earlier-batteries", :kind "defn-", :line 78, :end-line 80, :hash "1165353126"} {:id "defn-/max-fireball-radius", :kind "defn-", :line 82, :end-line 86, :hash "1308487225"} {:id "def/fireball-peak-fraction", :kind "def", :line 88, :end-line 88, :hash "-1421501801"} {:id "defn-/fireball-reached-peak?", :kind "defn-", :line 90, :end-line 94, :hash "1083437537"} {:id "defn-/fireball-in-shrink-phase?", :kind "defn-", :line 96, :end-line 100, :hash "1989596245"} {:id "defn-/fireball-radius-at-least?", :kind "defn-", :line 102, :end-line 104, :hash "-1598181125"} {:id "defn-/advance-until", :kind "defn-", :line 106, :end-line 109, :hash "832982022"} {:id "def/step-handlers", :kind "def", :line 111, :end-line 885, :hash "869456202"} {:id "defn-/match-handler", :kind "defn-", :line 887, :end-line 892, :hash "-760290467"} {:id "def/gherkin-phases", :kind "def", :line 894, :end-line 897, :hash "762060511"} {:id "defn-/apply-gherkin-phase", :kind "defn-", :line 899, :end-line 903, :hash "-1691268912"} {:id "defn/dispatch-step", :kind "defn", :line 905, :end-line 911, :hash "1912576952"}]}
+;; {:version 1, :tested-at "2026-07-24T15:45:33.051095-05:00", :module-hash "-868543427", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 11, :hash "154283304"} {:id "defn-/assert-playfield-dimension", :kind "defn-", :line 13, :end-line 19, :hash "-1180112229"} {:id "defn-/living-cities", :kind "defn-", :line 21, :end-line 23, :hash "-548423997"} {:id "defn-/batteries", :kind "defn-", :line 25, :end-line 27, :hash "2112668418"} {:id "defn-/battery", :kind "defn-", :line 29, :end-line 32, :hash "-1798101236"} {:id "defn-/city-xs", :kind "defn-", :line 34, :end-line 36, :hash "-1231463410"} {:id "defn-/city-span", :kind "defn-", :line 38, :end-line 41, :hash "-826397513"} {:id "defn-/example-width", :kind "defn-", :line 43, :end-line 45, :hash "1667157547"} {:id "defn-/example-height", :kind "defn-", :line 47, :end-line 49, :hash "-1096613354"} {:id "defn-/one-third", :kind "defn-", :line 51, :end-line 53, :hash "1669847708"} {:id "defn-/two-thirds", :kind "defn-", :line 55, :end-line 57, :hash "1105411976"} {:id "defn-/assert-entities-in-ground-band", :kind "defn-", :line 59, :end-line 65, :hash "-247193944"} {:id "defn-/assert-xs-in-playfield", :kind "defn-", :line 67, :end-line 72, :hash "-807069005"} {:id "defn-/assert-between-open", :kind "defn-", :line 74, :end-line 76, :hash "1230020693"} {:id "defn-/earlier-fallback-batteries", :kind "defn-", :line 77, :end-line 83, :hash "113626062"} {:id "defn-/disable-earlier-batteries", :kind "defn-", :line 85, :end-line 87, :hash "1165353126"} {:id "defn-/advance-until", :kind "defn-", :line 89, :end-line 92, :hash "832982022"} {:id "def/step-handlers", :kind "def", :line 94, :end-line 1021, :hash "408766659"} {:id "defn-/match-handler", :kind "defn-", :line 1023, :end-line 1028, :hash "-760290467"} {:id "def/gherkin-phases", :kind "def", :line 1030, :end-line 1033, :hash "762060511"} {:id "defn-/apply-gherkin-phase", :kind "defn-", :line 1035, :end-line 1039, :hash "-1691268912"} {:id "defn/dispatch-step", :kind "defn", :line 1041, :end-line 1047, :hash "1912576952"}]}
 ;; clj-mutate-manifest-end
