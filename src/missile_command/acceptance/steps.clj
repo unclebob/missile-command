@@ -714,6 +714,24 @@
                               (str "last applied dt " actual " > " max-dt)))
           world)}
 
+   {:pattern #"^the last applied dt is <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ dt-param] example]
+          (let [expected (support/example-double example dt-param "applied dt")
+                actual (core/last-applied-dt (:state world))]
+            (assert-condition (= expected actual)
+                              (str "last applied dt " actual " expected " expected)))
+          world)}
+
+   {:pattern #"^the first enemy missile progress equals <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ p-param] example]
+          (let [expected (support/example-double example p-param "progress")
+                m (first (core/enemy-missiles (:state world)))
+                actual (double (:progress m))]
+            (assert-condition m "missing enemy missile")
+            (assert-condition (< (Math/abs (- actual expected)) 1.0e-9)
+                              (str "enemy progress " actual " expected " expected)))
+          world)}
+
    {:pattern #"^a defensive missile from the <([A-Za-z0-9_]+)> battery has progressed toward <([A-Za-z0-9_]+)> <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ battery-param x-param y-param] example]
           (let [battery-id (support/example-battery example battery-param)
@@ -792,6 +810,16 @@
    {:pattern #"^an enemy missile has progressed toward city <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ city-param] example]
           (let [city-id (support/example-int example city-param "city")
+                m (first (filter #(and (= :city (:target-kind %))
+                                       (= city-id (:target-id %)))
+                                 (core/enemy-missiles (:state world))))]
+            (assert-condition m "missing enemy missile")
+            (assert-gt (:progress m) 0.0 "enemy has not progressed"))
+          world)}
+
+   {:pattern #"^an enemy missile has progressed toward city (\d+)$"
+    :fn (fn [world [_ city-text] _]
+          (let [city-id (support/parse-int city-text "city")
                 m (first (filter #(and (= :city (:target-kind %))
                                        (= city-id (:target-id %)))
                                  (core/enemy-missiles (:state world))))]
@@ -1009,6 +1037,20 @@
             (assert-condition (core/harder-wave? low-m high-m)
                               (str "wave " high " not harder than " low
                                    " metrics " low-m " vs " high-m)))
+          world)}
+
+   {:pattern #"^wave <([A-Za-z0-9_]+)> has enemy count <([A-Za-z0-9_]+)> and speed <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ wave-param count-param speed-param] example]
+          (let [wave (support/example-int example wave-param "wave")
+                expected-count (support/example-int example count-param "enemy count")
+                expected-speed (support/example-double example speed-param "enemy speed")
+                metrics (core/wave-schedule-metrics wave)]
+            (assert-condition (= expected-count (:enemy-count metrics))
+                              (str "wave " wave " enemy count "
+                                   (:enemy-count metrics) " expected " expected-count))
+            (assert-condition (= expected-speed (double (:enemy-speed metrics)))
+                              (str "wave " wave " enemy speed "
+                                   (:enemy-speed metrics) " expected " expected-speed)))
           world)}])
 
 (defn- match-handler
