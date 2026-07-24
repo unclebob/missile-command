@@ -135,6 +135,12 @@
       (should (str/includes? line "battery=none"))
       (should (str/includes? line "missiles_in_flight=0"))))
 
+  (it "sim telemetry includes score and multiplier"
+    (let [state (core/new-game {:width 800 :height 600})
+          line (input/format-sim-telemetry-line state)]
+      (should (str/includes? line "score=0"))
+      (should (str/includes? line "multiplier=1"))))
+
   (it "includes flight vectors after a click fire"
     (let [state (core/new-game {:width 900 :height 600})
           result (core/handle state {:type :click :x 100 :y 150})

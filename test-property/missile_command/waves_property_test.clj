@@ -20,7 +20,17 @@
     (let [m (waves/schedule-metrics w)]
       (and (= w (:wave m))
            (= (waves/enemy-count w) (:enemy-count m))
-           (= (waves/enemy-speed w) (:enemy-speed m))))))
+           (= (waves/enemy-speed w) (:enemy-speed m))
+           (= (waves/multiplier w) (:multiplier m))))))
+
+(defspec multiplier-steps-every-two-waves-and-caps
+  50
+  (for-all [w (gen/large-integer* {:min 1 :max 40})]
+    (let [m (waves/multiplier w)
+          expected (min waves/max-multiplier (+ 1 (quot (dec w) 2)))]
+      (and (= expected m)
+           (<= 1 m waves/max-multiplier)
+           (<= m (waves/multiplier (inc w)))))))
 
 (defspec sky-origin-x-stays-in-playfield-and-varies
   50

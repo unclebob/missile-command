@@ -375,6 +375,14 @@
                               (str "score " actual " expected " expected)))
           world)}
 
+   {:pattern #"^the multiplier is <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ mult-param] example]
+          (let [expected (support/example-int example mult-param "multiplier")
+                actual (core/multiplier (:state world))]
+            (support/assert-condition (= expected actual)
+                                      (str "multiplier " actual " expected " expected)))
+          world)}
+
    {:pattern #"^the player fires the (left|center|right) battery$"
     :fn (fn [world [_ battery-name] _]
           (let [battery-id (support/parse-battery-id battery-name)
@@ -800,6 +808,13 @@
                  (core/set-wave-enemies-active
                   (:state world)
                   (support/example-int example rem-param "remaining"))))}
+
+   {:pattern #"^the current wave has (\d+) scheduled enemies still active$"
+    :fn (fn [world [_ rem-text] _]
+          (assoc world :state
+                 (core/set-wave-enemies-active
+                  (:state world)
+                  (support/parse-int rem-text "remaining"))))}
 
    {:pattern #"^the wave is not complete$"
     :fn (fn [world _ _]

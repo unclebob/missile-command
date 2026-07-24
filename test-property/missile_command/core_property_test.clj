@@ -5,7 +5,9 @@
             [clojure.test.check.properties :refer [for-all]]
             [missile-command.core :as core]
             [missile-command.input :as input]
-            [missile-command.missiles :as missiles]))
+            [missile-command.missiles :as missiles]
+            [missile-command.scoring :as scoring]
+            [missile-command.waves :as waves]))
 
 ;; Layout math truncates to longs; keep sizes large enough for distinct city xs.
 (def playfield-size-gen
@@ -541,12 +543,58 @@
   30
   (for-all [width playfield-size-gen
             height playfield-size-gen]
-    (let [state (core/new-game {:width width :height height})]
+    (let [state (core/new-game {:width width :height height})
+          hud (core/hud state)]
       (and (= 1 (core/wave state))
            (not (core/wave-complete? state))
-           (= 1 (:wave (core/hud state)))
+           (zero? (core/score state))
+           (= 1 (core/multiplier state))
+           (= 1 (:wave hud))
+           (zero? (:score hud))
+           (= 1 (:multiplier hud))
            (every? #(= 10 (:missiles %)) (core/batteries state))))))
 
+(defspec fireball-kill-awards-enemy-points-times-multiplier
+  25
+  (for-all [wave (gen/elements [1 3 5])
+            city-id city-index-gen]
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (core/set-wave wave)
+                    (core/spawn-enemy-targeting-city city-id))
+          city (core/city state city-id)
+          mid-y (long (/ (:y city) 2.0))
+          before (-> state
+                     (core/add-static-fireball (:x city) mid-y 80.0)
+                     (core/route-enemy-through-point (:x city) mid-y))
+          mult (core/multiplier before)
+          score0 (core/score before)
+          after (advance-enemies-until-gone before)
+          ;; Kill awards then wave-end (6 living cities, full ammo).
+          expected (+ (scoring/enemy-kill-points mult)
+                      (scoring/wave-end-points 30 6 mult))]
+      (and (= :fireball (core/last-enemy-fate after))
+           (core/living-city? after city-id)
+           (= (+ score0 expected) (core/score after))
+           (>= (core/score after) score0)))))
+
+(defspec wave-end-awards-ammo-and-city-bonuses
+  20
+  (for-all [wave (gen/elements [1 3])
+            ammo (gen/elements [0 5 10])]
+    (let [before (-> (core/new-game {:width 800 :height 600})
+                     (core/set-wave wave)
+                     (core/set-non-destroyed-battery-ammo ammo)
+                     (core/set-wave-enemies-active 1))
+          mult (core/multiplier before)
+          score0 (core/score before)
+          after (advance-enemies-until-gone before)
+          living (count (core/living-cities after))
+          unused (* 3 ammo)
+          expected (scoring/wave-end-points unused living mult)]
+      (and (core/wave-complete? after)
+           (= :impact (core/last-enemy-fate after))
+           (= 5 living)
+           (= (+ score0 expected) (core/score after))))))
 (defspec wave-stays-incomplete-while-enemies-remain
   25
   (for-all [n (gen/elements [1 2 3])]
@@ -604,6 +652,8 @@
   (is (fn? core/tick))
   (is (fn? core/spawn-enemy-targeting-city))
   (is (fn? core/spawn-enemy-targeting-city-from))
+  (is (fn? core/multiplier))
   (is (fn? core/rearm-surviving-batteries))
   (is (fn? core/on-ground?))
-  (is (fn? input/click-zone)))
+  (is (fn? input/click-zone))
+  (is (fn? scoring/enemy-kill-points)))
