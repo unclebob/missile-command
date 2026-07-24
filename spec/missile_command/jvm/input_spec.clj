@@ -356,4 +356,40 @@
       (should= 4 (:child-count m))
       (should= 0.4 (double (:split-progress m)))
       (should= 1 (:target-id m))
-      (should (str/includes? line "enemy_kind=mirv")))))
+      (should (str/includes? line "enemy_kind=mirv"))))
+
+
+  (it "marks wave flags when scenario enemies are applied"
+    (let [state (input/apply-scenario
+                 (core/new-game {:width 800 :height 600})
+                 {:enemies [{:target [:city 0]}]})]
+      (should (:wave-had-enemies? state))
+      (should-not (:wave-complete? state))))
+
+  (it "assigns drop ids from zero when scenario flyers include drops"
+    (let [state (input/apply-scenario
+                 (core/new-game {:width 800 :height 600})
+                 {:flyers [{:kind :bomber
+                            :from [0 80]
+                            :to [800 80]
+                            :speed 100
+                            :drops [{:at-progress 0.2 :target [:city 1]}
+                                    {:at-progress 0.5 :target [:city 2]}]}]})
+          f (first (core/flyers state))
+          drops (:drops f)]
+      (should= 2 (count drops))
+      (should= 0 (:id (first drops)))
+      (should= 1 (:id (second drops)))
+      (should= 0.2 (double (:at-progress (first drops))))))
+
+
+
+  (it "defaults flyer drop target to city zero when omitted"
+    (let [state (input/apply-scenario
+                 (core/new-game {:width 800 :height 600})
+                 {:flyers [{:drops [{:at-progress 0.3}]}]})
+          drop (first (:drops (first (core/flyers state))))]
+      (should= [:city 0] (:target drop))
+      (should= 0.3 (double (:at-progress drop)))))
+)
+

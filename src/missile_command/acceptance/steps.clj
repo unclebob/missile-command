@@ -88,30 +88,6 @@
   [state x target disable-fn]
   (reduce disable-fn state (earlier-fallback-batteries state x target)))
 
-(defn- max-fireball-radius
-  [state]
-  (if (seq (core/fireballs state))
-    (apply max (map :radius (core/fireballs state)))
-    0.0))
-
-(def ^:private fireball-peak-fraction 0.999)
-
-(defn- fireball-reached-peak?
-  "True when the largest live fireball is at (or past) the configured peak fraction."
-  [state]
-  (>= (max-fireball-radius state)
-      (* fireball-peak-fraction (core/max-fireball-radius state))))
-
-(defn- fireball-in-shrink-phase?
-  [state]
-  (and (seq (core/fireballs state))
-       (< (max-fireball-radius state)
-          (core/max-fireball-radius state))))
-
-(defn- fireball-radius-at-least?
-  [state min-r]
-  (>= (max-fireball-radius state) min-r))
-
 (defn- advance-until
   "Tick the world state until pred returns truthy, or fail after max-steps ticks."
   [world pred dt max-steps fail-message]
