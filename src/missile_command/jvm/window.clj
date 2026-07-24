@@ -147,6 +147,27 @@
       (frontmost-window-center)
       (pointer-location)))
 
+(defn frontmost-app-name
+  "macOS: name of the frontmost process (Terminal, etc.) before the sketch opens."
+  []
+  (try
+    (run-osascript
+     "tell application \"System Events\" to get name of first application process whose frontmost is true")
+    (catch Exception _ nil)))
+
+(defn restore-frontmost-app!
+  "Return keyboard focus to the app that was frontmost at launch (no steal)."
+  [app-name]
+  (when (and app-name (not (str/blank? app-name)))
+    ;; Escape embedded quotes in process name
+    (let [safe (str/replace app-name "\"" "\\\"")]
+      (run-osascript
+       (str "tell application \"System Events\"\n"
+            "  try\n"
+            "    set frontmost of first process whose name is \"" safe "\" to true\n"
+            "  end try\n"
+            "end tell")))))
+
 (defn- as-awt-window
   [native]
   (cond
@@ -166,41 +187,73 @@
           (catch Exception _ false)))))
 
 (defn- disable-focus-steal!
-  [awt-window]
-  (when (instance? Window awt-window)
-    (try (.setAutoRequestFocus ^Window awt-window false) (catch Exception _))
-    (try (.setFocusableWindowState ^Window awt-window false) (catch Exception _))
-    (try (.setAlwaysOnTop ^Window awt-window false) (catch Exception _))))
+  "Stop AWT/NEWT windows from auto-grabbing keyboard focus on show."
+  [native]
+  (let [awt (as-awt-window native)]
+    (when (instance? Window awt)
+      (try (.setAutoRequestFocus ^Window awt false) (catch Exception _))
+      ;; Stay non-focusable until the user clicks the game window.
+      (try (.setFocusableWindowState ^Window awt false) (catch Exception _))
+      (try (.setAlwaysOnTop ^Window awt false) (catch Exception _)))
+    ;; NEWT GLWindow (JOGL): duck-type common focus knobs
+    (when (and native (not (instance? Window awt)))
+      (doseq [[meth args] [["setAlwaysOnTop" [false]]
+                           ["setPointerVisible" [true]]
+                           ["setKeyboardVisible" [false]]]]
+        (try
+          (let [m (.getMethod (class native) meth
+                              (into-array Class (map (fn [_] Boolean/TYPE) args)))]
+            (.invoke m native (into-array Object args)))
+          (catch Exception _))))))
 
-(defn- reenable-focusable!
-  [awt-window]
-  (when (instance? Window awt-window)
-    (try (.setFocusableWindowState ^Window awt-window true) (catch Exception _))))
+(defn- allow-click-to-focus!
+  "After launch, allow the window to become focusable when the user clicks it,
+  without requesting focus ourselves."
+  [native]
+  (when-let [awt (as-awt-window native)]
+    (try
+      (.setFocusableWindowState ^Window awt true)
+      ;; Never call requestFocus / toFront.
+      (catch Exception _))))
 
 (defn place-on-launch-screen!
   "Center the Processing surface on the screen of launch-anchor {:x :y}.
   Avoids stealing keyboard focus. launch-anchor should be captured at process
-  start (terminal where bb was typed), before the sketch appears."
+  start (terminal where bb was typed), before the sketch appears.
+  restore-focus-app: optional process name to re-front after show (macOS)."
   ([surface sketch-w sketch-h]
-   (place-on-launch-screen! surface sketch-w sketch-h (capture-launch-anchor!)))
+   (place-on-launch-screen! surface sketch-w sketch-h (capture-launch-anchor!) nil))
   ([surface sketch-w sketch-h launch-anchor]
+   (place-on-launch-screen! surface sketch-w sketch-h launch-anchor nil))
+  ([surface sketch-w sketch-h launch-anchor restore-focus-app]
    (let [anchor (or launch-anchor (capture-launch-anchor!))
          bounds (screen-bounds-containing (:x anchor) (:y anchor))
          loc (centered-location bounds sketch-w sketch-h)
          lx (int (:x loc))
          ly (int (:y loc))
-         native (try (.getNative surface) (catch Exception _ nil))
-         awt (as-awt-window native)]
-     (disable-focus-steal! awt)
+         native (try (.getNative surface) (catch Exception _ nil))]
+     (disable-focus-steal! native)
      (try (.setVisible surface false) (catch Exception _))
      (try (.setLocation surface lx ly) (catch Exception _))
-     (try-set-position! (or awt native) lx ly)
+     (try-set-position! native lx ly)
      (try (.setVisible surface true) (catch Exception _))
-     (future
-       (try
-         (Thread/sleep 200)
-         (reenable-focusable! awt)
-         (catch Exception _)))
+     ;; JOGL often steals focus on first frames; hand it back immediately.
+     (when restore-focus-app
+       (restore-frontmost-app! restore-focus-app)
+       (future
+         (try
+           (doseq [ms [50 150 400 800]]
+             (Thread/sleep ms)
+             (restore-frontmost-app! restore-focus-app))
+           (Thread/sleep 200)
+           (allow-click-to-focus! native)
+           (catch Exception _))))
+     (when-not restore-focus-app
+       (future
+         (try
+           (Thread/sleep 400)
+           (allow-click-to-focus! native)
+           (catch Exception _))))
      {:screen bounds :location loc :anchor anchor})))
 
 (defn place-on-pointer-screen!
