@@ -58,4 +58,12 @@
   accept
   {:doc "Normal acceptance pipeline: parse → generate → run generated tests"
    :depends [generate-acceptance]
-   :task (shell "clojure" "-M:accept")}}}
+   :task (shell "clojure" "-M:accept")}
+
+  arch-check
+  {:doc "Architecture boundary check (pure core vs hosts/IO/acceptance)"
+   :task (shell "bb" "script/arch_check.bb")}
+
+  property
+  {:doc "Property tests (test.check); separate from unit/coverage"
+   :task (shell "clojure" "-X:property")}}}

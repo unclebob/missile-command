@@ -48,6 +48,22 @@ bb accept
 Runs `gherkin-parser` → project acceptance entrypoint generator → generated
 executable tests.
 
+### Architecture check
+
+```sh
+bb arch-check
+```
+
+Fails if pure core (`.cljc` game rules) requires hosts, acceptance, or IO libs.
+
+### Property tests
+
+```sh
+bb property
+```
+
+Runs generative property tests (`test-property/`) separately from unit coverage.
+
 ## Core smoke API
 
 ```clojure
