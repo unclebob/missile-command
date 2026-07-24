@@ -21,7 +21,9 @@
   :cov {:extra-paths ["spec"]
         :extra-deps {cloverage/cloverage {:mvn/version "1.2.4"}
                      speclj/speclj {:mvn/version "3.12.2"}}
-        :main-opts ["-m" "speclj.cloverage" "--" "-p" "src" "-s" "spec" "--lcov"]}
+        :main-opts ["-m" "speclj.cloverage" "--" "-p" "src" "-s" "spec" "--lcov"
+                    ;; Exclude Quil GUI hosts; pure jvm.input remains covered.
+                    "--ns-exclude-regex" "missile-command\\.jvm\\.(main|sketch|render)"]}
   :mutate {:main-opts ["-m" "clj-mutate.core"]
            :extra-deps {io.github.unclebob/clj-mutate
                         {:git/url "https://github.com/unclebob/clj-mutate.git"
@@ -42,4 +44,6 @@
                           io.github.cognitect-labs/test-runner
                           {:git/tag "v0.5.1" :git/sha "dfb30dd"}}
              :exec-fn cognitect.test-runner.api/test
-             :exec-args {:dirs ["test-property"]}}}}
+             :exec-args {:dirs ["test-property"]}}
+  :run {:extra-deps {quil/quil {:mvn/version "4.3.1563"}}
+        :main-opts ["-m" "missile-command.jvm.main"]}}}

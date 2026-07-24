@@ -189,4 +189,59 @@
       (should= world
                (dispatch world
                          "the horizontal span of the cities is less than width <width>"
-                         ex)))))
+                         ex))))
+
+  (it "aims the crosshair"
+    (let [world (fresh-world)
+          aimed (dispatch world "the player aims at <x> <y>" {"x" "100" "y" "200"})]
+      (should= {:x 100 :y 200} (core/crosshair (:state aimed)))))
+
+  (it "asserts the crosshair position"
+    (let [world {:state (:state (core/handle (core/new-game {:width 800 :height 600})
+                                             {:type :aim :x 100 :y 200}))}]
+      (should= world
+               (dispatch world "the crosshair is at <expected_x> <expected_y>"
+                         {"expected_x" "100" "expected_y" "200"}))))
+
+  (it "asserts the score"
+    (let [world (fresh-world)]
+      (should= world
+               (dispatch world "the score is <score>" {"score" "0"}))))
+
+  (it "fires a battery toward the crosshair"
+    (let [world (-> (fresh-world)
+                    (dispatch "the player aims at <x> <y>" {"x" "400" "y" "200"}))
+          fired (dispatch world "the player fires the <battery> battery"
+                          {"battery" "left"})]
+      (should= 9 (:missiles (core/battery (:state fired) :left)))
+      (should= 1 (count (core/defensive-missiles (:state fired))))
+      (should= fired
+               (dispatch fired "the <battery> battery has <ammo> missiles"
+                         {"battery" "left" "ammo" "9"}))
+      (should= fired
+               (dispatch fired "there are <missile_count> defensive missiles in flight"
+                         {"missile_count" "1"}))
+      (should= fired
+               (dispatch fired
+                         "a defensive missile from the <battery> battery targets <aim_x> <aim_y>"
+                         {"battery" "left" "aim_x" "400" "aim_y" "200"}))))
+
+  (it "sets battery ammo and destruction for fire scenarios"
+    (let [empty (-> (fresh-world)
+                    (dispatch "the <battery> battery ammo is set to <ammo>"
+                              {"battery" "left" "ammo" "0"}))
+          destroyed (-> (fresh-world)
+                        (dispatch "the <battery> battery is destroyed"
+                                  {"battery" "center"}))]
+      (should= 0 (:missiles (core/battery (:state empty) :left)))
+      (should (:destroyed? (core/battery (:state destroyed) :center)))))
+
+  (it "fires every battery and checks center missile speed"
+    (let [world (-> (fresh-world)
+                    (dispatch "the player aims at <x> <y>" {"x" "400" "y" "100"})
+                    (dispatch "the player fires every battery once" {}))]
+      (should= 3 (count (core/defensive-missiles (:state world))))
+      (should= world
+               (dispatch world
+                         "the center defensive missile is faster than each side defensive missile"
+                         {})))))

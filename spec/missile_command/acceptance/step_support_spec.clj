@@ -24,3 +24,13 @@
 (describe "example-int"
   (it "reads and parses an example parameter"
     (should= 1920 (support/example-int {"width" "1920"} "width" "width"))))
+
+(describe "example-battery"
+  (it "parses left center and right battery ids"
+    (should= :left (support/example-battery {"battery" "left"} "battery"))
+    (should= :center (support/example-battery {"battery" "center"} "battery"))
+    (should= :right (support/example-battery {"battery" "right"} "battery")))
+
+  (it "fails on unknown battery names"
+    (should-throw Exception #"unknown battery: top"
+      (support/example-battery {"battery" "top"} "battery"))))
