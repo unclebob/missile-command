@@ -620,6 +620,52 @@
            (= 6 (count (core/living-cities state)))
            (= 1 (core/bonus-city-earned-events state))))))
 
+(defn- destroy-all-cities
+  [state]
+  (reduce core/destroy-city state (map :id (core/cities state))))
+
+(defspec the-end-enters-only-with-no-cities-and-no-reserve
+  25
+  (for-all [width (gen/elements [800 1920])
+            reserve (gen/elements [0 1 2 3])]
+    (let [state (-> (core/new-game {:width width :height 600})
+                    destroy-all-cities
+                    (core/set-bonus-city-reserve reserve)
+                    core/evaluate-game-over)]
+      (if (zero? reserve)
+        (and (core/the-end? state)
+             (= "THE END" (core/end-message state))
+             (not= "Game Over" (core/end-message state))
+             (core/end-fireball-centered? state)
+             (zero? (count (core/living-cities state))))
+        (and (not (core/the-end? state))
+             (= reserve (count (core/living-cities state)))
+             (zero? (core/bonus-cities state)))))))
+
+(defspec fire-is-blocked-after-the-end
+  20
+  (for-all [battery-id battery-id-gen]
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    destroy-all-cities
+                    (core/set-bonus-city-reserve 0)
+                    core/evaluate-game-over)
+          after (:state (core/handle state {:type :fire :battery battery-id}))]
+      (and (core/the-end? after)
+           (empty? (core/defensive-missiles after))
+           (= (core/final-score state) (core/final-score after))))))
+
+(defspec final-score-frozen-at-the-end
+  20
+  (for-all [score (gen/elements [0 2500 12500 999])]
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (core/set-score score)
+                    destroy-all-cities
+                    (core/set-bonus-city-reserve 0)
+                    core/evaluate-game-over)]
+      (and (core/the-end? state)
+           (= (long score) (core/final-score state))
+           (= (long score) (core/score state))))))
+
 (defspec living-cities-never-exceed-layout-count
   20
   (for-all [n (gen/elements [1 2 3 4])]
@@ -848,6 +894,8 @@
   (is (fn? core/spawn-mirv-targeting-city))
   (is (fn? core/spawn-smart-bomb-targeting-city))
   (is (fn? core/spawn-flyer))
+  (is (fn? core/evaluate-game-over))
+  (is (fn? core/the-end?))
   (is (fn? core/multiplier))
   (is (fn? core/wave-mirv-count))
   (is (fn? core/wave-smart-bomb-count))

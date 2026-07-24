@@ -2,6 +2,11 @@
   (:require [clojure.string :as str]
             [missile-command.acceptance.step-support :as support]
             [missile-command.acceptance.enemy-steps :as enemy-steps]
+            [missile-command.acceptance.end-steps :as end-steps]
+            [missile-command.acceptance.wave-steps :as wave-steps]
+            [missile-command.acceptance.fireball-steps :as fireball-steps]
+            [missile-command.acceptance.city-steps :as city-steps]
+            [missile-command.acceptance.defensive-steps :as defensive-steps]
             [missile-command.core :as core]
             [missile-command.high-scores :as high-scores]
             [missile-command.options :as options]))
@@ -112,7 +117,7 @@
   (support/advance-until world pred core/tick dt max-steps fail-message))
 
 (def step-handlers
-  (into
+  (vec (concat
    [{:pattern #"^a new game with width <([A-Za-z0-9_]+)> and height <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ width-param height-param] example]
           (assoc world :state
@@ -2251,7 +2256,12 @@
                               (str "wave " wave " enemy speed "
                                    (:enemy-speed metrics) " expected " expected-speed)))
           world)}]
-   enemy-steps/handlers))
+   enemy-steps/handlers
+   end-steps/handlers
+   wave-steps/handlers
+   fireball-steps/handlers
+   city-steps/handlers
+   defensive-steps/handlers)))
 
 (defn- match-handler
   [text]

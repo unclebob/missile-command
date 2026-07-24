@@ -200,10 +200,12 @@
         active? (or (seq (core/fireballs state'))
                     (seq (core/enemy-missiles state'))
                     (seq (core/destroyable-targets state')))
-        wave-changed? (not= wave-before (core/wave state'))]
+        wave-changed? (not= wave-before (core/wave state'))
+        ;; THE END screen-fill fireball lives on :end-fireball, not :fireballs.
+        end-sequence? (core/the-end? state')]
     (emit-fireball-phases! state')
     (when (and (:qa-telemetry? @launch-options)
-               (or active? completed-any? wave-changed?))
+               (or active? completed-any? wave-changed? end-sequence?))
       (emit! (input/format-sim-telemetry-line state')))
     (when (and (:qa-telemetry? @launch-options)
                (core/last-enemy-fate state')
