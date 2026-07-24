@@ -1,0 +1,51 @@
+(ns missile-command.jvm.window-spec
+  (:require [speclj.core :refer :all]
+            [missile-command.jvm.window :as window]))
+
+(describe "centered-location"
+  (it "centers a window inside screen bounds"
+    (should= {:x 100 :y 50}
+             (window/centered-location {:x 0 :y 0 :width 1000 :height 700} 800 600)))
+
+  (it "offsets into a non-origin screen"
+    ;; 1728 + (1920-800)/2 = 2288; 413 + (1080-600)/2 = 653
+    (should= {:x 2288 :y 653}
+             (window/centered-location {:x 1728 :y 413 :width 1920 :height 1080}
+                                       800 600))))
+
+(describe "screen-bounds-containing"
+  (it "returns a rectangle map with positive size"
+    (let [b (window/screen-bounds-containing 0 0)]
+      (should (number? (:x b)))
+      (should (number? (:y b)))
+      (should (pos? (:width b)))
+      (should (pos? (:height b))))))
+
+(describe "pointer-location"
+  (it "returns integer coordinates"
+    (let [p (window/pointer-location)]
+      (should (number? (:x p)))
+      (should (number? (:y p))))))
+
+(describe "parse-point-csv"
+  (it "parses x,y pairs"
+    (should= {:x 10 :y 20} (window/parse-point-csv "10,20"))
+    (should= {:x -5 :y 100} (window/parse-point-csv " -5 , 100 "))
+    (should-be-nil (window/parse-point-csv "nope")))
+
+  (it "rejects incomplete pairs"
+    (should-be-nil (window/parse-point-csv "1,"))
+    (should-be-nil (window/parse-point-csv ""))))
+
+(describe "normalize-tty"
+  (it "adds /dev/ prefix and rejects blanks"
+    (should= "/dev/ttys009" (window/normalize-tty "ttys009"))
+    (should= "/dev/ttys009" (window/normalize-tty "/dev/ttys009"))
+    (should-be-nil (window/normalize-tty "??"))
+    (should-be-nil (window/normalize-tty nil))))
+
+(describe "capture-launch-anchor!"
+  (it "returns a point usable for screen selection"
+    (let [p (window/capture-launch-anchor!)]
+      (should (number? (:x p)))
+      (should (number? (:y p))))))
