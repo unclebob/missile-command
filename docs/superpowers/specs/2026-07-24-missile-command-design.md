@@ -341,17 +341,17 @@ No streaming music required for v1.
 
 ## 11. Implementation slices (for planning)
 
-Suggested vertical order (not a full task plan):
+Executable backlog for SwarmForge six-pack: **[docs/user-stories/](../../user-stories/README.md)** (US-01 … US-22).
 
-1. Project skeleton + core `state` / `new-game` / `resize` + BDD runner harness.  
-2. Aim + fire + defensive missiles + fireballs (no enemies).  
-3. Enemy missiles + city/battery hits.  
-4. Waves, scoring, multiplier, bonus cities.  
-5. MIRVs, smart bombs, flyers.  
-6. Screens: title, pause, THE END, high scores, options.  
-7. JVM Quil host (render + input + audio + storage).  
-8. Browser Quil host parity.  
-9. Polish: SFX set, difficulty presets, attract mode optional.
+Suggested vertical order (mirrors the user stories):
+
+1. Project skeleton + core `state` / `new-game` / `resize` + BDD/APS harness (US-01–02).  
+2. Aim + fire + defensive missiles + fireballs (US-03–06).  
+3. Enemy missiles + city/battery hits (US-07).  
+4. Waves, scoring, multiplier, bonus cities (US-08–10).  
+5. MIRVs, smart bombs, flyers (US-11–13).  
+6. Screens: THE END, title, pause, HUD, high scores, options (US-14–19).  
+7. SFX events + hosts (US-20–22).
 
 ## 12. Decisions log
 
