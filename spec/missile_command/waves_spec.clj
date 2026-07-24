@@ -46,6 +46,15 @@
     (should= 2 (waves/mirv-count 6))
     (should= (:mirv-count (waves/schedule-metrics 4)) (waves/mirv-count 4)))
 
+  (it "schedules bombers and satellites on late waves"
+    (should= 0 (waves/bomber-count 1))
+    (should= 0 (waves/bomber-count 7))
+    (should= 1 (waves/bomber-count 8))
+    (should= 1 (waves/bomber-count 10))
+    (should= 0 (waves/satellite-count 8))
+    (should= 1 (waves/satellite-count 9))
+    (should= 1 (waves/satellite-count 10)))
+
   (it "schedules smart bombs only on later waves"
     (should= 0 (waves/smart-bomb-count 1))
     (should= 0 (waves/smart-bomb-count 4))

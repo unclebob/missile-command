@@ -4,6 +4,7 @@
 
 (def points-enemy-missile 25)
 (def points-smart-bomb 125)
+(def points-flyer 100)
 (def points-unused-missile 5)
 (def points-surviving-city 100)
 (def default-bonus-city-threshold 10000)
@@ -27,6 +28,11 @@
    (enemy-kill-points :ballistic multiplier))
   ([enemy-kind multiplier]
    (with-multiplier (base-kill-points enemy-kind) multiplier)))
+
+(defn flyer-kill-points
+  "Points for destroying a bomber or satellite at the given multiplier."
+  [multiplier]
+  (with-multiplier points-flyer multiplier))
 
 (defn wave-end-points
   "Unused ammo and surviving cities scaled by the completing wave's multiplier."

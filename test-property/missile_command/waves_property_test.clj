@@ -23,7 +23,15 @@
            (= (waves/enemy-speed w) (:enemy-speed m))
            (= (waves/multiplier w) (:multiplier m))
            (= (waves/mirv-count w) (:mirv-count m))
-           (= (waves/smart-bomb-count w) (:smart-bomb-count m))))))
+           (= (waves/smart-bomb-count w) (:smart-bomb-count m))
+           (= (waves/bomber-count w) (:bomber-count m))
+           (= (waves/satellite-count w) (:satellite-count m))))))
+
+(defspec bomber-and-satellite-schedule-gates
+  40
+  (for-all [w (gen/large-integer* {:min 1 :max 20})]
+    (and (= (if (>= w 8) 1 0) (waves/bomber-count w))
+         (= (if (>= w 9) 1 0) (waves/satellite-count w)))))
 
 (defspec smart-bomb-count-zero-early-then-nondecreasing
   40
