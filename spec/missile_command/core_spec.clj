@@ -27,10 +27,13 @@
       (doseq [b (core/batteries state)]
         (should (core/on-ground? state b)))))
 
-  (it "starts with score zero and a crosshair on the playfield"
+  (it "starts with score zero, one times multiplier, and a crosshair on the playfield"
     (let [state (core/new-game {:width 800 :height 600})
           crosshair (core/crosshair state)]
       (should= 0 (core/score state))
+      (should= 1 (core/multiplier state))
+      (should= 0 (:score (core/hud state)))
+      (should= 1 (:multiplier (core/hud state)))
       (should= 0 (:next-entity-id state))
       (should= [] (core/defensive-missiles state))
       (should (<= 0 (:x crosshair)))
@@ -445,7 +448,60 @@
                     (recur (:state (core/tick s 0.01)) (inc n))))]
       (should= :fireball (core/last-enemy-fate after))
       (should (core/living-city? after (:id city)))
-      (should= 0 (count (core/enemy-missiles after))))))
+      (should= 0 (count (core/enemy-missiles after)))
+      ;; Last enemy: kill points plus wave-end bonuses (ammo + cities × mult).
+      (should= (+ 25 (* 30 5) (* 6 100)) (core/score after)))))
+
+(describe "scoring and multiplier"
+  (it "tracks multiplier from the current wave"
+    (should= 1 (core/multiplier (core/set-wave (core/new-game {:width 800 :height 600}) 1)))
+    (should= 2 (core/multiplier (core/set-wave (core/new-game {:width 800 :height 600}) 3)))
+    (should= 6 (core/multiplier (core/set-wave (core/new-game {:width 800 :height 600}) 11)))
+    (should= 6 (core/multiplier (core/set-wave (core/new-game {:width 800 :height 600}) 20))))
+
+  (it "awards twenty five times multiplier for a fireball kill without completing the wave"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (core/set-wave 3)
+                    (core/set-wave-enemies-active 2)
+                    (core/add-static-fireball 400 250 40)
+                    (core/route-enemy-through-point 400 250))
+          after (loop [s state n 0]
+                  (if (or (= :fireball (core/last-enemy-fate s))
+                          (> n 5000))
+                    s
+                    (recur (:state (core/tick s 0.01)) (inc n))))]
+      (should= :fireball (core/last-enemy-fate after))
+      (should= 1 (count (core/enemy-missiles after)))
+      (should-not (core/wave-complete? after))
+      (should= 2 (core/multiplier after))
+      (should= 50 (core/score after))))
+
+  (it "awards unused ammo and living cities at wave end times multiplier"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (core/set-wave 1)
+                    (core/set-non-destroyed-battery-ammo 10)
+                    (core/set-wave-enemies-active 1))
+          after (loop [s state n 0]
+                  (if (or (core/wave-complete? s) (> n 5000))
+                    s
+                    (recur (:state (core/tick s 0.05)) (inc n))))]
+      (should (core/wave-complete? after))
+      (should= 5 (count (core/living-cities after)))
+      (should= 650 (core/score after))))
+
+  (it "does not decrease score when aiming after a kill"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (core/set-wave-enemies-active 2)
+                    (core/add-static-fireball 400 250 40)
+                    (core/route-enemy-through-point 400 250))
+          after-kill (loop [s state n 0]
+                       (if (or (= :fireball (core/last-enemy-fate s))
+                               (> n 5000))
+                         s
+                         (recur (:state (core/tick s 0.01)) (inc n))))
+          after-aim (:state (core/handle after-kill {:type :aim :x 100 :y 100}))]
+      (should= 25 (core/score after-kill))
+      (should= 25 (core/score after-aim)))))
 
 (describe "tick defensive missiles and fireballs"
   (it "advances defensive missiles toward the aim point"

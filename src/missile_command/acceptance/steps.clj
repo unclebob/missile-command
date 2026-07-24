@@ -378,6 +378,14 @@
                               (str "score " actual " expected " expected)))
           world)}
 
+   {:pattern #"^the multiplier is <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ mult-param] example]
+          (let [expected (support/example-int example mult-param "multiplier")
+                actual (core/multiplier (:state world))]
+            (assert-condition (= expected actual)
+                              (str "multiplier " actual " expected " expected)))
+          world)}
+
    {:pattern #"^the player fires the (left|center|right) battery$"
     :fn (fn [world [_ battery-name] _]
           (let [battery-id (support/parse-battery-id battery-name)
@@ -953,12 +961,13 @@
 
    {:pattern #"^a fireball at <([A-Za-z0-9_]+)> <([A-Za-z0-9_]+)> with radius <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ x-param y-param r-param] example]
-          (assoc world :state
-                 (core/add-static-fireball
-                  (:state world)
-                  (support/example-int example x-param "x")
-                  (support/example-int example y-param "y")
-                  (support/example-int example r-param "radius"))))}
+          (let [x (support/example-int example x-param "x")
+                y (support/example-int example y-param "y")
+                r (support/example-int example r-param "radius")]
+            (assoc world
+                   :state (core/add-static-fireball (:state world) x y r)
+                   :fireball-x x
+                   :fireball-y y)))}
 
    {:pattern #"^the enemy missile path passes within distance (\d+) of that fireball center$"
     :fn (fn [world [_ _] _]
@@ -969,10 +978,12 @@
                   (:fireball-y world))))}
 
    {:pattern #"^the enemy missile path passes within distance <([A-Za-z0-9_]+)> of that fireball center$"
-    :fn (fn [world [_ _r-param] example]
-          (let [x (support/example-int example "fireball_x" "x")
-                y (support/example-int example "fireball_y" "y")]
-            (assoc world :state (core/route-enemy-through-point (:state world) x y))))}
+    :fn (fn [world [_ _r-param] _]
+          (assoc world :state
+                 (core/route-enemy-through-point
+                  (:state world)
+                  (:fireball-x world)
+                  (:fireball-y world))))}
 
    {:pattern #"^the enemy missile path stays farther than (\d+) from that fireball center$"
     :fn (fn [world _ _]
@@ -1054,6 +1065,13 @@
                  (core/set-wave-enemies-active
                   (:state world)
                   (support/example-int example rem-param "remaining"))))}
+
+   {:pattern #"^the current wave has (\d+) scheduled enemies still active$"
+    :fn (fn [world [_ rem-text] _]
+          (assoc world :state
+                 (core/set-wave-enemies-active
+                  (:state world)
+                  (support/parse-int rem-text "remaining"))))}
 
    {:pattern #"^the wave is not complete$"
     :fn (fn [world _ _]

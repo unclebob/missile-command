@@ -97,8 +97,12 @@
    :expand-seconds fireball-expand-seconds
    :contract-seconds fireball-contract-seconds})
 
+;; Long enough for intercept fixtures to kill a routed enemy, short enough
+;; that other in-flight enemies later can pass the same sky region.
+(def static-fireball-ttl 1.0)
+
 (defn make-static-fireball
-  "Fireball fixture with fixed radius that does not age."
+  "Fireball fixture with fixed radius until TTL expires."
   [fireball-id x y radius]
   {:id fireball-id
    :x x
@@ -108,7 +112,8 @@
    :max-radius (double radius)
    :expand-seconds 0.0
    :contract-seconds 0.0
-   :static? static-fireball-flag})
+   :static? static-fireball-flag
+   :static-ttl static-fireball-ttl})
 
 (defn fireball-lifetime
   [fireball]
@@ -141,10 +146,14 @@
 
 (defn advance-fireball
   "Advance a fireball by dt. Returns updated fireball or `expired`.
-   Static fireballs keep a fixed radius forever."
+   Static fireballs keep a fixed radius until their TTL elapses."
   [fireball dt]
   (if (:static? fireball)
-    fireball
+    (let [age (+ (double (:age fireball 0.0)) (double dt))
+          ttl (double (or (:static-ttl fireball) static-fireball-ttl))]
+      (if (>= age ttl)
+        expired
+        (assoc fireball :age age)))
     (let [age (+ (double (:age fireball 0.0)) (double dt))]
       (if (>= age (fireball-lifetime fireball))
         expired
