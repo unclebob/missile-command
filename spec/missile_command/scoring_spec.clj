@@ -35,5 +35,7 @@
     (should= 1 (scoring/thresholds-crossed 10000 10000))
     (should= 2 (scoring/thresholds-crossed 20000 10000))
     (should= 0 (scoring/thresholds-crossed 5000 0))
+    (should= 0 (scoring/thresholds-crossed 0 0))
+    (should= 0 (scoring/thresholds-crossed 999999 -1))
     (should= 2 (scoring/new-bonus-city-awards 30000 10000 1))
     (should= 0 (scoring/new-bonus-city-awards 9999 10000 0))))
