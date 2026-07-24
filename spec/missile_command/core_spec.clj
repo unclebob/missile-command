@@ -27,10 +27,13 @@
       (doseq [b (core/batteries state)]
         (should (core/on-ground? state b)))))
 
-  (it "starts with score zero and a crosshair on the playfield"
+  (it "starts with score zero, one times multiplier, and a crosshair on the playfield"
     (let [state (core/new-game {:width 800 :height 600})
           crosshair (core/crosshair state)]
       (should= 0 (core/score state))
+      (should= 1 (core/multiplier state))
+      (should= 0 (:score (core/hud state)))
+      (should= 1 (:multiplier (core/hud state)))
       (should= 0 (:next-entity-id state))
       (should= [] (core/defensive-missiles state))
       (should (<= 0 (:x crosshair)))
@@ -445,7 +448,240 @@
                     (recur (:state (core/tick s 0.01)) (inc n))))]
       (should= :fireball (core/last-enemy-fate after))
       (should (core/living-city? after (:id city)))
-      (should= 0 (count (core/enemy-missiles after))))))
+      (should= 0 (count (core/enemy-missiles after)))
+      ;; Last enemy: kill points plus wave-end bonuses (ammo + cities × mult).
+      (should= (+ 25 (* 30 5) (* 6 100)) (core/score after)))))
+
+(describe "scoring and multiplier"
+  (it "tracks multiplier from the current wave"
+    (should= 1 (core/multiplier (core/set-wave (core/new-game {:width 800 :height 600}) 1)))
+    (should= 2 (core/multiplier (core/set-wave (core/new-game {:width 800 :height 600}) 3)))
+    (should= 6 (core/multiplier (core/set-wave (core/new-game {:width 800 :height 600}) 11)))
+    (should= 6 (core/multiplier (core/set-wave (core/new-game {:width 800 :height 600}) 20))))
+
+  (it "awards twenty five times multiplier for a fireball kill without completing the wave"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (core/set-wave 3)
+                    (core/set-wave-enemies-active 2)
+                    (core/add-static-fireball 400 250 40)
+                    (core/route-enemy-through-point 400 250))
+          after (loop [s state n 0]
+                  (if (or (= :fireball (core/last-enemy-fate s))
+                          (> n 5000))
+                    s
+                    (recur (:state (core/tick s 0.01)) (inc n))))]
+      (should= :fireball (core/last-enemy-fate after))
+      (should= 1 (count (core/enemy-missiles after)))
+      (should-not (core/wave-complete? after))
+      (should= 2 (core/multiplier after))
+      (should= 50 (core/score after))))
+
+  (it "awards unused ammo and living cities at wave end times multiplier"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (core/set-wave 1)
+                    (core/set-non-destroyed-battery-ammo 10)
+                    (core/set-wave-enemies-active 1))
+          after (loop [s state n 0]
+                  (if (or (core/wave-complete? s) (> n 5000))
+                    s
+                    (recur (:state (core/tick s 0.05)) (inc n))))]
+      (should (core/wave-complete? after))
+      (should= 5 (count (core/living-cities after)))
+      (should= 650 (core/score after))))
+
+  (it "does not decrease score when aiming after a kill"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (core/set-wave-enemies-active 2)
+                    (core/add-static-fireball 400 250 40)
+                    (core/route-enemy-through-point 400 250))
+          after-kill (loop [s state n 0]
+                       (if (or (= :fireball (core/last-enemy-fate s))
+                               (> n 5000))
+                         s
+                         (recur (:state (core/tick s 0.01)) (inc n))))
+          after-aim (:state (core/handle after-kill {:type :aim :x 100 :y 100}))]
+      (should= 25 (core/score after-kill))
+      (should= 25 (core/score after-aim)))))
+
+(describe "smart bombs"
+  (it "advances toward its city target"
+    (let [state (core/spawn-smart-bomb-targeting-city
+                 (core/new-game {:width 800 :height 600}) 0)
+          after (:state (core/tick state 0.1))
+          b (first (core/smart-bombs after))]
+      (should= 1 (count (core/smart-bombs after)))
+      (should (pos? (double (:progress b))))
+      (should= core/enemy-kind-smart (:enemy-kind b))))
+
+  (it "is destroyed by a well-centered fireball for smart-bomb points"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (core/spawn-smart-bomb-targeting-city 1)
+                    (core/add-static-fireball 400 250 40)
+                    (core/route-smart-bomb-centered-in-fireball 400 250 15))
+          after (loop [s state n 0]
+                  (if (or (= :fireball (core/last-enemy-fate s))
+                          (empty? (core/smart-bombs s))
+                          (> n 5000))
+                    s
+                    (recur (:state (core/tick s 0.01)) (inc n))))]
+      (should= :fireball (core/last-enemy-fate after))
+      (should (empty? (core/enemy-missiles after)))
+      ;; Last threat: smart-bomb kill points plus wave-end bonuses.
+      (should= (+ 125 (* 30 5) (* 6 100)) (core/score after))
+      (should= 6 (count (core/living-cities after)))))
+
+  (it "evades an edge-of-blast fireball once and stays a threat"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (core/spawn-smart-bomb-targeting-city 1)
+                    (core/add-static-fireball 400 250 40)
+                    (core/route-smart-bomb-edge-band-in-fireball 400 250 25 40))
+          after (loop [s state n 0]
+                  (let [b (first (core/smart-bombs s))]
+                    (if (or (and b (:smart-evaded? b))
+                            (> n 5000))
+                      s
+                      (recur (:state (core/tick s 0.01)) (inc n)))))
+          b (first (core/smart-bombs after))]
+      (should b)
+      (should (:smart-evaded? b))
+      (should-not= :fireball (core/last-enemy-fate after))
+      (should= 6 (count (core/living-cities after)))))
+
+  (it "destroys its city when unintercepted"
+    (let [state (core/spawn-smart-bomb-targeting-city
+                 (core/new-game {:width 800 :height 600}) 0)
+          after (loop [s state n 0]
+                  (if (or (empty? (core/enemy-missiles s)) (> n 10000))
+                    s
+                    (recur (:state (core/tick s 0.05)) (inc n))))]
+      (should-not (core/living-city? after 0))
+      (should= 5 (count (core/living-cities after))))))
+
+(describe "MIRV warheads"
+  (it "flies as a single parent before the split progress"
+    (let [state (core/spawn-mirv-targeting-city
+                 (core/new-game {:width 800 :height 600}) 0 3 0.5)
+          after (:state (core/tick state 0.05))
+          m (first (core/enemy-missiles after))]
+      (should= 1 (count (core/enemy-missiles after)))
+      (should= 1 (count (core/mirv-parents after)))
+      (should= core/enemy-kind-mirv (:enemy-kind m))
+      (should (< (double (:progress m)) 0.5))))
+
+  (it "splits into child warheads with independent city targets"
+    (let [state (core/spawn-mirv-targeting-city
+                 (core/new-game {:width 800 :height 600}) 0 3 0.5)
+          after (loop [s state n 0]
+                  (if (or (and (empty? (core/mirv-parents s))
+                               (seq (core/mirv-children s)))
+                          (> n 5000))
+                    s
+                    (recur (:state (core/tick s 0.05)) (inc n))))
+          children (core/mirv-children after)
+          targets (set (map :target-id children))]
+      (should= 3 (count children))
+      (should (empty? (core/mirv-parents after)))
+      (should (< 1 (count targets)))
+      (should (every? #(= core/enemy-kind-mirv-child (:enemy-kind %)) children))))
+
+  (it "destroys a MIRV parent with a fireball before children appear"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (core/spawn-mirv-targeting-city 1 3 0.5)
+                    (core/add-static-fireball 400 100 40)
+                    (core/route-enemy-through-point 400 100))
+          after (loop [s state n 0]
+                  (if (or (= :fireball (core/last-enemy-fate s))
+                          (> n 5000))
+                    s
+                    (recur (:state (core/tick s 0.01)) (inc n))))]
+      (should= :fireball (core/last-enemy-fate after))
+      (should (empty? (core/enemy-missiles after)))
+      (should= 6 (count (core/living-cities after)))))
+
+  (it "lets unintercepted children destroy their target cities"
+    (let [state (core/spawn-mirv-targeting-city
+                 (core/new-game {:width 800 :height 600}) 0 2 0.5)
+          after (loop [s state n 0]
+                  (if (or (and (empty? (core/enemy-missiles s))
+                               (core/wave-complete? s))
+                          (and (empty? (core/enemy-missiles s)) (> n 100))
+                          (> n 10000))
+                    s
+                    (recur (:state (core/tick s 0.05)) (inc n))))]
+      (should (empty? (core/enemy-missiles after)))
+      (should= 4 (count (core/living-cities after)))))
+
+  (it "route-first-mirv-child-through-point retargets only the first child"
+    (let [state (core/spawn-mirv-targeting-city
+                 (core/new-game {:width 800 :height 600}) 0 3 0.4)
+          after-split (loop [s state n 0]
+                        (if (or (and (empty? (core/mirv-parents s))
+                                     (seq (core/mirv-children s)))
+                                (> n 5000))
+                          s
+                          (recur (:state (core/tick s 0.05)) (inc n))))
+          children (core/mirv-children after-split)
+          routed (core/route-first-mirv-child-through-point after-split 111 222)
+          first-child (first (core/mirv-children routed))
+          others (rest (core/mirv-children routed))]
+      (should= 3 (count children))
+      (should= 111.0 (double (:x0 first-child)))
+      (should= 222.0 (double (:y0 first-child)))
+      (should= core/enemy-kind-mirv-child (:enemy-kind first-child))
+      (should (every? #(not= 111.0 (double (:x0 %))) others))))
+
+  (it "route-first-mirv-child-through-point is a no-op without MIRV children"
+    (let [state (core/spawn-enemy-targeting-city
+                 (core/new-game {:width 800 :height 600}) 0)
+          after (core/route-first-mirv-child-through-point state 10 20)
+          m (first (core/enemy-missiles after))]
+      (should= 1 (count (core/enemy-missiles after)))
+      (should-not= 10.0 (double (:x0 m))))))
+
+(describe "bonus cities"
+  (it "starts with empty reserve and default threshold"
+    (let [state (core/new-game {:width 800 :height 600})]
+      (should= 0 (core/bonus-cities state))
+      (should= 10000 (core/bonus-city-threshold state))
+      (should= 0 (core/bonus-city-earned-events state))
+      (should= 0 (:bonus-cities (core/hud state)))))
+
+  (it "awards reserve when score crosses the threshold and keeps six living cities"
+    (let [under (core/set-score (core/new-game {:width 800 :height 600}) 9999)
+          at (core/set-score (core/new-game {:width 800 :height 600}) 10000)
+          multi (core/set-score (core/new-game {:width 800 :height 600}) 30000)]
+      (should= 0 (core/bonus-cities under))
+      (should= 0 (core/bonus-city-earned-events under))
+      (should= 1 (core/bonus-cities at))
+      (should= 1 (core/bonus-city-earned-events at))
+      (should= 6 (count (core/living-cities at)))
+      (should= 3 (core/bonus-cities multi))
+      (should= 3 (core/bonus-city-earned-events multi))))
+
+  (it "restores the lowest destroyed city when a bonus is earned"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (core/destroy-city 0)
+                    (core/set-score 10000))]
+      (should (core/living-city? state 0))
+      (should= 6 (count (core/living-cities state)))
+      (should= 0 (core/bonus-cities state))))
+
+  (it "never places more than six living cities"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (core/destroy-city 0)
+                    (core/destroy-city 1)
+                    (core/set-score 30000))]
+      (should= 6 (count (core/living-cities state)))
+      (should= 1 (core/bonus-cities state))))
+
+  (it "applies remaining reserve after wave resolution"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (core/destroy-city 0)
+                    (core/destroy-city 1)
+                    (core/set-bonus-city-reserve 3)
+                    (core/apply-bonus-cities-from-reserve))]
+      (should= 6 (count (core/living-cities state)))
+      (should= 1 (core/bonus-cities state)))))
 
 (describe "tick defensive missiles and fireballs"
   (it "advances defensive missiles toward the aim point"
@@ -561,4 +797,61 @@
   (it "uses a zero origin when reclamp finds no crosshair"
     (let [before (dissoc (core/new-game {:width 800 :height 600}) :crosshair)
           after (core/resize before 800 600)]
-      (should= {:x 0 :y 0} (core/crosshair after)))))
+      (should= {:x 0 :y 0} (core/crosshair after))))
+
+
+  (it "spawns MIRV and smart bombs from sky origin with flags"
+    (let [mirv (core/spawn-mirv-targeting-city (core/new-game {:width 800 :height 600}) 0 3 0.5)
+          m (first (core/enemy-missiles mirv))
+          smart (core/spawn-smart-bomb-targeting-city (core/new-game {:width 800 :height 600}) 1)
+          s (first (core/enemy-missiles smart))]
+      (should= 0.0 (double (:y0 m)))
+      (should= 0.0 (double (:y0 s)))
+      (should= false (:smart-evaded? s))
+      (should-not (:smart-evaded? s))
+      (should= core/enemy-kind-mirv (:enemy-kind m))
+      (should= core/enemy-kind-smart (:enemy-kind s))))
+
+  (it "configures flyer drops only toward living cities"
+    (let [base (core/new-game {:width 800 :height 600})
+          empty (-> base
+                    (core/destroy-city 0)
+                    (core/destroy-city 1)
+                    (core/destroy-city 2)
+                    (core/destroy-city 3)
+                    (core/destroy-city 4)
+                    (core/destroy-city 5)
+                    (core/spawn-flyer :bomber 0 80 800 80 100)
+                    (core/set-flyer-drops-toward-living-cities 3 0.4))
+          partial (-> base
+                      (core/destroy-city 0)
+                      (core/destroy-city 1)
+                      (core/spawn-flyer :bomber 0 80 800 80 100)
+                      (core/set-flyer-drops-toward-living-cities 3 0.4))
+          f-empty (first (core/flyers empty))
+          f-partial (first (core/flyers partial))
+          one-drop (-> base
+                       (core/spawn-flyer :bomber 0 80 800 80 100)
+                       (core/set-flyer-drop-targeting-city 2 0.3))
+          d (first (:drops (first (core/flyers one-drop))))]
+      (should= [] (:drops f-empty))
+      (should= 3 (count (:drops f-partial)))
+      (should= 0 (:id d))
+      (should= 2 (get-in d [:target 1]))))
+
+  (it "routes smart bomb edge band east of the fireball center"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (core/spawn-smart-bomb-targeting-city 0)
+                    (core/route-smart-bomb-edge-band-in-fireball 400 200 25.0 40.0))
+          m (first (core/enemy-missiles state))]
+      (should (< 400.0 (double (:x0 m))))
+      (should= 200.0 (double (:y0 m)))))
+
+  (it "classifies smart-bomb edge band strictly outside the core"
+    (should (@#'core/smart-bomb-edge-band? 30.0 40.0))
+    (should (@#'core/smart-bomb-edge-band? 40.0 40.0))
+    (should-not (@#'core/smart-bomb-edge-band? 25.0 40.0))
+    (should-not (@#'core/smart-bomb-edge-band? 40.1 40.0))
+    (should-not (@#'core/smart-bomb-edge-band? 20.0 40.0)))
+)
+

@@ -1,6 +1,6 @@
 # US-10 — Bonus cities from score
 
-**Status:** backlog  
+**Status:** in-specifier  
 **Depends on:** US-09  
 **Design:** §5.4, §5.7
 

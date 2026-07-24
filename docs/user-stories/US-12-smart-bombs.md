@@ -1,6 +1,6 @@
 # US-12 — Smart bombs
 
-**Status:** backlog  
+**Status:** in-specifier  
 **Depends on:** US-06, US-08  
 **Design:** §5.5, §5.6, §5.7
 

@@ -1,6 +1,6 @@
 # US-11 — MIRV warheads
 
-**Status:** backlog  
+**Status:** in-specifier  
 **Depends on:** US-08  
 **Design:** §5.5
 
