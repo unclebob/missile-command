@@ -38,7 +38,7 @@
   (let [cmd (str "bb play 800 600 --qa --qa-speed 10 --qa-scenario " scenario-path
                  " --qa-events " events-path)]
     (println "==> host:" cmd) (flush)
-    (let [r (p/shell {:out :string :err :string :continue true :timeout 25000}
+    (let [r (p/shell {:out :string :err :string :continue true :timeout 45000}
                      "bash" "-lc" cmd)
           out (str (:out r) (:err r))]
       (print out) (flush)
@@ -63,11 +63,11 @@
 
   ;; B: depleted ammo + one enemy → impact → wave advance + rearm
   ;; Host then launches the next wave's scheduled attacks (continuous play).
-  ;; With --qa-speed 10, ~5.7s sim impact finishes in under 1s wall clock.
+  ;; Wave-1 enemy ~50 px/s ≈ 11.4s sim to impact; wait*qa-speed must cover it.
   (write-edn! "tmp/wave-rearm-depleted.edn"
               {:batteries {:left {:ammo 2} :center {:ammo 2} :right {:ammo 2}}
                :enemies [{:target [:city 0]}]})
-  (write-events! "tmp/wave-events.txt" ["wait 1.2" "quit"])
+  (write-events! "tmp/wave-events.txt" ["wait 2.0" "quit"])
   (let [r (launch! "tmp/wave-rearm-depleted.edn" "tmp/wave-events.txt")
         sims (:sims r)
         first-sim (first sims)
@@ -92,7 +92,7 @@
                            :center {:ammo 1}
                            :right {:ammo 1}}
                :enemies [{:target [:city 1]}]})
-  (write-events! "tmp/wave-events2.txt" ["wait 1.2" "key 1" "quit"])
+  (write-events! "tmp/wave-events2.txt" ["wait 2.0" "key 1" "quit"])
   (let [r (launch! "tmp/wave-rearm-destroyed-left.edn" "tmp/wave-events2.txt")
         sims (:sims r)
         rearm-sim (first (filter (fn [line]

@@ -3,6 +3,11 @@
 (def initial-wave 1)
 (def full-ammo 10)
 
+;; Wave-1 base speed (px/s). Kept moderate so early play is defendable on
+;; a ~600px playfield (~11s sky→ground at 50 px/s). Higher waves ramp 25%/step.
+(def base-enemy-speed 50.0)
+(def enemy-speed-wave-factor 0.25)
+
 (defn enemy-count
   "Number of ballistic enemies scheduled for a wave."
   [wave]
@@ -11,7 +16,7 @@
 (defn enemy-speed
   "Enemy missile speed (px/s) for a wave."
   [wave]
-  (* 100.0 (+ 1.0 (* 0.25 (dec wave)))))
+  (* base-enemy-speed (+ 1.0 (* enemy-speed-wave-factor (dec wave)))))
 
 (defn schedule-metrics
   "Observable difficulty metrics for a wave."

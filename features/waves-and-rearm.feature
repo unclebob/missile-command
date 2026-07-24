@@ -40,9 +40,9 @@ Scenario: Waves and rearm 02 wave does not complete while enemies remain
 
 Examples:
   | width | height | remaining | wave | enemy_count | expected_applied_dt | expected_progress      | expected_width | expected_height |
-  | 800   | 600    | 1         | 1    | 1           | 0.05                | 0.008771929824561403   | 800            | 600             |
-  | 800   | 600    | 3         | 1    | 3           | 0.05                | 0.008771929824561403   | 800            | 600             |
-  | 1920  | 1080   | 2         | 1    | 2           | 0.05                | 0.004873294346978558   | 1920           | 1080            |
+  | 800   | 600    | 1         | 1    | 1           | 0.05                | 0.0043859649122807015  | 800            | 600             |
+  | 800   | 600    | 3         | 1    | 3           | 0.05                | 0.0043859649122807015  | 800            | 600             |
+  | 1920  | 1080   | 2         | 1    | 2           | 0.05                | 0.0024366471734892786  | 1920           | 1080            |
 
 Scenario: Waves and rearm 03 wave completes when all enemies are gone
   Given a new game with width <width> and height <height>
@@ -125,6 +125,6 @@ Scenario: Waves and rearm 06 higher waves schedule more or faster enemies
 
 Examples:
   | width | height | low_wave | high_wave | low_count | low_speed | high_count | high_speed | expected_width | expected_height |
-  | 800   | 600    | 1        | 2         | 3         | 100.0     | 4          | 125.0      | 800            | 600             |
-  | 800   | 600    | 1        | 3         | 3         | 100.0     | 5          | 150.0      | 800            | 600             |
-  | 1920  | 1080   | 2        | 4         | 4         | 125.0     | 6          | 175.0      | 1920           | 1080            |
+  | 800   | 600    | 1        | 2         | 3         | 50.0      | 4          | 62.5       | 800            | 600             |
+  | 800   | 600    | 1        | 3         | 3         | 50.0      | 5          | 75.0       | 800            | 600             |
+  | 1920  | 1080   | 2        | 4         | 4         | 62.5      | 6          | 87.5       | 1920           | 1080            |
