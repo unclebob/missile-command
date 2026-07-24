@@ -109,7 +109,9 @@
           (fireballs! state)
           (hud! state)
           (when (core/paused? state)
-            (render-pause/overlay! state))))))(defn draw-state!
+            (render-pause/overlay! state))))))
+
+(defn draw-state!
   ([state]
    (let [ch (core/crosshair state)]
      (draw-state! state (:x ch) (:y ch))))
