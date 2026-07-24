@@ -490,6 +490,53 @@
       (and (= 1 (count enemies))
            (> (:progress (first enemies)) p0)))))
 
+(def origin-x-gen
+  (gen/elements [50 100 200 600 750]))
+
+(defspec angled-enemy-moves-on-both-axes-toward-target
+  40
+  (for-all [city-id city-index-gen
+            origin-x origin-x-gen]
+    (let [before (core/spawn-enemy-targeting-city-from
+                  (core/new-game {:width 800 :height 600}) origin-x 0 city-id)
+          m0 (first (core/enemy-missiles before))
+          after (:state (core/tick before 0.1))
+          m1 (first (core/enemy-missiles after))
+          angled? (not= (double (:x0 m0)) (double (:x1 m0)))]
+      (and (= 1 (count (core/enemy-missiles after)))
+           (pos? (double (:progress m1)))
+           (or (not angled?)
+               (and (< (min (double (:x0 m0)) (double (:x1 m0)))
+                       (double (:x m1))
+                       (max (double (:x0 m0)) (double (:x1 m0))))
+                    (< (double (:y0 m0)) (double (:y m1)) (double (:y1 m0)))))))))
+
+(defspec unintercepted-angled-enemy-destroys-city
+  25
+  (for-all [city-id city-index-gen
+            origin-x origin-x-gen]
+    (let [before (core/spawn-enemy-targeting-city-from
+                  (core/new-game {:width 800 :height 600}) origin-x 0 city-id)
+          after (advance-enemies-until-gone before)]
+      (and (not (core/living-city? after city-id))
+           (= 5 (count (core/living-cities after)))
+           (empty? (core/enemy-missiles after))
+           (= :impact (core/last-enemy-fate after))))))
+
+(defspec wave-enemies-use-varied-sky-origins
+  30
+  (for-all [n (gen/elements [2 3 4 5])
+            width (gen/elements [800 1920])]
+    (let [state (core/set-wave-enemies-active
+                 (core/new-game {:width width :height 600}) n)
+          enemies (core/enemy-missiles state)
+          origin-xs (mapv #(double (:x0 %)) enemies)]
+      (and (= n (count enemies))
+           (every? #(= 0.0 (double (:y0 %))) enemies)
+           (every? #(and (<= 0.0 %) (< % (double width))) origin-xs)
+           (< 1 (count (set origin-xs)))
+           (some #(not= (double (:x0 %)) (double (:x1 %))) enemies)))))
+
 (defspec new-game-starts-at-wave-one-with-full-ammo
   30
   (for-all [width playfield-size-gen
@@ -556,6 +603,7 @@
   (is (fn? core/handle))
   (is (fn? core/tick))
   (is (fn? core/spawn-enemy-targeting-city))
+  (is (fn? core/spawn-enemy-targeting-city-from))
   (is (fn? core/rearm-surviving-batteries))
   (is (fn? core/on-ground?))
   (is (fn? input/click-zone)))

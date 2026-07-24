@@ -48,6 +48,11 @@
       (should-not (:qa-telemetry? opts))
       (should= [] (:destroy-batteries opts))))
 
+  (it "uses default size arity when only args are given"
+    (let [opts (input/parse-cli-args ["1024" "768"])]
+      (should= 1024 (:width opts))
+      (should= 768 (:height opts))))
+
   (it "parses width height and switches"
     (let [opts (input/parse-cli-args
                 ["1280" "720" "--qa-telemetry" "--destroy-batteries" "left,center"
@@ -64,6 +69,16 @@
       (should= [{:x 400 :y 200}] (:qa-targets opts))
       (should= [{:kind :city :id 0}] (:qa-enemies opts))
       (should= [{:x 10 :y 20 :radius 30.0}] (:qa-fireballs opts))))
+
+  (it "assigns first size token to width and second to height only"
+    (let [opts (input/parse-cli-args ["900" "500"] 800 600)]
+      (should= 900 (:width opts))
+      (should= 500 (:height opts))
+      (should-not= (:width opts) (:height opts))))
+
+  (it "rejects a third bare size token"
+    (should-throw Exception
+      (input/parse-cli-args ["800" "600" "1024"] 800 600)))
 
   (it "defaults qa-speed to 1.0"
     (let [opts (input/parse-cli-args [] 800 600)]
@@ -168,6 +183,117 @@
       (should (empty? e1)) ; still expanding -> still start
       (should= [:max :shrink] (mapv :phase e2)))))
 
+(describe "parse-enemy-spec"
+  (it "parses city and battery specs"
+    (should= {:kind :city :id 2} (input/parse-enemy-spec "city:2"))
+    (should= {:kind :battery :id :left} (input/parse-enemy-spec "battery:left")))
+
+  (it "rejects unknown kinds"
+    (should-throw Exception
+      (input/parse-enemy-spec "moon:1"))))
+
+(describe "format-sim-telemetry-line"
+  (it "includes wave, ammo, and enemy fields for a seeded scenario"
+    (let [state (input/apply-scenario
+                 (core/new-game {:width 800 :height 600})
+                 {:wave 2
+                  :batteries {:left {:ammo 3}}
+                  :enemies [{:origin [50 0] :target [:city 0]}
+                            {:target [:battery :center]}]
+                  :targets [{:x 100 :y 200}]})
+          line (input/format-sim-telemetry-line state)]
+      (should (str/includes? line "qa-sim t="))
+      (should (str/includes? line "wave=2"))
+      (should (str/includes? line "wave_complete="))
+      (should (str/includes? line "wave_enemy_count="))
+      (should (str/includes? line "enemy_missiles=2"))
+      (should (str/includes? line "enemy_origin_x=50"))
+      (should (str/includes? line "enemy_target=city:0"))
+      (should (str/includes? line "battery_left_ammo=3"))
+      (should (str/includes? line "target_x=100"))
+      (should (str/includes? line "cities_alive="))))
+
+  (it "reports ammo 0 when battery missiles are missing"
+    (let [base (core/new-game {:width 800 :height 600})
+          left (dissoc (core/battery base :left) :missiles)
+          state (assoc-in base [:batteries]
+                          (mapv (fn [b]
+                                  (if (= :left (:id b)) left b))
+                                (core/batteries base)))
+          line (input/format-sim-telemetry-line state)]
+      (should (str/includes? line "battery_left_ammo=0"))
+      (should-not (str/includes? line "battery_left_ammo=1"))))
+
+  (it "includes fireball geometry and last-enemy-fate when present"
+    (let [base (core/new-game {:width 800 :height 600})
+          with-fb (core/add-static-fireball base 111 222 12.0)
+          with-fate (assoc with-fb :last-enemy-fate :fireball)
+          line (input/format-sim-telemetry-line with-fate)]
+      (should (str/includes? line "center_x=111"))
+      (should (str/includes? line "center_y=222"))
+      (should (str/includes? line "radius="))
+      (should (str/includes? line "last_enemy_fate=fireball")))))
+(describe "load-scenario-edn"
+  (it "reads an EDN map from a path"
+    (let [path "tmp/hardender-scenario.edn"
+          _ (spit path "{:wave 4 :enemies []}")
+          scenario (input/load-scenario-edn path)]
+      (should= 4 (:wave scenario))
+      (should= [] (:enemies scenario))))
+
+  (it "returns nil when path is nil"
+    (should-be-nil (input/load-scenario-edn nil))))
+
+(describe "format-fireball-phase-line"
+  (it "includes id phase time and geometry"
+    (let [state (core/new-game {:width 800 :height 600})
+          fb {:id 9 :x 1 :y 2 :radius 3.5}
+          line (input/format-fireball-phase-line state fb :start)]
+      (should (str/includes? line "qa-fireball id=9"))
+      (should (str/includes? line "phase=start"))
+      (should (str/includes? line "t="))
+      (should (str/includes? line "center_x=1"))
+      (should (str/includes? line "center_y=2"))
+      (should (str/includes? line "radius=3.5")))))
+
+(describe "detect-fireball-phase-events end"
+  (it "emits end when a previously tracked fireball disappears"
+    (let [prev {7 :shrink}
+          [events next] (input/detect-fireball-phase-events prev [])
+          fb (:fireball (first events))]
+      (should= 1 (count events))
+      (should= :end (:phase (first events)))
+      (should= 7 (:id (first events)))
+      (should= 0 (:x fb))
+      (should= 0 (:y fb))
+      (should= 0.0 (:radius fb))
+      (should= :end (get next 7))))
+
+  (it "does not re-end a fireball already at end"
+    (let [prev {7 :end}
+          [events _] (input/detect-fireball-phase-events prev [])]
+      (should (empty? events)))))
+
+(describe "fireball-report-phase"
+  (it "classifies start shrink and end by age boundaries"
+    (let [fb {:age 0.0 :expand-seconds 0.4 :contract-seconds 0.4}
+          at-expand (assoc fb :age 0.4)
+          mid-shrink (assoc fb :age 0.5)
+          at-end (assoc fb :age 0.8)
+          past-end (assoc fb :age 0.9)]
+      (should= :start (input/fireball-report-phase fb))
+      (should= :shrink (input/fireball-report-phase at-expand))
+      (should= :shrink (input/fireball-report-phase mid-shrink))
+      (should= :end (input/fireball-report-phase at-end))
+      (should= :end (input/fireball-report-phase past-end)))))
+
+(describe "load-qa-events"
+  (it "loads non-blank event lines from a file"
+    (let [path "tmp/hardender-events.txt"
+          _ (spit path "aim 1 2\n\nquit\n")
+          events (input/load-qa-events path)]
+      (should= [{:type :aim :x 1 :y 2} {:type :quit}] events))))
+
 (describe "apply-scenario"
   (it "honors angled enemy origin in scenario enemies"
     (let [base (core/new-game {:width 800 :height 600})
@@ -179,4 +305,39 @@
       (should= 0.0 (double (:y0 m)))
       (should-not= (double (:x0 m)) (double (:x1 m)))
       (should= :city (:target-kind m))
-      (should= 0 (:target-id m)))))
+      (should= 0 (:target-id m))
+      (should (:wave-had-enemies? state))
+      (should-not (:wave-complete? state))))
+
+  (it "leaves wave flags alone when enemies list is empty"
+    (let [base (core/new-game {:width 800 :height 600})
+          state (input/apply-scenario base {:enemies []})]
+      (should-not (:wave-had-enemies? state))
+      (should= 0 (count (core/enemy-missiles state)))))
+
+  (it "applies wave, size, batteries, cities, targets, and default enemy origins"
+    (let [state (input/apply-scenario
+                 (core/new-game {:width 800 :height 600})
+                 {:wave 3
+                  :width 640
+                  :height 480
+                  :batteries {:left {:ammo 2}
+                              :right {:destroyed true :ammo 0}}
+                  :cities {:destroyed [5]}
+                  :targets [{:x 10 :y 20}]
+                  :enemies [{:target [:city 0]}
+                            {:origin [100 0] :target [:battery :center]}]})
+          enemies (core/enemy-missiles state)
+          city-enemy (first (filter #(= :city (:target-kind %)) enemies))
+          bat-enemy (first (filter #(= :battery (:target-kind %)) enemies))]
+      (should= 3 (core/wave state))
+      (should= 640 (core/playfield-width state))
+      (should= 480 (core/playfield-height state))
+      (should= 2 (:missiles (core/battery state :left)))
+      (should (:destroyed? (core/battery state :right)))
+      (should-not (core/living-city? state 5))
+      (should= 1 (count (core/destroyable-targets state)))
+      (should= 2 (count enemies))
+      (should= (double (:x (core/city state 0))) (double (:x0 city-enemy)))
+      (should= 100.0 (double (:x0 bat-enemy)))
+      (should= :center (:target-id bat-enemy)))))
