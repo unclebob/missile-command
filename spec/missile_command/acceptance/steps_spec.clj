@@ -1,8 +1,8 @@
 (ns missile-command.acceptance.steps-spec
   (:require [speclj.core :refer :all]
+            [missile-command.acceptance.enemy-steps :as enemy-steps]
             [missile-command.acceptance.steps :as steps]
             [missile-command.core :as core]))
-
 (defn- fresh-world
   ([] (fresh-world 800 600))
   ([w h] {:state (core/new-game {:width w :height h})}))
@@ -298,4 +298,24 @@
     (let [world (fresh-world)
           advanced (dispatch world "time advances by <dt> seconds" {"dt" "0.02"})]
       (should= 0.02 (core/last-applied-dt (:state advanced)))
-      (should= 0.02 (core/sim-time (:state advanced))))))
+      (should= 0.02 (core/sim-time (:state advanced)))))
+
+  (it "detects points strictly between origin and target on both axes"
+    (should (enemy-steps/between-endpoints? 0.0 0.0 10.0 10.0 5.0 5.0))
+    (should (enemy-steps/between-endpoints? 10.0 0.0 0.0 10.0 5.0 5.0))
+    (should-not (enemy-steps/between-endpoints? 0.0 0.0 10.0 10.0 0.0 5.0))
+    (should-not (enemy-steps/between-endpoints? 0.0 0.0 10.0 10.0 5.0 0.0))
+    (should-not (enemy-steps/between-endpoints? 0.0 0.0 10.0 10.0 15.0 5.0)))
+  (it "asserts angled enemy motion toward its target on both axes"
+    (let [world (-> (fresh-world)
+                    (dispatch "an enemy missile from <ox> 0 targeting city <city>"
+                              {"ox" "50" "city" "0"})
+                    (dispatch "time advances by <dt> seconds" {"dt" "0.2"}))]
+      (should= world
+               (dispatch world
+                         "the first enemy missile has moved toward its target on both axes"
+                         {}))
+      (should= world
+               (dispatch world
+                         "the first enemy missile origin x differs from its target x"
+                         {})))))

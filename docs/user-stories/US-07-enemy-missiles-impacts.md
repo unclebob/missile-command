@@ -1,6 +1,6 @@
 # US-07 — Enemy missiles destroy cities and batteries
 
-**Status:** in-implementation  
+**Status:** done  
 **Depends on:** US-06  
 **Design:** §5.2, §5.4, §5.5
 
