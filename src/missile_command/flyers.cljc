@@ -53,3 +53,7 @@
    :y (double start-y)
    :drops []
    :drops-fired #{}})
+
+;; clj-mutate-manifest-begin
+;; {:version 1, :tested-at "2026-07-24T14:40:30.281625-05:00", :module-hash "1888436329", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 3, :hash "-200275315"} {:id "defn/path-length", :kind "defn", :line 5, :end-line 9, :hash "1199131526"} {:id "defn/position-at", :kind "defn", :line 11, :end-line 15, :hash "-1348868608"} {:id "defn/advance", :kind "defn", :line 17, :end-line 28, :hash "1601636598"} {:id "defn/pending-drops", :kind "defn", :line 30, :end-line 36, :hash "1508074678"} {:id "defn/hit-by-fireball?", :kind "defn", :line 38, :end-line 40, :hash "635824681"} {:id "defn/make", :kind "defn", :line 42, :end-line 55, :hash "1285057156"}]}
+;; clj-mutate-manifest-end

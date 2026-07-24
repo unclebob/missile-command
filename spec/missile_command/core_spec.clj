@@ -797,4 +797,61 @@
   (it "uses a zero origin when reclamp finds no crosshair"
     (let [before (dissoc (core/new-game {:width 800 :height 600}) :crosshair)
           after (core/resize before 800 600)]
-      (should= {:x 0 :y 0} (core/crosshair after)))))
+      (should= {:x 0 :y 0} (core/crosshair after))))
+
+
+  (it "spawns MIRV and smart bombs from sky origin with flags"
+    (let [mirv (core/spawn-mirv-targeting-city (core/new-game {:width 800 :height 600}) 0 3 0.5)
+          m (first (core/enemy-missiles mirv))
+          smart (core/spawn-smart-bomb-targeting-city (core/new-game {:width 800 :height 600}) 1)
+          s (first (core/enemy-missiles smart))]
+      (should= 0.0 (double (:y0 m)))
+      (should= 0.0 (double (:y0 s)))
+      (should= false (:smart-evaded? s))
+      (should-not (:smart-evaded? s))
+      (should= core/enemy-kind-mirv (:enemy-kind m))
+      (should= core/enemy-kind-smart (:enemy-kind s))))
+
+  (it "configures flyer drops only toward living cities"
+    (let [base (core/new-game {:width 800 :height 600})
+          empty (-> base
+                    (core/destroy-city 0)
+                    (core/destroy-city 1)
+                    (core/destroy-city 2)
+                    (core/destroy-city 3)
+                    (core/destroy-city 4)
+                    (core/destroy-city 5)
+                    (core/spawn-flyer :bomber 0 80 800 80 100)
+                    (core/set-flyer-drops-toward-living-cities 3 0.4))
+          partial (-> base
+                      (core/destroy-city 0)
+                      (core/destroy-city 1)
+                      (core/spawn-flyer :bomber 0 80 800 80 100)
+                      (core/set-flyer-drops-toward-living-cities 3 0.4))
+          f-empty (first (core/flyers empty))
+          f-partial (first (core/flyers partial))
+          one-drop (-> base
+                       (core/spawn-flyer :bomber 0 80 800 80 100)
+                       (core/set-flyer-drop-targeting-city 2 0.3))
+          d (first (:drops (first (core/flyers one-drop))))]
+      (should= [] (:drops f-empty))
+      (should= 3 (count (:drops f-partial)))
+      (should= 0 (:id d))
+      (should= 2 (get-in d [:target 1]))))
+
+  (it "routes smart bomb edge band east of the fireball center"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (core/spawn-smart-bomb-targeting-city 0)
+                    (core/route-smart-bomb-edge-band-in-fireball 400 200 25.0 40.0))
+          m (first (core/enemy-missiles state))]
+      (should (< 400.0 (double (:x0 m))))
+      (should= 200.0 (double (:y0 m)))))
+
+  (it "classifies smart-bomb edge band strictly outside the core"
+    (should (@#'core/smart-bomb-edge-band? 30.0 40.0))
+    (should (@#'core/smart-bomb-edge-band? 40.0 40.0))
+    (should-not (@#'core/smart-bomb-edge-band? 25.0 40.0))
+    (should-not (@#'core/smart-bomb-edge-band? 40.1 40.0))
+    (should-not (@#'core/smart-bomb-edge-band? 20.0 40.0)))
+)
+
