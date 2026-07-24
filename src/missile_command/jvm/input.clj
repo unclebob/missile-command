@@ -376,25 +376,30 @@
               enemies)
       state)))
 
+(def ^:private default-flyer-from [0 80])
+(def ^:private default-flyer-to [800 80])
+(def ^:private default-flyer-speed 100)
+
+(defn- scenario-flyer-drops
+  [drops]
+  (mapv (fn [i d]
+          {:id i
+           :at-progress (double (get d :at-progress 0.5))
+           :target (get d :target [:city 0])})
+        (range (count drops))
+        drops))
+
 (defn- apply-scenario-flyer
   [state flyer]
-  (let [kind (or (:kind flyer) :bomber)
-        [x0 y0] (or (:from flyer) [0 80])
-        [x1 y1] (or (:to flyer) [800 80])
-        speed (or (:speed flyer) 100)
-        state (core/spawn-flyer state kind x0 y0 x1 y1 speed)
-        drops (or (:drops flyer) [])]
-    (if (seq drops)
-      (core/set-flyer-drops
-       state
-       (mapv (fn [i d]
-               {:id i
-                :at-progress (double (or (:at-progress d) 0.5))
-                :target (or (:target d) [:city 0])})
-             (range (count drops))
-             drops))
+  (let [[x0 y0] (get flyer :from default-flyer-from)
+        [x1 y1] (get flyer :to default-flyer-to)
+        state (core/spawn-flyer state
+                                (get flyer :kind :bomber)
+                                x0 y0 x1 y1
+                                (get flyer :speed default-flyer-speed))]
+    (if-let [drops (seq (:drops flyer))]
+      (core/set-flyer-drops state (scenario-flyer-drops drops))
       state)))
-
 (defn- apply-scenario-flyers
   [state scenario]
   (reduce apply-scenario-flyer state (or (:flyers scenario) [])))

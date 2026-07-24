@@ -1,11 +1,11 @@
 (ns missile-command.core
   (:require [missile-command.batteries :as batteries]
             [missile-command.cities :as cities]
+            [missile-command.flyers :as flyers]
             [missile-command.input :as input]
             [missile-command.missiles :as missiles]
             [missile-command.waves :as waves]
             [missile-command.world :as world]))
-
 (def initial-score 0)
 (def initial-entity-id 0)
 (def initial-bonus-cities 0)
@@ -360,18 +360,7 @@
   "Spawn a bomber or satellite traversing from start to end at speed."
   [state flyer-kind start-x start-y end-x end-y speed]
   (let [[fid state] (next-entity-id state)
-        flyer {:id fid
-               :kind (keyword flyer-kind)
-               :x0 (double start-x)
-               :y0 (double start-y)
-               :x1 (double end-x)
-               :y1 (double end-y)
-               :speed (double speed)
-               :progress 0.0
-               :x (double start-x)
-               :y (double start-y)
-               :drops []
-               :drops-fired #{}}]
+        flyer (flyers/make fid flyer-kind start-x start-y end-x end-y speed)]
     (-> state
         (update :flyers (fnil conj []) flyer)
         (assoc :wave-had-enemies? wave-flag-on
@@ -842,34 +831,6 @@
             (assoc state :enemy-missiles [])
             (enemy-missiles state))))
 
-(defn- flyer-path-length
-  [flyer]
-  (let [dx (- (double (:x1 flyer)) (double (:x0 flyer)))
-        dy (- (double (:y1 flyer)) (double (:y0 flyer)))]
-    (Math/sqrt (+ (* dx dx) (* dy dy)))))
-
-(defn- flyer-position-at
-  [flyer progress]
-  (let [p (max 0.0 (min 1.0 (double progress)))]
-    {:x (+ (double (:x0 flyer)) (* p (- (double (:x1 flyer)) (double (:x0 flyer)))))
-     :y (+ (double (:y0 flyer)) (* p (- (double (:y1 flyer)) (double (:y0 flyer)))))}))
-
-(defn- advance-flyer
-  [flyer dt]
-  (let [len (flyer-path-length flyer)
-        speed (double (:speed flyer))
-        delta (if (zero? len) 1.0 (/ (* speed dt) len))
-        progress (+ (double (:progress flyer 0.0)) delta)]
-    (if (>= progress 1.0)
-      :left
-      (merge flyer
-             {:progress progress}
-             (flyer-position-at flyer progress)))))
-
-(defn- flyer-hit-by-fireball?
-  [flyer fireballs]
-  (some #(missiles/point-in-fireball? % (:x flyer) (:y flyer)) fireballs))
-
 (defn- destroy-flyer-by-fireball
   [state]
   (-> state
@@ -877,21 +838,13 @@
       (assoc :last-enemy-fate :fireball
              :last-flyer-fate :fireball)))
 
-(defn- pending-drops
-  [flyer progress]
-  (let [fired (or (:drops-fired flyer) #{})]
-    (filterv (fn [drop]
-               (and (not (contains? fired (:id drop)))
-                    (<= (double (:at-progress drop)) (double progress))))
-             (or (:drops flyer) []))))
-
 (defn- apply-flyer-drops
   [state flyer]
-  (let [drops (pending-drops flyer (:progress flyer))]
+  (let [drops (flyers/pending-drops flyer (:progress flyer))]
     (if (seq drops)
       (let [state (reduce
                    (fn [s drop]
-                     (let [at (flyer-position-at flyer (:at-progress drop))
+                     (let [at (flyers/position-at flyer (:at-progress drop))
                            [kind id] (:target drop)
                            c (when (= kind :city) (city s id))]
                        (if (and (= kind :city) c)
@@ -911,17 +864,14 @@
 
 (defn- tick-one-flyer
   [state flyer dt fireballs]
-  (cond
-    (flyer-hit-by-fireball? flyer fireballs)
+  (if (flyers/hit-by-fireball? flyer fireballs)
     (destroy-flyer-by-fireball state)
-
-    :else
-    (let [result (advance-flyer flyer dt)]
+    (let [result (flyers/advance flyer dt)]
       (cond
         (= :left result)
         state
 
-        (flyer-hit-by-fireball? result fireballs)
+        (flyers/hit-by-fireball? result fireballs)
         (destroy-flyer-by-fireball state)
 
         :else
