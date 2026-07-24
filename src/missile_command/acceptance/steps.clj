@@ -13,6 +13,7 @@
             [missile-command.acceptance.high-score-steps :as high-score-steps]
             [missile-command.acceptance.options-steps :as options-steps]
             [missile-command.acceptance.sfx-steps :as sfx-steps]
+            [missile-command.acceptance.desktop-host-steps :as desktop-host-steps]
             [missile-command.core :as core]
             [missile-command.waves :as waves]))
 (defn- assert-playfield-dimension
@@ -165,6 +166,17 @@
           (support/assert-count (count (living-cities world))
                         (support/example-int example count-param "city count")
                         "living cities")
+          world)}
+
+   {:pattern #"^there are (\d+) non-destroyed batteries named left center and right$"
+    :fn (fn [world [_ count-text] _]
+          (let [expected (support/parse-int count-text "battery count")
+                bats (filterv #(not (:destroyed? %)) (core/batteries (:state world)))]
+            (support/assert-condition (= expected (count bats))
+                                      (str "non-destroyed batteries " (count bats)
+                                           " expected " expected))
+            (support/assert-condition (= #{:left :center :right} (set (map :id bats)))
+                                      (str "battery ids " (mapv :id bats))))
           world)}
 
    {:pattern #"^there are <([A-Za-z0-9_]+)> non-destroyed batteries named left center and right$"
@@ -1387,7 +1399,8 @@
         hud-steps/handlers
         high-score-steps/handlers
         options-steps/handlers
-        sfx-steps/handlers)))
+        sfx-steps/handlers
+        desktop-host-steps/handlers)))
 (defn- match-handler
   [text]
   (some (fn [handler]
