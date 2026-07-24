@@ -3,11 +3,13 @@
   (:require [quil.core :as q]
             [quil.middleware :as m]
             [quil.applet :as applet]
+            [clojure.string :as str]
             [missile-command.core :as core]
             [missile-command.missiles :as missiles]
             [missile-command.jvm.input :as input]
             [missile-command.jvm.persist :as persist]
             [missile-command.jvm.render :as render]
+            [missile-command.jvm.scores-store :as scores-store]
             [missile-command.jvm.window :as window]))
 
 (def default-width 800)
@@ -22,12 +24,14 @@
          :qa-targets []
          :qa-enemies []
          :qa-fireballs []
+         :scores-file nil
          :launch-anchor nil
          :restore-focus-app nil}))
 
 (defonce pending-qa-events (atom []))
 (defonce fireball-phases (atom {}))
 (defonce last-frame-ms (atom nil))
+(defonce initials-draft (atom ""))
 
 (defn configure!
   [opts]
@@ -39,6 +43,7 @@
                                             :qa-targets
                                             :qa-enemies
                                             :qa-fireballs
+                                            :scores-file
                                             :launch-anchor
                                             :restore-focus-app]))
   (reset! pending-qa-events
@@ -46,13 +51,38 @@
             (input/load-qa-events path)
             []))
   (reset! fireball-phases {})
-  (reset! last-frame-ms nil))
+  (reset! last-frame-ms nil)
+  (reset! initials-draft ""))
+
+(defn- scores-file-path
+  []
+  (scores-store/scores-path @launch-options))
 
 (defn- emit!
   [line]
   (when (:qa-telemetry? @launch-options)
     (println line)
     (flush)))
+
+(defn- emit-sim!
+  [state]
+  (emit! (input/format-sim-telemetry-line
+          (assoc state :initials-draft @initials-draft))))
+
+(defn- persist-scores!
+  [state]
+  (try
+    (scores-store/save-table! (scores-file-path) state)
+    (catch Exception e
+      (binding [*out* *err*]
+        (println "high-score save failed:" (.getMessage e)))))
+  state)
+
+(defn- load-persisted-scores
+  [state]
+  (scores-store/apply-loaded
+   state
+   (scores-store/load-table (scores-file-path))))
 
 (defn- emit-telemetry-fire!
   [result]
@@ -69,10 +99,16 @@
 
 (defn- apply-handle
   [state command]
-  (let [result (core/handle state command)]
+  (let [result (core/handle state command)
+        state' (:state result)]
     (when (#{:fire :click} (:type command))
       (emit-telemetry-fire! result))
-    (:state result)))
+    (when (and (= :submit-high-score (:type command))
+               (not (core/high-score-entry? state'))
+               (core/high-score-entry? state))
+      (reset! initials-draft "")
+      (persist-scores! state'))
+    state'))
 
 (defn- apply-destroy-options
   [state]
@@ -154,6 +190,7 @@
   (reset! last-frame-ms (System/currentTimeMillis))
   (let [state (-> (core/new-game {:width (q/width) :height (q/height)})
                   persist/load-into
+                  load-persisted-scores
                   apply-destroy-options
                   apply-qa-scenario
                   apply-qa-targets
@@ -166,7 +203,7 @@
                 (ensure-wave-enemies state)
                 state)]
     (when (:qa-telemetry? @launch-options)
-      (emit! (input/format-sim-telemetry-line state)))
+      (emit-sim! state))
     state))
 
 (defn- frame-dt-seconds
@@ -220,14 +257,14 @@
     (when (and (:qa-telemetry? @launch-options)
                (or active? completed-any? wave-changed? end-sequence?
                    screen-changed?))
-      (emit! (input/format-sim-telemetry-line state')))
+      (emit-sim! state'))
     (when (and (:qa-telemetry? @launch-options)
                (core/last-enemy-fate state')
                (empty? (core/enemy-missiles state'))
                (empty? (core/fireballs state'))
                (not= (:last-emitted-fate @launch-options)
                      (core/last-enemy-fate state')))
-      (emit! (input/format-sim-telemetry-line state'))
+      (emit-sim! state')
       (swap! launch-options assoc :last-emitted-fate (core/last-enemy-fate state')))
     state'))
 
@@ -274,7 +311,7 @@
                                s)]
                        (when (and (:qa-telemetry? @launch-options)
                                   (not= (core/screen state) (core/screen s)))
-                         (emit! (input/format-sim-telemetry-line s)))
+                         (emit-sim! s))
                        s)
               :aim (apply-handle state (input/aim-command (:x ev) (:y ev)))
               :start (let [s (apply-handle state {:type :start})
@@ -287,30 +324,62 @@
                                               @pending-qa-events))
                                ensure-wave-enemies)]
                        (when (:qa-telemetry? @launch-options)
-                         (emit! (input/format-sim-telemetry-line s)))
+                         (emit-sim! s))
                        s)
               :confirm (let [s (apply-handle state {:type :confirm})]
                          (when (:qa-telemetry? @launch-options)
-                           (emit! (input/format-sim-telemetry-line s)))
+                           (emit-sim! s))
                          s)
               :pause (let [s (apply-handle state {:type :pause})]
                        (when (:qa-telemetry? @launch-options)
-                         (emit! (input/format-sim-telemetry-line s)))
+                         (emit-sim! s))
                        s)
               :resume (let [s (apply-handle state {:type :resume})]
                         (when (:qa-telemetry? @launch-options)
-                          (emit! (input/format-sim-telemetry-line s)))
+                          (emit-sim! s))
                         s)
+              :open-high-scores
+              (let [s (apply-handle state {:type :open-high-scores})]
+                (when (:qa-telemetry? @launch-options) (emit-sim! s))
+                s)
+              :close-high-scores
+              (let [s (apply-handle state {:type :close-high-scores})]
+                (when (:qa-telemetry? @launch-options) (emit-sim! s))
+                s)
+              :submit-high-score
+              (let [s (apply-handle state {:type :submit-high-score
+                                           :initials (:initials ev)})]
+                (when (:qa-telemetry? @launch-options) (emit-sim! s))
+                s)
               :key (cond
                      (input/key-char->command (:ch ev))
                      (apply-handle state (input/key-char->command (:ch ev)))
                      (or (= \p (:ch ev)) (= \P (:ch ev)))
                      (toggle-pause state)
+                     (or (= \h (:ch ev)) (= \H (:ch ev)))
+                     (cond
+                       (core/title? state)
+                       (let [s (apply-handle state {:type :open-high-scores})]
+                         (when (:qa-telemetry? @launch-options) (emit-sim! s))
+                         s)
+                       (core/high-scores-view? state)
+                       (let [s (apply-handle state {:type :close-high-scores})]
+                         (when (:qa-telemetry? @launch-options) (emit-sim! s))
+                         s)
+                       :else state)
                      (or (= \newline (:ch ev)) (= \return (:ch ev)))
                      (cond
                        (core/title? state)
                        (ensure-wave-enemies (apply-handle state {:type :start}))
                        (core/the-end? state) (apply-handle state {:type :confirm})
+                       (core/high-score-entry? state)
+                       (let [draft @initials-draft
+                             s (if (seq draft)
+                                 (apply-handle state {:type :submit-high-score
+                                                      :initials draft})
+                                 state)]
+                         (when (:qa-telemetry? @launch-options) (emit-sim! s))
+                         s)
                        :else state)
                      :else state)
               :enemy (apply-enemy-spec state (:spec ev))
@@ -333,7 +402,7 @@
 
 (defn draw
   [state]
-  (render/draw-world! state)
+  (render/draw-world! state @initials-draft)
   (render/crosshair-at! (q/mouse-x) (q/mouse-y)))
 
 (defn mouse-moved
@@ -355,24 +424,64 @@
     (apply-handle state (input/click-command (q/mouse-x) (q/mouse-y)))
     state))
 
+(defn- initials-char?
+  [ch]
+  (and ch (re-matches #"[A-Za-z0-9]" (str ch))))
+
+(defn- append-initials-draft!
+  [ch]
+  (let [c (str/upper-case (str ch))
+        cur @initials-draft]
+    (when (< (count cur) 3)
+      (reset! initials-draft (str cur c)))))
+
 (defn key-pressed
   [state _event]
   (let [ch (q/raw-key)]
     (cond
       (input/escape-key? ch)
-      (if (or (core/playing? state) (core/paused? state))
+      (cond
+        (or (core/playing? state) (core/paused? state))
         (toggle-pause state)
+        (core/high-scores-view? state)
+        (apply-handle state {:type :close-high-scores})
+        (core/high-score-entry? state)
+        state
+        :else
         (do (persist-settings! state) (q/exit) state))
 
       (or (= \p ch) (= \P ch))
       (toggle-pause state)
+
+      (or (= \h ch) (= \H ch))
+      (cond
+        (core/title? state)
+        (apply-handle state {:type :open-high-scores})
+        (core/high-scores-view? state)
+        (apply-handle state {:type :close-high-scores})
+        :else state)
 
       (or (= \newline ch) (= \return ch) (= (int 10) (int ch)))
       (cond
         (core/title? state)
         (ensure-wave-enemies (apply-handle state {:type :start}))
         (core/the-end? state) (apply-handle state {:type :confirm})
+        (core/high-score-entry? state)
+        (let [draft @initials-draft]
+          (if (seq draft)
+            (apply-handle state {:type :submit-high-score :initials draft})
+            state))
         :else state)
+
+      (and (core/high-score-entry? state) (initials-char? ch))
+      (do (append-initials-draft! ch) state)
+
+      (and (core/high-score-entry? state)
+           (or (= \backspace ch) (= (char 8) ch)))
+      (do (reset! initials-draft
+                  (let [d @initials-draft]
+                    (if (seq d) (subs d 0 (dec (count d))) d)))
+          state)
 
       (input/key-char->command ch)
       (apply-handle state (input/key-char->command ch))

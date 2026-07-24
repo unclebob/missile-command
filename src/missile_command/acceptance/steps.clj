@@ -388,6 +388,13 @@
                   (:state world)
                   (support/example-int example score-param "score"))))}
 
+   {:pattern #"^the score becomes (\d+)$"
+    :fn (fn [world [_ score-text] _]
+          (assoc world :state
+                 (core/set-score
+                  (:state world)
+                  (support/parse-int score-text "score"))))}
+
    {:pattern #"^the bonus city reserve is <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ reserve-param] example]
           (let [expected (support/example-int example reserve-param "reserve")
