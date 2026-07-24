@@ -205,11 +205,12 @@
     (sky! w h)
     (enemies! state)
     (missiles! state)
-    (fireballs! state)
     (targets! state)
     (ground! state)
     (cities! state)
     (batteries! state)
+    ;; Fireballs last among world so city/battery impacts draw on top of scenery.
+    (fireballs! state)
     (hud! state)))
 
 (defn draw-state!
