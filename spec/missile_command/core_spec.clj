@@ -904,3 +904,35 @@
     (should-not (@#'core/smart-bomb-edge-band? 20.0 40.0)))
 )
 
+(describe "title screen"
+  (it "starts a new game on the title screen"
+    (let [state (core/new-game {:width 800 :height 600})]
+      (should (core/title? state))
+      (should-not (core/playing? state))
+      (should= "Missile Command" (core/title-game-name-of state))
+      (should (core/title-shows-start-affordance? state))))
+
+  (it "starts playing from title and ignores fire until started"
+    (let [title (core/new-game {:width 800 :height 600})
+          fired (:state (core/handle title {:type :fire :battery :left}))
+          started (:state (core/handle title {:type :start}))
+          clicked (:state (core/handle title {:type :click :x 100 :y 100}))]
+      (should (core/title? fired))
+      (should (empty? (core/defensive-missiles fired)))
+      (should (core/playing? started))
+      (should= 0 (core/score started))
+      (should= 1 (core/wave started))
+      (should (core/playing? clicked))))
+
+  (it "returns to title when THE END is confirmed"
+    (let [ended (core/evaluate-game-over
+                 (reduce core/destroy-city
+                         (core/new-game {:width 800 :height 600})
+                         (range 6)))
+          ;; ensure no bonus reserve
+          ended (core/set-bonus-city-reserve ended 0)
+          ended (core/evaluate-game-over ended)
+          back (:state (core/handle ended {:type :confirm}))]
+      (should (core/the-end? ended))
+      (should (core/title? back)))))
+

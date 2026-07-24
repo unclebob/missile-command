@@ -670,21 +670,31 @@
       (fire-battery aimed battery-id)
       (no-events aimed))))
 
+(defn- handle-click
+  [state x y]
+  (cond
+    (title? state) (no-events (start-game state))
+    (the-end? state) (no-events (confirm-end-screen state))
+    :else (click-fire state x y)))
+
+(defn- unsupported-command
+  [command]
+  (throw (ex-info (str "unsupported command: " (:type command))
+                  {:command command})))
+
+(def ^:private command-handlers
+  {:aim (fn [state cmd] (aim state (:x cmd) (:y cmd)))
+   :fire (fn [state cmd] (fire-battery state (:battery cmd)))
+   :click (fn [state cmd] (handle-click state (:x cmd) (:y cmd)))
+   :start (fn [state _] (no-events (start-game state)))
+   :confirm (fn [state _] (no-events (confirm-end-screen state)))})
+
 (defn handle
   "Apply a player command. Returns {:state s :events [...]}."
   [state command]
-  (case (:type command)
-    :aim (aim state (:x command) (:y command))
-    :fire (fire-battery state (:battery command))
-    :click (if (title? state)
-             (no-events (start-game state))
-             (if (the-end? state)
-               (no-events (confirm-end-screen state))
-               (click-fire state (:x command) (:y command))))
-    :start (no-events (start-game state))
-    :confirm (no-events (confirm-end-screen state))
-    (throw (ex-info (str "unsupported command: " (:type command))
-                    {:command command}))))
+  (if-let [handler (get command-handlers (:type command))]
+    (handler state command)
+    (unsupported-command command)))
 
 (defn- spawn-fireball-at
   "Allocate and attach a expanding fireball centered at x,y."
