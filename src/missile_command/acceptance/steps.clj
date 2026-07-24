@@ -387,8 +387,8 @@
     :fn (fn [world [_ reserve-param] example]
           (let [expected (support/example-int example reserve-param "reserve")
                 actual (core/bonus-cities (:state world))]
-            (assert-condition (= expected actual)
-                              (str "bonus city reserve " actual " expected " expected)))
+            (support/assert-condition (= expected actual)
+                                      (str "bonus city reserve " actual " expected " expected)))
           world)}
 
    {:pattern #"^the bonus city reserve is set to <([A-Za-z0-9_]+)>$"
@@ -407,11 +407,10 @@
     :fn (fn [world [_ count-param] example]
           (let [expected (support/example-int example count-param "event count")
                 actual (core/bonus-city-earned-events (:state world))]
-            (assert-condition (= expected actual)
-                              (str "bonus city earned events " actual
-                                   " expected " expected)))
+            (support/assert-condition (= expected actual)
+                                      (str "bonus city earned events " actual
+                                           " expected " expected)))
           world)}
-
    {:pattern #"^city (\d+) has been destroyed$"
     :fn (fn [world [_ city-text] _]
           (assoc world :state

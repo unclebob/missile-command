@@ -135,20 +135,23 @@
   [state]
   (waves/multiplier (wave state)))
 
+(defn- long-state
+  [state k default]
+  (long (or (get state k) default)))
+
 (defn bonus-cities
   "Bonus cities held in reserve (not yet placed on the playfield)."
   [state]
-  (long (or (:bonus-cities state) initial-bonus-cities)))
+  (long-state state :bonus-cities initial-bonus-cities))
 
 (defn bonus-city-threshold
   [state]
-  (long (or (:bonus-city-threshold state) default-bonus-city-threshold)))
+  (long-state state :bonus-city-threshold default-bonus-city-threshold))
 
 (defn bonus-city-earned-events
   "How many threshold-crossing awards have been recorded this run."
   [state]
-  (long (or (:bonus-city-earned-events state) initial-bonus-city-earned-events)))
-
+  (long-state state :bonus-city-earned-events initial-bonus-city-earned-events))
 (defn wave-complete?
   [state]
   (boolean (:wave-complete? state)))
@@ -416,16 +419,19 @@
                         target))
                     (or targets []))))))
 
+(defn- assoc-long
+  [state k v]
+  (assoc state k (long v)))
+
 (defn set-bonus-city-threshold
   "Test/setup helper: configure the score interval for bonus city awards."
   [state threshold]
-  (assoc state :bonus-city-threshold (long threshold)))
+  (assoc-long state :bonus-city-threshold threshold))
 
 (defn set-bonus-city-reserve
   "Test/setup helper: set bonus cities currently held in reserve."
   [state n]
-  (assoc state :bonus-cities (long n)))
-
+  (assoc-long state :bonus-cities n))
 (defn- lowest-destroyed-city-id
   [state]
   (->> (cities state)
@@ -438,15 +444,14 @@
   "Place reserve cities onto destroyed slots while living cities stay under max."
   [state]
   (loop [s state]
-    (if (and (pos? (bonus-cities s))
-             (< (count (living-cities s)) max-living-cities)
-             (lowest-destroyed-city-id s))
-      (let [id (lowest-destroyed-city-id s)]
+    (let [id (when (and (pos? (bonus-cities s))
+                        (< (count (living-cities s)) max-living-cities))
+               (lowest-destroyed-city-id s))]
+      (if id
         (recur (-> s
                    (update-city id cities/restore)
-                   (update :bonus-cities dec))))
-      s)))
-
+                   (update :bonus-cities dec)))
+        s))))
 (defn- thresholds-crossed
   [score-value threshold]
   (if (pos? threshold)
@@ -504,10 +509,10 @@
       (impact-target enemy)
       (spawn-impact-fireball enemy)
       (assoc :last-enemy-fate :impact)))
+
 (defn- keep-flying-enemy
   [state enemy]
   (update state :enemy-missiles (fnil conj []) enemy))
-
 (defn- tick-one-enemy
   [state enemy dt fireballs]
   (cond
