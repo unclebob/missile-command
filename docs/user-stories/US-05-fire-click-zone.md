@@ -1,6 +1,6 @@
 # US-05 — Fire by click zone
 
-**Status:** in-implementation  
+**Status:** done  
 **Depends on:** US-04  
 **Design:** §4.2, §5.3
 

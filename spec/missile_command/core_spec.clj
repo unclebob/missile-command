@@ -194,6 +194,44 @@
           after (:state (core/handle state {:type :click :x 500 :y 100}))]
       (should= :left (:battery (first (core/defensive-missiles after)))))))
 
+(describe "enemy missiles"
+  (it "destroys a city on impact"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (core/spawn-enemy-targeting-city 0))
+          after (loop [s state n 0]
+                  (if (or (empty? (core/enemy-missiles s)) (> n 2000))
+                    s
+                    (recur (:state (core/tick s 0.05)) (inc n))))]
+      (should-not (core/living-city? after 0))
+      (should= 5 (count (core/living-cities after)))
+      (should= :impact (core/last-enemy-fate after))))
+
+  (it "destroys a battery on impact"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (core/spawn-enemy-targeting-battery :left))
+          after (loop [s state n 0]
+                  (if (or (empty? (core/enemy-missiles s)) (> n 2000))
+                    s
+                    (recur (:state (core/tick s 0.05)) (inc n))))]
+      (should (:destroyed? (core/battery after :left)))
+      (should= :impact (core/last-enemy-fate after))))
+
+  (it "is destroyed by a fireball without impacting its target"
+    (let [city (first (core/cities (core/new-game {:width 800 :height 600})))
+          state (-> (core/new-game {:width 800 :height 600})
+                    (core/spawn-enemy-targeting-city (:id city))
+                    (core/add-static-fireball (:x city) 200 50)
+                    (core/route-enemy-through-point (:x city) 200))
+          after (loop [s state n 0]
+                  (if (or (empty? (core/enemy-missiles s))
+                          (= :fireball (core/last-enemy-fate s))
+                          (> n 2000))
+                    s
+                    (recur (:state (core/tick s 0.01)) (inc n))))]
+      (should= :fireball (core/last-enemy-fate after))
+      (should (core/living-city? after (:id city)))
+      (should= 0 (count (core/enemy-missiles after))))))
+
 (describe "tick defensive missiles and fireballs"
   (it "advances defensive missiles toward the aim point"
     (let [state (-> (core/new-game {:width 800 :height 600})
