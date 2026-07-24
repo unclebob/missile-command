@@ -49,10 +49,9 @@
       (str/trim cmd))))
 
 (defn discover-launch-command
-  "Optional documented app launch (README section for run/start/app)."
+  "Optional documented app launch (README Launch / Run / Play section)."
   [doc]
-  (when (or (re-find #"(?m)^### (Run|Start|Launch|Application|Play)\b" doc)
-            (re-find #"(?mi)^## (Run the game|Start the app|Launch)\b" doc))
+  (when (re-find #"(?m)^### (Run|Start|Launch|Application|Play)\b" doc)
     (when-let [[_ cmd] (re-find #"(?ms)^### (?:Run|Start|Launch|Application|Play)[^\n]*\n+```sh\s*\n([^\n`]+)\n```" doc)]
       (str/trim cmd))))
 

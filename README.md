@@ -64,6 +64,17 @@ bb property
 
 Runs generative property tests (`test-property/`) separately from unit coverage.
 
+### Launch (JVM host)
+
+```sh
+bb play
+```
+
+Opens a resizable Quil window at full playfield resolution (default 800×600;
+optional `bb play 1280 720`). Mouse moves the crosshair (clamped to the playfield).
+Default fire keys: left `Z`/`1`, center `X`/`2`, right `C`/`3`. Esc quits.
+Host only draws and routes input; game rules stay in the pure core.
+
 ### Hardening (mutation / CRAP / DRY)
 
 ```sh
