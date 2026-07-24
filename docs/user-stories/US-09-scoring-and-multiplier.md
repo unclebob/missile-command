@@ -1,6 +1,6 @@
 # US-09 — Score and multiplier
 
-**Status:** backlog  
+**Status:** in-specifier  
 **Depends on:** US-08  
 **Design:** §5.7
 

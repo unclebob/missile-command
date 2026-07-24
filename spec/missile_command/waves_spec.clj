@@ -25,4 +25,16 @@
           same (waves/schedule-metrics 2)]
       (should (waves/harder? low high))
       (should-not (waves/harder? high low))
-      (should-not (waves/harder? same same)))))
+      (should-not (waves/harder? same same))))
+
+  (it "raises multiplier every two waves up to six"
+    (should= 1 (waves/multiplier 1))
+    (should= 1 (waves/multiplier 2))
+    (should= 2 (waves/multiplier 3))
+    (should= 2 (waves/multiplier 4))
+    (should= 3 (waves/multiplier 5))
+    (should= 3 (waves/multiplier 6))
+    (should= 6 (waves/multiplier 11))
+    (should= 6 (waves/multiplier 12))
+    (should= 6 (waves/multiplier 13))
+    (should= 6 (waves/multiplier 20))))

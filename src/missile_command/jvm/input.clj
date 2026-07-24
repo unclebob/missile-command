@@ -268,6 +268,8 @@
               (str "wave_complete=" (boolean (core/wave-complete? state)))
               (str "wave_enemy_count=" (:enemy-count metrics))
               (str "wave_enemy_speed=" (:enemy-speed metrics))
+              (str "score=" (core/score state))
+              (str "multiplier=" (core/multiplier state))
               (str "missiles_in_flight=" (count missiles))
               (str "fireballs=" (count fireballs))
               (str "enemy_missiles=" (count enemies))

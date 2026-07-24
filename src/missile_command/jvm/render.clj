@@ -185,6 +185,7 @@
   [state]
   (let [hud (core/hud state)
         line (str "Wave:" (:wave hud)
+                  "  Mult:" (:multiplier hud) "x"
                   "  Ammo L:" (:missiles (core/battery state :left))
                   " C:" (:missiles (core/battery state :center))
                   " R:" (:missiles (core/battery state :right))
