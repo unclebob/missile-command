@@ -1,8 +1,8 @@
 (ns missile-command.acceptance.enemy-steps
   "Gherkin steps for enemy missiles, angled origins, and fireball interception."
   (:require [missile-command.acceptance.step-support :as support]
-            [missile-command.core :as core]))
-
+            [missile-command.core :as core]
+            [missile-command.waves :as waves]))
 (defn first-enemy-missile
   [state]
   (first (core/enemy-missiles state)))
@@ -355,7 +355,7 @@
     :fn (fn [world [_ wave-param count-param] example]
           (let [w (support/example-int example wave-param "wave")
                 expected (support/example-int example count-param "mirv count")
-                actual (core/wave-mirv-count w)]
+                actual (waves/mirv-count w)]
             (support/assert-condition (= expected actual)
                               (str "wave " w " mirv count " actual
                                    " expected " expected)))
@@ -471,7 +471,7 @@
     :fn (fn [world [_ wave-param count-param] example]
           (let [w (support/example-int example wave-param "wave")
                 expected (support/example-int example count-param "smart count")
-                actual (core/wave-smart-bomb-count w)]
+                actual (waves/smart-bomb-count w)]
             (support/assert-condition (= expected actual)
                               (str "wave " w " smart bomb count " actual
                                    " expected " expected)))
@@ -632,7 +632,7 @@
     :fn (fn [world [_ wave-param count-param] example]
           (let [w (support/example-int example wave-param "wave")
                 expected (support/example-int example count-param "bomber count")
-                actual (core/wave-bomber-count w)]
+                actual (waves/bomber-count w)]
             (support/assert-condition (= expected actual)
                               (str "wave " w " bomber count " actual
                                    " expected " expected)))
@@ -643,7 +643,7 @@
     :fn (fn [world [_ wave-param count-param] example]
           (let [w (support/example-int example wave-param "wave")
                 expected (support/example-int example count-param "satellite count")
-                actual (core/wave-satellite-count w)]
+                actual (waves/satellite-count w)]
             (support/assert-condition (= expected actual)
                               (str "wave " w " satellite count " actual
                                    " expected " expected)))

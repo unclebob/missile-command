@@ -6,6 +6,7 @@
             [missile-command.input :as input]
             [missile-command.missiles :as missiles]
             [missile-command.scoring :as scoring]
+            [missile-command.screens :as screens]
             [missile-command.waves :as waves]
             [missile-command.world :as world]))
 (def initial-score 0)
@@ -20,13 +21,12 @@
 (def clamp-lo 0)
 (def default-crosshair {:x clamp-lo :y clamp-lo})
 (def target-starts-destroyed? wave-flag-off)
-(def screen-title :title)
-(def screen-playing :playing)
-(def screen-the-end :the-end)
+(def screen-title screens/title)
+(def screen-playing screens/playing)
+(def screen-the-end screens/the-end)
 (def end-message-text game-end/message-text)
-(def wrong-end-message-text game-end/wrong-message-text)
-(def title-game-name "Missile Command")
-(def title-start-affordance "Press Enter or click to start")
+(def title-game-name screens/title-game-name)
+(def title-start-affordance screens/title-start-affordance)
 (def end-fireball-expand-seconds missiles/fireball-expand-seconds)
 (def end-fireball-contract-seconds missiles/fireball-contract-seconds)
 
@@ -176,28 +176,28 @@
 
 (defn screen
   [state]
-  (or (:screen state) screen-title))
+  (screens/of state))
 
 (defn title?
   [state]
-  (= screen-title (screen state)))
+  (screens/title? state))
 
 (defn playing?
   [state]
-  (= screen-playing (screen state)))
+  (screens/playing? state))
 
 (defn the-end?
   "True when the run has entered THE END."
   [state]
-  (= screen-the-end (screen state)))
+  (screens/the-end? state))
 
 (defn title-game-name-of
   [state]
-  (or (:title-game-name state) title-game-name))
+  (screens/title-game-name-of state))
 
 (defn title-shows-start-affordance?
   [state]
-  (boolean (and (title? state) (:title-start-affordance state))))
+  (screens/title-shows-start-affordance? state))
 
 (defn start-game
   "Leave title (or any shell) and begin a fresh playing run at current size."
@@ -1124,13 +1124,8 @@
 (defn- wave-target-pool
   "Eligible wave targets: living cities then non-destroyed batteries."
   [state]
-  (into (mapv (fn [c] [:city (:id c)]) (living-cities state))
-        (mapv (fn [b] [:battery (:id b)]) (non-destroyed-batteries state))))
-
-(defn- wave-targets-for
-  "Take n targets cycling the eligible city+battery pool."
-  [pool n]
-  (if (seq pool) (vec (take n (cycle pool))) []))
+  (waves/target-pool (mapv :id (living-cities state))
+                     (mapv :id (non-destroyed-batteries state))))
 
 (defn- spawn-wave-enemy
   "Spawn one wave enemy toward a city or battery from a sky origin."
@@ -1144,9 +1139,9 @@
 (defn spawn-wave-enemy-targeting-battery
   "Spawn a single wave-style enemy aimed at a battery from a sky origin."
   [state battery-id]
-  (let [width (playfield-width state)
-        ox (waves/sky-origin-x width 0 1)]
-    (spawn-wave-enemy state ox [:battery battery-id])))
+  (spawn-wave-enemy state
+                    (waves/sky-origin-x (playfield-width state) 0 1)
+                    [:battery battery-id]))
 
 (defn set-wave-enemies-active
   "Replace in-flight enemies with n scheduled wave enemies.
@@ -1157,8 +1152,7 @@
                      :enemy-missiles []
                      :wave-complete? wave-starts-complete?
                      :wave-had-enemies? active?)
-        pool (wave-target-pool state)
-        targets (wave-targets-for pool n)
+        targets (waves/cycle-targets (wave-target-pool state) n)
         width (playfield-width state)]
     (reduce (fn [s [i target-spec]]
               (spawn-wave-enemy
@@ -1171,29 +1165,13 @@
   [state ammo]
   (map-living-batteries state #(batteries/set-ammo % ammo)))
 
-(defn wave-schedule-metrics
-  [wave-number]
-  (waves/schedule-metrics wave-number))
+(def wave-schedule-metrics waves/schedule-metrics)
 
-(defn wave-mirv-count
-  [wave-number]
-  (waves/mirv-count wave-number))
 
-(defn wave-smart-bomb-count
-  [wave-number]
-  (waves/smart-bomb-count wave-number))
 
-(defn wave-bomber-count
-  [wave-number]
-  (waves/bomber-count wave-number))
 
-(defn wave-satellite-count
-  [wave-number]
-  (waves/satellite-count wave-number))
 
-(defn harder-wave?
-  [low-metrics high-metrics]
-  (waves/harder? low-metrics high-metrics))
+(def harder-wave? waves/harder?)
 
 (defn set-wave
   "Test helper: jump to a wave number without auto-completing."
