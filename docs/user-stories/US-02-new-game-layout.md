@@ -1,6 +1,6 @@
 # US-02 — New game at full resolution
 
-**Status:** backlog  
+**Status:** in-implementation  
 **Depends on:** US-01  
 **Design:** §3.4, §4, §5.2
 
