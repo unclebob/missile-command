@@ -21,7 +21,11 @@
                (set (map :id (core/batteries state))))
       (doseq [b (core/batteries state)]
         (should-not (:destroyed? b))
-        (should= 10 (:missiles b)))))
+        (should= 10 (:missiles b)))
+      (doseq [c (core/cities state)]
+        (should (core/on-ground? state c)))
+      (doseq [b (core/batteries state)]
+        (should (core/on-ground? state b)))))
 
   (it "starts with score zero and a crosshair on the playfield"
     (let [state (core/new-game {:width 800 :height 600})
