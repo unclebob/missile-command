@@ -12,6 +12,13 @@
                   (:state world)
                   (support/example-int example cap-param "capacity"))))}
 
+   {:pattern #"^the high score table capacity is (\d+)$"
+    :fn (fn [world [_ cap-text] _]
+          (assoc world :state
+                 (core/set-high-score-capacity
+                  (:state world)
+                  (support/parse-int cap-text "capacity"))))}
+
    {:pattern #"^a high score entry initials ([A-Za-z0-9]+) with score (\d+)$"
     :fn (fn [world [_ initials score-text] _]
           (assoc world :state
@@ -26,6 +33,11 @@
                  (core/submit-high-score-initials
                   (:state world)
                   (support/require-value example initials-param))))}
+
+   {:pattern #"^the player enters high score initials (\S+)$"
+    :fn (fn [world [_ initials] _]
+          (assoc world :state
+                 (core/submit-high-score-initials (:state world) initials)))}
 
    {:pattern #"^the player opens high scores from the title$"
     :fn (fn [world _ _]
@@ -71,6 +83,21 @@
     :fn (fn [world [_ rank-param init-param score-param] example]
           (let [rank (support/example-int example rank-param "rank")
                 initials (str (support/require-value example init-param))
+                score (support/example-int example score-param "score")
+                entry (high-scores/entry-at-rank
+                       (core/high-score-table (:state world)) rank)]
+            (support/assert-condition entry (str "missing rank " rank))
+            (support/assert-condition (= initials (:initials entry))
+                                      (str "rank " rank " initials "
+                                           (:initials entry) " expected " initials))
+            (support/assert-condition (= score (:score entry))
+                                      (str "rank " rank " score "
+                                           (:score entry) " expected " score)))
+          world)}
+
+   {:pattern #"^the high score at rank <([A-Za-z0-9_]+)> has initials ([A-Za-z0-9]+) and score <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ rank-param initials score-param] example]
+          (let [rank (support/example-int example rank-param "rank")
                 score (support/example-int example score-param "score")
                 entry (high-scores/entry-at-rank
                        (core/high-score-table (:state world)) rank)]
@@ -134,10 +161,26 @@
                                       (str "table still includes score " dropped)))
           world)}
 
+   {:pattern #"^the high score table does not include score (\d+)$"
+    :fn (fn [world [_ score-text] _]
+          (let [dropped (support/parse-int score-text "dropped")
+                scores (set (map :score (core/high-score-table (:state world))))]
+            (support/assert-condition (not (contains? scores dropped))
+                                      (str "table still includes score " dropped)))
+          world)}
+
    {:pattern #"^the submitted high score initials are <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ init-param] example]
           (let [expected (str (support/require-value example init-param))
                 actual (core/submitted-high-score-initials (:state world))]
+            (support/assert-condition (= expected actual)
+                                      (str "submitted initials " actual
+                                           " expected " expected)))
+          world)}
+
+   {:pattern #"^the submitted high score initials are ([A-Za-z0-9]+)$"
+    :fn (fn [world [_ expected] _]
+          (let [actual (core/submitted-high-score-initials (:state world))]
             (support/assert-condition (= expected actual)
                                       (str "submitted initials " actual
                                            " expected " expected)))
@@ -151,4 +194,18 @@
             (support/assert-condition (= expected actual)
                                       (str "initials length " actual
                                            " expected " expected)))
+          world)}
+
+   {:pattern #"^the submitted high score initials length is (\d+)$"
+    :fn (fn [world [_ len-text] _]
+          (let [expected (support/parse-int len-text "length")
+                actual (count (str (core/submitted-high-score-initials
+                                    (:state world))))]
+            (support/assert-condition (= expected actual)
+                                      (str "initials length " actual
+                                           " expected " expected)))
           world)}])
+
+;; clj-mutate-manifest-begin
+;; {:version 1, :tested-at "2026-07-24T16:15:05.37032-05:00", :module-hash "1595908171", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 5, :hash "310236069"} {:id "def/handlers", :kind "def", :line 7, :end-line 207, :hash "-1536237044"}]}
+;; clj-mutate-manifest-end

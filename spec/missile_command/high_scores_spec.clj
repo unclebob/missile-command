@@ -31,7 +31,13 @@
       (should (hs/ordered? table))
       (should= "AAA" (:initials (hs/entry-at-rank table 1)))
       (should= "BOB" (:initials (hs/entry-at-rank table 2)))
-      (should= 750 (:score (hs/entry-at-rank table 2))))))
+      (should= 750 (:score (hs/entry-at-rank table 2)))))
+
+  (it "clamps insert capacity to at least one entry"
+    (let [table (hs/insert [] 0 "AAA" 100)]
+      (should= 1 (count table))
+      (should= "AAA" (:initials (first table)))
+      (should= 100 (:score (first table))))))
 
 (describe "high-score screens"
   (it "opens entry for a qualifying score after THE END confirm"
@@ -82,4 +88,17 @@
                     (core/add-high-score-entry "AAA" 1000)
                     core/open-high-scores)]
       (should (core/high-scores-view? state))
-      (should= "AAA" (:initials (first (core/high-score-table state)))))))
+      (should= "AAA" (:initials (first (core/high-score-table state))))))
+
+  (it "closes high scores view only when viewing"
+    (let [viewed (-> (core/new-game {:width 800 :height 600})
+                     (core/add-high-score-entry "AAA" 1000)
+                     core/open-high-scores)
+          closed (core/close-high-scores viewed)
+          playing (core/start-game (core/new-game {:width 800 :height 600}))
+          ignored (core/close-high-scores playing)]
+      (should (core/high-scores-view? viewed))
+      (should (core/title? closed))
+      (should-not (core/high-scores-view? closed))
+      (should (core/playing? ignored))
+      (should= (core/screen playing) (core/screen ignored)))))
