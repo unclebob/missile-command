@@ -595,7 +595,45 @@
            (= :impact (core/last-enemy-fate after))
            (= 5 living)
            (= (+ score0 expected) (core/score after))))))
-(defspec wave-stays-incomplete-while-enemies-remain
+
+(defspec score-threshold-awards-bonus-city-reserve
+  30
+  (for-all [n (gen/elements [1 2 3])]
+    (let [threshold 10000
+          state (-> (core/new-game {:width 800 :height 600})
+                    (core/set-bonus-city-threshold threshold)
+                    (core/set-score (* n threshold)))]
+      (and (= (* n threshold) (core/score state))
+           (= n (core/bonus-cities state))
+           (= n (core/bonus-city-earned-events state))
+           (= 6 (count (core/living-cities state)))))))
+
+(defspec bonus-city-restores-destroyed-without-exceeding-six
+  25
+  (for-all [city-id city-index-gen]
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (core/destroy-city city-id)
+                    (core/set-bonus-city-threshold 10000)
+                    (core/set-score 10000))]
+      (and (core/living-city? state city-id)
+           (zero? (core/bonus-cities state))
+           (= 6 (count (core/living-cities state)))
+           (= 1 (core/bonus-city-earned-events state))))))
+
+(defspec living-cities-never-exceed-layout-count
+  20
+  (for-all [n (gen/elements [1 2 3 4])]
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (core/destroy-city 0)
+                    (core/destroy-city 1)
+                    (core/set-bonus-city-threshold 1000)
+                    (core/set-score (* n 1000)))
+          living (count (core/living-cities state))
+          reserve (core/bonus-cities state)]
+      (and (<= living 6)
+           (= living (min 6 (+ 4 n)))
+           (= reserve (max 0 (- (+ 4 n) 6)))
+           (= n (core/bonus-city-earned-events state))))))(defspec wave-stays-incomplete-while-enemies-remain
   25
   (for-all [n (gen/elements [1 2 3])]
     (let [before (core/set-wave-enemies-active

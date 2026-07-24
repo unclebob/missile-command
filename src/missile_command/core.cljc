@@ -9,6 +9,9 @@
 
 (def initial-score 0)
 (def initial-entity-id 0)
+(def initial-bonus-cities 0)
+(def initial-bonus-cities-awarded 0)
+(def initial-bonus-city-earned-events 0)
 (def wave-flag-off false)
 (def wave-flag-on true)
 (def wave-starts-complete? wave-flag-off)
@@ -62,6 +65,10 @@
           :fireballs []
           :enemy-missiles []
           :destroyable-targets []
+          :bonus-cities initial-bonus-cities
+          :bonus-city-threshold scoring/default-bonus-city-threshold
+          :bonus-cities-awarded initial-bonus-cities-awarded
+          :bonus-city-earned-events initial-bonus-city-earned-events
           :sim-time 0.0
           :last-applied-dt 0.0
           :last-enemy-fate nil
@@ -127,6 +134,24 @@
   [state]
   (waves/multiplier (wave state)))
 
+(defn- long-state
+  [state k default]
+  (long (or (get state k) default)))
+
+(defn bonus-cities
+  "Bonus cities held in reserve (not yet placed on the playfield)."
+  [state]
+  (long-state state :bonus-cities initial-bonus-cities))
+
+(defn bonus-city-threshold
+  [state]
+  (long-state state :bonus-city-threshold scoring/default-bonus-city-threshold))
+
+(defn bonus-city-earned-events
+  "How many threshold-crossing awards have been recorded this run."
+  [state]
+  (long-state state :bonus-city-earned-events initial-bonus-city-earned-events))
+
 (defn wave-complete?
   [state]
   (boolean (:wave-complete? state)))
@@ -136,7 +161,8 @@
   [state]
   {:wave (wave state)
    :score (score state)
-   :multiplier (multiplier state)})
+   :multiplier (multiplier state)
+   :bonus-cities (bonus-cities state)})
 
 (defn defensive-missiles
   [state]
@@ -394,9 +420,68 @@
                         target))
                     (or targets []))))))
 
+(defn- assoc-long
+  [state k v]
+  (assoc state k (long v)))
+
+(defn set-bonus-city-threshold
+  "Test/setup helper: configure the score interval for bonus city awards."
+  [state threshold]
+  (assoc-long state :bonus-city-threshold threshold))
+
+(defn set-bonus-city-reserve
+  "Test/setup helper: set bonus cities currently held in reserve."
+  [state n]
+  (assoc-long state :bonus-cities n))
+
+(defn- lowest-destroyed-city-id
+  [state]
+  (->> (cities state)
+       (remove :alive?)
+       (map :id)
+       sort
+       first))
+
+(defn apply-bonus-cities-from-reserve
+  "Place reserve cities onto destroyed slots while living cities stay under max."
+  [state]
+  (loop [s state]
+    (let [id (when (and (pos? (bonus-cities s))
+                        (< (count (living-cities s)) world/city-count))
+               (lowest-destroyed-city-id s))]
+      (if id
+        (recur (-> s
+                   (update-city id cities/restore)
+                   (update :bonus-cities dec)))
+        s))))
+
+(defn- sync-bonus-cities-from-score
+  "Award reserve cities for newly crossed score thresholds and place if room."
+  [state]
+  (let [threshold (bonus-city-threshold state)
+        already (long (or (:bonus-cities-awarded state) initial-bonus-cities-awarded))
+        new-awards (scoring/new-bonus-city-awards (score state) threshold already)
+        earned (scoring/thresholds-crossed (score state) threshold)]
+    (if (pos? new-awards)
+      (-> state
+          (assoc :bonus-cities-awarded earned)
+          (update :bonus-cities (fnil + initial-bonus-cities) new-awards)
+          (update :bonus-city-earned-events
+                  (fnil + initial-bonus-city-earned-events) new-awards)
+          apply-bonus-cities-from-reserve)
+      state)))
 (defn- add-score
   [state points]
-  (update state :score (fnil + initial-score) (long points)))
+  (-> state
+      (update :score (fnil + initial-score) (long points))
+      sync-bonus-cities-from-score))
+
+(defn set-score
+  "Test/setup helper: set absolute score and process bonus city thresholds."
+  [state score-value]
+  (-> state
+      (assoc :score (long score-value))
+      sync-bonus-cities-from-score))
 
 (defn- destroy-enemy-by-fireball
   [state]
@@ -419,7 +504,6 @@
 (defn- keep-flying-enemy
   [state enemy]
   (update state :enemy-missiles (fnil conj []) enemy))
-
 (defn- tick-one-enemy
   [state enemy dt fireballs]
   (cond
@@ -474,6 +558,7 @@
   [state]
   (-> state
       award-wave-end-bonuses
+      apply-bonus-cities-from-reserve
       (assoc :wave-complete? wave-flag-on
              :wave-had-enemies? wave-starts-with-enemies?)
       (update :wave (fnil inc waves/initial-wave))))
