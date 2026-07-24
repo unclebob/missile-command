@@ -6,6 +6,7 @@
             [missile-command.core :as core]
             [missile-command.missiles :as missiles]
             [missile-command.jvm.input :as input]
+            [missile-command.jvm.persist :as persist]
             [missile-command.jvm.render :as render]
             [missile-command.jvm.window :as window]))
 
@@ -122,6 +123,14 @@
     (input/apply-scenario state (input/load-scenario-edn path))
     state))
 
+(defn- persist-settings!
+  [state]
+  (try
+    (persist/save-settings! state)
+    (catch Exception _
+      nil))
+  state)
+
 (defn- spawn-scheduled-wave-enemies
   "Launch the current wave's scheduled enemy count (cities only)."
   [state]
@@ -144,6 +153,7 @@
   (configure-display!)
   (reset! last-frame-ms (System/currentTimeMillis))
   (let [state (-> (core/new-game {:width (q/width) :height (q/height)})
+                  persist/load-into
                   apply-destroy-options
                   apply-qa-scenario
                   apply-qa-targets
@@ -239,6 +249,7 @@
 
           :quit
           (do (reset! pending-qa-events [])
+              (persist-settings! state)
               (q/exit)
               state)
 
@@ -315,8 +326,8 @@
       (cond
         (core/playing? state) (apply-handle state {:type :pause})
         (core/paused? state) (apply-handle state {:type :resume})
-        (core/title? state) (do (q/exit) state)
-        :else (do (q/exit) state))
+        (core/title? state) (do (persist-settings! state) (q/exit) state)
+        :else (do (persist-settings! state) (q/exit) state))
 
       (or (= \p ch) (= \P ch))
       (cond
