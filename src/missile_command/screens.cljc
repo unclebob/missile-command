@@ -7,6 +7,7 @@
 (def high-score-entry :high-score-entry)
 (def high-scores :high-scores)
 (def options :options)
+(def wave-banner :wave-banner)
 
 (def title-game-name "Missile Command")
 (def title-start-affordance "Press Enter or click to start")
@@ -42,6 +43,10 @@
 (defn options?
   [state]
   (= options (of state)))
+
+(defn wave-banner?
+  [state]
+  (= wave-banner (of state)))
 
 (defn title-game-name-of
   [state]

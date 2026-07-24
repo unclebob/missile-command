@@ -11,6 +11,7 @@
             [missile-command.high-scores :as high-scores]
             [missile-command.options :as options]
             [missile-command.sfx :as sfx]
+            [missile-command.wave-banner :as wave-banner]
             [missile-command.waves :as waves]
             [missile-command.world :as world]))
 (def initial-score 0)
@@ -238,6 +239,13 @@
 (def bind-fire-key options/bind-fire-key-state)
 (def fire-key-includes? options/fire-key-includes-state?)
 (def pause-key-includes? options/pause-key-includes-state?)
+(def wave-banner? wave-banner/screen?)
+(def wave-banner wave-banner/of)
+(def wave-banner-text wave-banner/text)
+(def wave-banner-announced-wave wave-banner/announced-wave)
+(def wave-banner-phase wave-banner/phase)
+(def wave-banner-text-position wave-banner/text-position)
+(def wave-banner-distance-to-center wave-banner/distance-to-center)
 
 (defn export-settings
   "Serializable high scores and options for host persistence."
@@ -789,7 +797,6 @@
   (if-let [handler (get command-handlers (:type command))]
     (handler state command)
     (unsupported-command command)))
-
 (defn press-key
   "Apply a remappable key: fire mapped battery when playing, else no-op result."
   [state key]
@@ -1191,20 +1198,20 @@
               (count (living-cities state))
               (multiplier state))))
 
-(defn- mark-wave-complete
-  [state]
-  (-> state
-      award-wave-end-bonuses
-      apply-bonus-cities-from-reserve
-      (assoc :wave-complete? wave-flag-on
-             :wave-had-enemies? wave-starts-with-enemies?)
-      (update :wave (fnil inc waves/initial-wave))
-      (sfx/emit :sfx/wave-clear)))
-
 (defn- maybe-complete-wave
-  "When all active wave enemies are gone, mark the wave complete and advance."
+  "When all active wave enemies are gone, mark complete, announce next wave banner."
   [state]
-  (if (wave-ready-to-complete? state) (mark-wave-complete state) state))
+  (if (wave-ready-to-complete? state)
+    (-> state
+        award-wave-end-bonuses
+        apply-bonus-cities-from-reserve
+        (assoc :wave-complete? wave-flag-on
+               :wave-had-enemies? wave-starts-with-enemies?)
+        (update :wave (fnil inc waves/initial-wave))
+        (#(wave-banner/enter % (wave %)))
+        (sfx/emit :sfx/wave-clear))
+    state))
+
 
 (defn- transform-living-battery
   [battery f]
@@ -1270,18 +1277,13 @@
   (map-living-batteries state #(batteries/set-ammo % ammo)))
 
 (def wave-schedule-metrics waves/schedule-metrics)
-
-(defn wave-schedule-metrics-for
-  "Wave schedule metrics using the state's difficulty preset."
-  [state wave-number]
-  (waves/schedule-metrics wave-number (difficulty state)))
+(def wave-schedule-metrics-for waves/schedule-metrics-for-state)
 
 (def wave-mirv-count waves/mirv-count)
 (def wave-smart-bomb-count waves/smart-bomb-count)
 (def wave-bomber-count waves/bomber-count)
 (def wave-satellite-count waves/satellite-count)
 (def harder-wave? waves/harder?)
-
 (defn set-wave
   "Test helper: jump to a wave number without auto-completing."
   [state wave-number]
@@ -1293,9 +1295,10 @@
          :flyers []))
 
 (defn start-next-wave
-  "Begin the next wave: rearm survivors; wave number already advanced on complete."
+  "Begin the next wave: rearm survivors; leave banner; wave number already advanced."
   [state]
   (-> state
+      wave-banner/clear
       (assoc :wave-complete? wave-starts-complete?
              :wave-had-enemies? wave-starts-with-enemies?)
       (rearm-surviving-batteries)))
@@ -1308,8 +1311,8 @@
 
 (defn tick
   "Advance simulation by dt seconds (clamped). Returns {:state s :events [...]}.
-  Playing runs combat; THE END expands the end fireball; paused freezes;
-  other shell screens (title, high-scores, options) advance the clock only."
+  Playing runs combat; wave-banner animates then resumes; THE END expands the
+  end fireball; paused freezes; other shells advance the clock only."
   [state dt]
   (let [applied (missiles/clamp-dt dt)]
     (cond
@@ -1324,6 +1327,12 @@
                       (maybe-complete-wave)
                       (evaluate-game-over))]
         {:state state :events []})
+
+      (wave-banner? state)
+      {:state (-> state
+                  (advance-clock applied)
+                  (wave-banner/tick applied start-next-wave))
+       :events []}
 
       (the-end? state)
       {:state (-> state

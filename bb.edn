@@ -77,6 +77,7 @@
                    "missile_command/high_scores"
                    "missile_command/options"
                    "missile_command/sfx"
+                   "missile_command/wave_banner"
                    "missile_command/acceptance"
                    "missile_command/jvm/input"]))}
 
@@ -101,6 +102,7 @@
                    "src/missile_command/high_scores.cljc"
                    "src/missile_command/options.cljc"
                    "src/missile_command/sfx.cljc"
+                   "src/missile_command/wave_banner.cljc"
                    "src/missile_command/acceptance"
                    "src/missile_command/jvm/input.clj"]))}
 
