@@ -15,33 +15,51 @@
   (atom {:qa-telemetry? false
          :destroy-batteries []
          :qa-events nil
+         :qa-targets []
          :launch-anchor nil}))
 
-(defonce pending-qa-events
-  (atom []))
+(defonce pending-qa-events (atom []))
+(defonce fireball-phases (atom {}))
+(defonce last-frame-ms (atom nil))
 
 (defn configure!
   [opts]
   (reset! launch-options (select-keys opts [:qa-telemetry?
                                             :destroy-batteries
                                             :qa-events
+                                            :qa-targets
                                             :launch-anchor]))
   (reset! pending-qa-events
           (if-let [path (:qa-events opts)]
             (input/load-qa-events path)
-            [])))
+            []))
+  (reset! fireball-phases {})
+  (reset! last-frame-ms nil))
 
-(defn- emit-telemetry!
-  [result]
+(defn- emit!
+  [line]
   (when (:qa-telemetry? @launch-options)
-    (println (input/format-telemetry-line result))
+    (println line)
     (flush)))
+
+(defn- emit-telemetry-fire!
+  [result]
+  (emit! (input/format-telemetry-line result)))
+
+(defn- emit-fireball-phases!
+  [state]
+  (let [[events next-map] (input/detect-fireball-phase-events
+                           @fireball-phases
+                           (core/fireballs state))]
+    (reset! fireball-phases next-map)
+    (doseq [e events]
+      (emit! (input/format-fireball-phase-line state (:fireball e) (:phase e))))))
 
 (defn- apply-handle
   [state command]
   (let [result (core/handle state command)]
     (when (#{:fire :click} (:type command))
-      (emit-telemetry! result))
+      (emit-telemetry-fire! result))
     (:state result)))
 
 (defn- apply-destroy-options
@@ -51,8 +69,14 @@
           state
           (:destroy-batteries @launch-options)))
 
+(defn- apply-qa-targets
+  [state]
+  (reduce (fn [s {:keys [x y]}]
+            (core/add-destroyable-target s x y))
+          state
+          (:qa-targets @launch-options)))
+
 (defn- configure-display!
-  "Open on the screen where the launch command was typed; do not steal focus."
   []
   (try
     (let [surface (.getSurface (applet/current-applet))
@@ -64,11 +88,34 @@
 
 (defn setup
   []
-  (q/frame-rate 120)
+  (q/frame-rate 60)
   (q/no-cursor)
   (configure-display!)
+  (reset! last-frame-ms (System/currentTimeMillis))
   (-> (core/new-game {:width (q/width) :height (q/height)})
-      apply-destroy-options))
+      apply-destroy-options
+      apply-qa-targets))
+
+(defn- frame-dt-seconds
+  []
+  (let [now (System/currentTimeMillis)
+        prev (or @last-frame-ms now)
+        raw (/ (double (- now prev)) 1000.0)]
+    (reset! last-frame-ms now)
+    (max 0.0 (min raw 0.25))))
+
+(defn- tick-state
+  [state]
+  (let [dt (frame-dt-seconds)
+        result (core/tick state dt)
+        state' (:state result)]
+    (emit-fireball-phases! state')
+    (when (and (:qa-telemetry? @launch-options)
+               (or (seq (core/fireballs state'))
+                   (seq (core/destroyable-targets state'))))
+      ;; Snapshot while fireballs/targets exist (for destroy checks).
+      (emit! (input/format-sim-telemetry-line state')))
+    state'))
 
 (defn- drain-one-qa-event
   [state]
@@ -76,24 +123,42 @@
     (if (empty? events)
       state
       (let [ev (first events)]
-        (reset! pending-qa-events (vec (rest events)))
         (case (:type ev)
-          :click (apply-handle state (input/click-command (:x ev) (:y ev)))
-          :aim (apply-handle state (input/aim-command (:x ev) (:y ev)))
-          :key (if-let [cmd (input/key-char->command (:ch ev))]
-                 (apply-handle state cmd)
-                 state)
-          :quit (do (q/exit) state)
-          state)))))
+          :wait
+          (let [until (or (:until-ms ev)
+                          (+ (System/currentTimeMillis)
+                             (long (* 1000.0 (double (:seconds ev))))))]
+            (if (nil? (:until-ms ev))
+              (do
+                (reset! pending-qa-events
+                        (vec (cons (assoc ev :until-ms until) (rest events))))
+                state)
+              (if (>= (System/currentTimeMillis) until)
+                (do (reset! pending-qa-events (vec (rest events))) state)
+                state)))
+
+          :quit
+          (do (reset! pending-qa-events [])
+              (q/exit)
+              state)
+
+          (do
+            (reset! pending-qa-events (vec (rest events)))
+            (case (:type ev)
+              :click (apply-handle state (input/click-command (:x ev) (:y ev)))
+              :aim (apply-handle state (input/aim-command (:x ev) (:y ev)))
+              :key (if-let [cmd (input/key-char->command (:ch ev))]
+                     (apply-handle state cmd)
+                     state)
+              state)))))))
 
 (defn update-state
   [state]
-  ;; While scripted QA events remain, do not overwrite aim from the OS mouse
-  ;; (often 0,0 before the pointer enters the window).
   (let [scripted? (seq @pending-qa-events)
         state (-> state
                   (input/resize-if-needed (q/width) (q/height)
-                                          core/resize core/playfield-width core/playfield-height))]
+                                          core/resize core/playfield-width core/playfield-height)
+                  tick-state)]
     (if scripted?
       (drain-one-qa-event state)
       (-> state
@@ -114,13 +179,11 @@
   (mouse-moved state event))
 
 (defn- left-button?
-  "True for primary button across quil/Processing event shapes."
   [event]
   (let [b (or (:button event) (q/mouse-button))]
     (or (nil? b) (= b :left) (= b 37) (= (str b) "left"))))
 
 (defn mouse-pressed
-  "Fire on button press (more reliable than mouse-clicked when the pointer moves)."
   [state event]
   (if (left-button? event)
     (apply-handle state (input/click-command (q/mouse-x) (q/mouse-y)))
@@ -139,7 +202,6 @@
       :else state)))
 
 (defn run-sketch!
-  "Open the playfield window and process UI events until quit."
   ([]
    (run-sketch! default-width default-height))
   ([width height]
