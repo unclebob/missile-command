@@ -109,13 +109,15 @@
       (should-not (missiles/point-in-fireball? fb 5.01 0))
       (should-not (missiles/point-in-fireball? fb 20 0))))
 
-  (it "keeps static fireballs fixed forever"
+  (it "keeps static fireballs fixed until TTL expires"
     (let [fb (missiles/make-static-fireball 2 5 6 12.0)
-          later (missiles/advance-fireball fb 10.0)]
-      (should= 12.0 (:radius later))
-      (should= true (:static? later))
+          mid (missiles/advance-fireball fb 0.25)
+          gone (missiles/advance-fireball fb missiles/static-fireball-ttl)]
+      (should= 12.0 (:radius mid))
+      (should= true (:static? mid))
       (should= missiles/static-fireball-flag (:static? fb))
-      (should= later fb))))
+      (should= 0.25 (:age mid))
+      (should= missiles/expired gone))))
 
 (describe "enemy missiles"
   (it "builds a ballistic enemy toward a target"

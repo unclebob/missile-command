@@ -81,6 +81,13 @@
    (:state world)
    (support/example-int example count-param "spawn count"))))}
 
+   {:pattern #"^there is (\d+) enemy missile in flight$"
+    :fn (fn [world [_ count-text] _]
+          (support/assert-count (count (core/enemy-missiles (:state world)))
+                                (support/parse-int count-text "enemy count")
+                                "enemy missiles")
+          world)}
+
    {:pattern #"^there are (\d+) enemy missiles in flight$"
     :fn (fn [world [_ count-text] _]
    (support/assert-count (count (core/enemy-missiles (:state world)))
@@ -219,27 +226,29 @@
 
    {:pattern #"^a fireball at <([A-Za-z0-9_]+)> <([A-Za-z0-9_]+)> with radius <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ x-param y-param r-param] example]
-   (assoc world :state
-   (core/add-static-fireball
-   (:state world)
-   (support/example-int example x-param "x")
-   (support/example-int example y-param "y")
-   (support/example-int example r-param "radius"))))}
+          (let [x (support/example-int example x-param "x")
+                y (support/example-int example y-param "y")
+                r (support/example-int example r-param "radius")]
+            (assoc world
+                   :state (core/add-static-fireball (:state world) x y r)
+                   :fireball-x x
+                   :fireball-y y)))}
 
    {:pattern #"^the enemy missile path passes within distance (\d+) of that fireball center$"
     :fn (fn [world [_ _] _]
-   (assoc world :state
-   (core/route-enemy-through-point
-   (:state world)
-   (:fireball-x world)
-   (:fireball-y world))))}
+          (assoc world :state
+                 (core/route-enemy-through-point
+                  (:state world)
+                  (:fireball-x world)
+                  (:fireball-y world))))}
 
    {:pattern #"^the enemy missile path passes within distance <([A-Za-z0-9_]+)> of that fireball center$"
-    :fn (fn [world [_ _r-param] example]
-   (let [x (support/example-int example "fireball_x" "x")
-   y (support/example-int example "fireball_y" "y")]
-   (assoc world :state (core/route-enemy-through-point (:state world) x y))))}
-
+    :fn (fn [world [_ _r-param] _]
+          (assoc world :state
+                 (core/route-enemy-through-point
+                  (:state world)
+                  (:fireball-x world)
+                  (:fireball-y world))))}
    {:pattern #"^the enemy missile path stays farther than (\d+) from that fireball center$"
     :fn (fn [world _ _]
    ;; Default vertical spawn plus far fireball examples already satisfy this.
@@ -256,8 +265,392 @@
    (str "expected fireball kill, got "
    (core/last-enemy-fate (:state world))))
    world)}
+
+   {:pattern #"^the first enemy missile progress is less than <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ progress-param] example]
+          (let [bound (support/example-double example progress-param "split progress")
+                m (first (core/enemy-missiles (:state world)))
+                actual (double (:progress m 0.0))]
+            (support/assert-condition m "missing enemy missile")
+            (support/assert-lt actual bound
+                       (str "enemy progress " actual " not less than " bound)))
+          world)}
+
+   {:pattern #"^there is (\d+) MIRV parent in flight$"
+    :fn (fn [world [_ count-text] _]
+          (support/assert-count (count (core/mirv-parents (:state world)))
+                        (support/parse-int count-text "mirv parent count")
+                        "MIRV parents")
+          world)}
+
+   {:pattern #"^there are (\d+) MIRV parents in flight$"
+    :fn (fn [world [_ count-text] _]
+          (support/assert-count (count (core/mirv-parents (:state world)))
+                        (support/parse-int count-text "mirv parent count")
+                        "MIRV parents")
+          world)}
+
+   {:pattern #"^every in-flight enemy is a MIRV child warhead$"
+    :fn (fn [world _ _]
+          (let [enemies (core/enemy-missiles (:state world))]
+            (support/assert-condition (seq enemies) "no enemy missiles")
+            (doseq [e enemies]
+              (support/assert-condition (= core/enemy-kind-mirv-child (:enemy-kind e))
+                                (str "enemy " (:id e) " kind "
+                                     (:enemy-kind e) " expected mirv-child"))))
+          world)}
+
+   {:pattern #"^the MIRV child warheads target more than one distinct target$"
+    :fn (fn [world _ _]
+          (let [targets (set (map (juxt :target-kind :target-id)
+                                  (core/mirv-children (:state world))))]
+            (support/assert-condition (< 1 (count targets))
+                              (str "expected multiple child targets, got " targets)))
+          world)}
+
+   {:pattern #"^every MIRV child warhead has progressed toward its target$"
+    :fn (fn [world _ _]
+          (let [children (core/mirv-children (:state world))]
+            (support/assert-condition (seq children) "no MIRV children")
+            (doseq [c children]
+              (support/assert-gt (double (:progress c 0.0)) 0.0
+                         (str "child " (:id c) " has not progressed"))))
+          world)}
+
+   {:pattern #"^time advances until the MIRV has split or all enemies are gone$"
+    :fn (fn [world _ _]
+          (loop [s (:state world) n 0]
+            (cond
+              (empty? (core/enemy-missiles s)) (assoc world :state s)
+              (and (empty? (core/mirv-parents s))
+                   (seq (core/mirv-children s))) (assoc world :state s)
+              (> n 20000) (support/fail! "MIRV never split")
+              :else (recur (:state (core/tick s 0.05)) (inc n)))))}
+
+   {:pattern #"^the first MIRV child warhead path passes within distance <([A-Za-z0-9_]+)> of that fireball center$"
+    :fn (fn [world _ _]
+          (assoc world :state
+                 (core/route-first-mirv-child-through-point
+                  (:state world)
+                  (:fireball-x world)
+                  (:fireball-y world))))}
+
+   {:pattern #"^time advances until the first MIRV child is inside the fireball radius or has impacted$"
+    :fn (fn [world _ _]
+          (loop [s (:state world) n 0]
+            (cond
+              (empty? (core/mirv-children s)) (assoc world :state s)
+              (= :fireball (core/last-enemy-fate s)) (assoc world :state s)
+              (> n 20000) (support/fail! "MIRV child never hit fireball or impact")
+              :else (recur (:state (core/tick s 0.01)) (inc n)))))}
+
+   {:pattern #"^the first MIRV child warhead is destroyed by the fireball$"
+    :fn (fn [world _ _]
+          (support/assert-condition (= :fireball (core/last-enemy-fate (:state world)))
+                            (str "expected fireball kill of child, got "
+                                 (core/last-enemy-fate (:state world))))
+          world)}
+
+   {:pattern #"^wave <([A-Za-z0-9_]+)> MIRV schedule count is <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ wave-param count-param] example]
+          (let [w (support/example-int example wave-param "wave")
+                expected (support/example-int example count-param "mirv count")
+                actual (core/wave-mirv-count w)]
+            (support/assert-condition (= expected actual)
+                              (str "wave " w " mirv count " actual
+                                   " expected " expected)))
+          world)}
+
+   {:pattern #"^a MIRV enemy missile targeting city <([A-Za-z0-9_]+)> that splits into <([A-Za-z0-9_]+)> warheads at progress <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ city-param count-param progress-param] example]
+          (assoc world :state
+                 (core/spawn-mirv-targeting-city
+                  (:state world)
+                  (support/example-int example city-param "city")
+                  (support/example-int example count-param "child count")
+                  (support/example-double example progress-param "split progress"))))}
+
+   {:pattern #"^there is (\d+) smart bomb in flight$"
+    :fn (fn [world [_ count-text] _]
+          (support/assert-count (count (core/smart-bombs (:state world)))
+                        (support/parse-int count-text "smart bomb count")
+                        "smart bombs")
+          world)}
+
+
+   {:pattern #"^there are (\d+) smart bombs in flight$"
+    :fn (fn [world [_ count-text] _]
+          (support/assert-count (count (core/smart-bombs (:state world)))
+                        (support/parse-int count-text "smart bomb count")
+                        "smart bombs")
+          world)}
+
+
+   {:pattern #"^a smart bomb has progressed toward city <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ city-param] example]
+          (let [city-id (support/example-int example city-param "city")
+                m (first (filter #(and (= :city (:target-kind %))
+                                       (= city-id (:target-id %)))
+                                 (core/smart-bombs (:state world))))]
+            (support/assert-condition m "missing smart bomb")
+            (support/assert-gt (double (:progress m 0.0)) 0.0
+                       "smart bomb has not progressed"))
+          world)}
+
+
+   {:pattern #"^the smart bomb path is centered in that fireball within distance <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ limit-param] example]
+          (assoc world :state
+                 (core/route-smart-bomb-centered-in-fireball
+                  (:state world)
+                  (:fireball-x world)
+                  (:fireball-y world)
+                  (support/example-int example limit-param "center limit"))))}
+
+
+   {:pattern #"^the smart bomb path is only in the edge band of that fireball between <([A-Za-z0-9_]+)> and <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ inner-param radius-param] example]
+          (assoc world :state
+                 (core/route-smart-bomb-edge-band-in-fireball
+                  (:state world)
+                  (:fireball-x world)
+                  (:fireball-y world)
+                  (support/example-int example inner-param "edge inner")
+                  (support/example-int example radius-param "radius"))))}
+
+
+   {:pattern #"^time advances until the smart bomb is inside the fireball radius or has impacted$"
+    :fn (fn [world _ _]
+          (loop [s (:state world) n 0]
+            (cond
+              (empty? (core/smart-bombs s)) (assoc world :state s)
+              (= :fireball (core/last-enemy-fate s)) (assoc world :state s)
+              (> n 20000) (support/fail! "smart bomb never hit fireball or impact")
+              :else (recur (:state (core/tick s 0.01)) (inc n)))))}
+
+
+   {:pattern #"^time advances until the smart bomb would enter the fireball edge band or has impacted$"
+    :fn (fn [world _ _]
+          (loop [s (:state world) n 0]
+            (let [bomb (first (core/smart-bombs s))]
+              (cond
+                (nil? bomb) (assoc world :state s)
+                (:smart-evaded? bomb) (assoc world :state s)
+                (= :fireball (core/last-enemy-fate s)) (assoc world :state s)
+                (> n 20000) (support/fail! "smart bomb never entered edge band")
+                :else (recur (:state (core/tick s 0.01)) (inc n))))))}
+
+
+   {:pattern #"^the smart bomb is destroyed by the fireball$"
+    :fn (fn [world _ _]
+          (support/assert-condition (= :fireball (core/last-enemy-fate (:state world)))
+                            (str "expected smart bomb fireball kill, got "
+                                 (core/last-enemy-fate (:state world))))
+          world)}
+
+
+   {:pattern #"^the smart bomb is not destroyed by the fireball$"
+    :fn (fn [world _ _]
+          (support/assert-condition (not= :fireball (core/last-enemy-fate (:state world)))
+                            "smart bomb was destroyed by fireball")
+          (support/assert-condition (seq (core/smart-bombs (:state world)))
+                            "smart bomb missing after evade")
+          world)}
+
+
+   {:pattern #"^the smart bomb has evaded the fireball$"
+    :fn (fn [world _ _]
+          (let [bomb (first (core/smart-bombs (:state world)))]
+            (support/assert-condition bomb "missing smart bomb")
+            (support/assert-condition (:smart-evaded? bomb)
+                              "smart bomb has not evaded"))
+          world)}
+
+
+   {:pattern #"^wave <([A-Za-z0-9_]+)> smart bomb schedule count is <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ wave-param count-param] example]
+          (let [w (support/example-int example wave-param "wave")
+                expected (support/example-int example count-param "smart count")
+                actual (core/wave-smart-bomb-count w)]
+            (support/assert-condition (= expected actual)
+                              (str "wave " w " smart bomb count " actual
+                                   " expected " expected)))
+          world)}
+
+
+   {:pattern #"^a smart bomb targeting city <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ city-param] example]
+          (assoc world :state
+                 (core/spawn-smart-bomb-targeting-city
+                  (:state world)
+                  (support/example-int example city-param "city"))))}
+
+
+   {:pattern #"^a smart bomb targeting city (\d+)$"
+    :fn (fn [world [_ city-text] _]
+          (assoc world :state
+                 (core/spawn-smart-bomb-targeting-city
+                  (:state world)
+                  (support/parse-int city-text "city"))))}
+
+
+   {:pattern #"^a <([A-Za-z0-9_]+)> flyer from <([A-Za-z0-9_]+)> <([A-Za-z0-9_]+)> toward <([A-Za-z0-9_]+)> <([A-Za-z0-9_]+)> at speed <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ kind-param x0 y0 x1 y1 speed-param] example]
+          (assoc world :state
+                 (core/spawn-flyer
+                  (:state world)
+                  (support/require-value example kind-param)
+                  (support/example-int example x0 "start x")
+                  (support/example-int example y0 "start y")
+                  (support/example-int example x1 "end x")
+                  (support/example-int example y1 "end y")
+                  (support/example-int example speed-param "speed"))))}
+
+
+   {:pattern #"^the flyer drops <([A-Za-z0-9_]+)> enemy missiles toward living cities at path progress <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ count-param progress-param] example]
+          (assoc world :state
+                 (core/set-flyer-drops-toward-living-cities
+                  (:state world)
+                  (support/example-int example count-param "drop count")
+                  (support/example-double example progress-param "drop progress"))))}
+
+
+   {:pattern #"^the flyer drops (\d+) enemy missile targeting city <([A-Za-z0-9_]+)> at path progress <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ _count city-param progress-param] example]
+          (assoc world :state
+                 (core/set-flyer-drop-targeting-city
+                  (:state world)
+                  (support/example-int example city-param "city")
+                  (support/example-double example progress-param "drop progress"))))}
+
+
+   {:pattern #"^time advances until the flyer has passed drop progress <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ progress-param] example]
+          (let [p (support/example-double example progress-param "drop progress")]
+            (loop [s (:state world) n 0]
+              (let [f (first (core/flyers s))]
+                (cond
+                  (and f (>= (double (:progress f 0.0)) p)) (assoc world :state s)
+                  (nil? f) (assoc world :state s)
+                  (> n 20000) (support/fail! "flyer never reached drop progress")
+                  :else (recur (:state (core/tick s 0.05)) (inc n)))))))}
+
+
+   {:pattern #"^there is (\d+) <([A-Za-z0-9_]+)> flyer in flight$"
+    :fn (fn [world [_ count-text kind-param] example]
+          (support/assert-count (count (core/flyers-of-kind
+                                (:state world)
+                                (support/require-value example kind-param)))
+                        (support/parse-int count-text "flyer count")
+                        "flyers")
+          world)}
+
+
+   {:pattern #"^there are (\d+) <([A-Za-z0-9_]+)> flyers in flight$"
+    :fn (fn [world [_ count-text kind-param] example]
+          (support/assert-count (count (core/flyers-of-kind
+                                (:state world)
+                                (support/require-value example kind-param)))
+                        (support/parse-int count-text "flyer count")
+                        "flyers")
+          world)}
+
+
+   {:pattern #"^the <([A-Za-z0-9_]+)> flyer has progressed along its path$"
+    :fn (fn [world [_ kind-param] example]
+          (let [f (first (core/flyers-of-kind
+                          (:state world)
+                          (support/require-value example kind-param)))]
+            (support/assert-condition f "missing flyer")
+            (support/assert-gt (double (:progress f 0.0)) 0.0 "flyer has not progressed"))
+          world)}
+
+
+   {:pattern #"^the <([A-Za-z0-9_]+)> flyer y is <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ kind-param y-param] example]
+          (let [f (first (core/flyers-of-kind
+                          (:state world)
+                          (support/require-value example kind-param)))
+                expected (support/example-int example y-param "y")]
+            (support/assert-condition f "missing flyer")
+            (support/assert-condition (= (double expected) (double (:y f)))
+                              (str "flyer y " (:y f) " expected " expected)))
+          world)}
+
+
+   {:pattern #"^every dropped enemy missile originates at the flyer position$"
+    :fn (fn [world _ _]
+          (let [f (first (core/flyers (:state world)))
+                enemies (core/enemy-missiles (:state world))
+                origin-ys (set (map #(double (:y0 %)) enemies))
+                origin-xs (set (map #(double (:x0 %)) enemies))]
+            (support/assert-condition f "missing flyer")
+            (support/assert-condition (seq enemies) "no dropped enemies")
+            (support/assert-condition (every? :dropped-from-flyer? enemies)
+                              "enemy missing dropped-from-flyer marker")
+            ;; All drops at one progress share origin; altitude matches flyer path.
+            (support/assert-condition (= 1 (count origin-xs))
+                              (str "expected shared drop origin x, got " origin-xs))
+            (support/assert-condition (= 1 (count origin-ys))
+                              (str "expected shared drop origin y, got " origin-ys))
+            (support/assert-condition (= (double (:y0 f)) (first origin-ys))
+                              (str "drop origin y " (first origin-ys)
+                                   " expected flyer altitude " (:y0 f))))
+          world)}
+
+
+   {:pattern #"^the flyer path passes within distance <([A-Za-z0-9_]+)> of that fireball center$"
+    :fn (fn [world _ _]
+          (assoc world :state
+                 (core/route-flyer-through-point
+                  (:state world)
+                  (:fireball-x world)
+                  (:fireball-y world))))}
+
+
+   {:pattern #"^time advances until the flyer is inside the fireball radius or has left the playfield$"
+    :fn (fn [world _ _]
+          (loop [s (:state world) n 0]
+            (cond
+              (empty? (core/flyers s)) (assoc world :state s)
+              (= :fireball (:last-flyer-fate s)) (assoc world :state s)
+              (> n 20000) (support/fail! "flyer never hit fireball or left")
+              :else (recur (:state (core/tick s 0.01)) (inc n)))))}
+
+
+   {:pattern #"^the <([A-Za-z0-9_]+)> flyer is destroyed by the fireball$"
+    :fn (fn [world [_ kind-param] example]
+          (support/assert-condition (= :fireball (:last-flyer-fate (:state world)))
+                            (str "expected flyer fireball kill for "
+                                 (support/require-value example kind-param)
+                                 ", got " (:last-flyer-fate (:state world))))
+          world)}
+
+
+   {:pattern #"^wave <([A-Za-z0-9_]+)> bomber schedule count is <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ wave-param count-param] example]
+          (let [w (support/example-int example wave-param "wave")
+                expected (support/example-int example count-param "bomber count")
+                actual (core/wave-bomber-count w)]
+            (support/assert-condition (= expected actual)
+                              (str "wave " w " bomber count " actual
+                                   " expected " expected)))
+          world)}
+
+
+   {:pattern #"^wave <([A-Za-z0-9_]+)> satellite schedule count is <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ wave-param count-param] example]
+          (let [w (support/example-int example wave-param "wave")
+                expected (support/example-int example count-param "satellite count")
+                actual (core/wave-satellite-count w)]
+            (support/assert-condition (= expected actual)
+                              (str "wave " w " satellite count " actual
+                                   " expected " expected)))
+          world)}
+
 ])
 
 ;; clj-mutate-manifest-begin
-;; {:version 1, :tested-at "2026-07-24T14:24:15.95308-05:00", :module-hash "-583711252", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 4, :hash "62993193"} {:id "defn/first-enemy-missile", :kind "defn", :line 6, :end-line 8, :hash "-301024911"} {:id "defn/between-endpoints?", :kind "defn", :line 10, :end-line 14, :hash "653045632"} {:id "def/handlers", :kind "def", :line 16, :end-line 259, :hash "1438327875"}]}
+;; {:version 1, :tested-at "2026-07-24T14:43:06.54693-05:00", :module-hash "-1943520011", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 4, :hash "62993193"} {:id "defn/first-enemy-missile", :kind "defn", :line 6, :end-line 8, :hash "-301024911"} {:id "defn/between-endpoints?", :kind "defn", :line 10, :end-line 14, :hash "653045632"} {:id "def/handlers", :kind "def", :line 16, :end-line 652, :hash "1506153657"}]}
 ;; clj-mutate-manifest-end

@@ -375,6 +375,70 @@
                               (str "score " actual " expected " expected)))
           world)}
 
+   {:pattern #"^the multiplier is <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ mult-param] example]
+          (let [expected (support/example-int example mult-param "multiplier")
+                actual (core/multiplier (:state world))]
+            (support/assert-condition (= expected actual)
+                                      (str "multiplier " actual " expected " expected)))
+          world)}
+
+   {:pattern #"^the bonus city threshold is <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ thresh-param] example]
+          (assoc world :state
+                 (core/set-bonus-city-threshold
+                  (:state world)
+                  (support/example-int example thresh-param "threshold"))))}
+
+   {:pattern #"^the score becomes <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ score-param] example]
+          (assoc world :state
+                 (core/set-score
+                  (:state world)
+                  (support/example-int example score-param "score"))))}
+
+   {:pattern #"^the bonus city reserve is <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ reserve-param] example]
+          (let [expected (support/example-int example reserve-param "reserve")
+                actual (core/bonus-cities (:state world))]
+            (support/assert-condition (= expected actual)
+                                      (str "bonus city reserve " actual " expected " expected)))
+          world)}
+
+   {:pattern #"^the bonus city reserve is set to <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ reserve-param] example]
+          (assoc world :state
+                 (core/set-bonus-city-reserve
+                  (:state world)
+                  (support/example-int example reserve-param "reserve"))))}
+
+   {:pattern #"^bonus cities from reserve are applied after wave resolution$"
+    :fn (fn [world _ _]
+          (assoc world :state
+                 (core/apply-bonus-cities-from-reserve (:state world))))}
+
+   {:pattern #"^the number of bonus city earned events is <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ count-param] example]
+          (let [expected (support/example-int example count-param "event count")
+                actual (core/bonus-city-earned-events (:state world))]
+            (support/assert-condition (= expected actual)
+                                      (str "bonus city earned events " actual
+                                           " expected " expected)))
+          world)}
+   {:pattern #"^city (\d+) has been destroyed$"
+    :fn (fn [world [_ city-text] _]
+          (assoc world :state
+                 (core/destroy-city
+                  (:state world)
+                  (support/parse-int city-text "city"))))}
+
+   {:pattern #"^city <([A-Za-z0-9_]+)> has been destroyed$"
+    :fn (fn [world [_ city-param] example]
+          (assoc world :state
+                 (core/destroy-city
+                  (:state world)
+                  (support/example-int example city-param "city"))))}
+
    {:pattern #"^the player fires the (left|center|right) battery$"
     :fn (fn [world [_ battery-name] _]
           (let [battery-id (support/parse-battery-id battery-name)
@@ -801,6 +865,13 @@
                   (:state world)
                   (support/example-int example rem-param "remaining"))))}
 
+   {:pattern #"^the current wave has (\d+) scheduled enemies still active$"
+    :fn (fn [world [_ rem-text] _]
+          (assoc world :state
+                 (core/set-wave-enemies-active
+                  (:state world)
+                  (support/parse-int rem-text "remaining"))))}
+
    {:pattern #"^the wave is not complete$"
     :fn (fn [world _ _]
           (support/assert-condition (not (core/wave-complete? (:state world)))
@@ -911,5 +982,5 @@
       (support/fail! (str "unsupported step: " text)))))
 
 ;; clj-mutate-manifest-begin
-;; {:version 1, :tested-at "2026-07-24T14:33:10.063191-05:00", :module-hash "347503470", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 4, :hash "692061305"} {:id "defn-/assert-playfield-dimension", :kind "defn-", :line 6, :end-line 12, :hash "-1180112229"} {:id "defn-/living-cities", :kind "defn-", :line 14, :end-line 16, :hash "-548423997"} {:id "defn-/batteries", :kind "defn-", :line 18, :end-line 20, :hash "2112668418"} {:id "defn-/battery", :kind "defn-", :line 22, :end-line 25, :hash "-1798101236"} {:id "defn-/city-xs", :kind "defn-", :line 27, :end-line 29, :hash "-1231463410"} {:id "defn-/city-span", :kind "defn-", :line 31, :end-line 34, :hash "-826397513"} {:id "defn-/example-width", :kind "defn-", :line 36, :end-line 38, :hash "1667157547"} {:id "defn-/example-height", :kind "defn-", :line 40, :end-line 42, :hash "-1096613354"} {:id "defn-/one-third", :kind "defn-", :line 44, :end-line 46, :hash "1669847708"} {:id "defn-/two-thirds", :kind "defn-", :line 48, :end-line 50, :hash "1105411976"} {:id "defn-/assert-entities-in-ground-band", :kind "defn-", :line 52, :end-line 58, :hash "-247193944"} {:id "defn-/assert-xs-in-playfield", :kind "defn-", :line 60, :end-line 65, :hash "-807069005"} {:id "defn-/assert-between-open", :kind "defn-", :line 67, :end-line 69, :hash "1230020693"} {:id "defn-/earlier-fallback-batteries", :kind "defn-", :line 70, :end-line 76, :hash "113626062"} {:id "defn-/disable-earlier-batteries", :kind "defn-", :line 78, :end-line 80, :hash "1165353126"} {:id "defn-/max-fireball-radius", :kind "defn-", :line 82, :end-line 86, :hash "1308487225"} {:id "def/fireball-peak-fraction", :kind "def", :line 88, :end-line 88, :hash "-1421501801"} {:id "defn-/fireball-reached-peak?", :kind "defn-", :line 90, :end-line 94, :hash "1083437537"} {:id "defn-/fireball-in-shrink-phase?", :kind "defn-", :line 96, :end-line 100, :hash "1989596245"} {:id "defn-/fireball-radius-at-least?", :kind "defn-", :line 102, :end-line 104, :hash "-1598181125"} {:id "defn-/advance-until", :kind "defn-", :line 106, :end-line 109, :hash "832982022"} {:id "def/step-handlers", :kind "def", :line 111, :end-line 885, :hash "869456202"} {:id "defn-/match-handler", :kind "defn-", :line 887, :end-line 892, :hash "-760290467"} {:id "def/gherkin-phases", :kind "def", :line 894, :end-line 897, :hash "762060511"} {:id "defn-/apply-gherkin-phase", :kind "defn-", :line 899, :end-line 903, :hash "-1691268912"} {:id "defn/dispatch-step", :kind "defn", :line 905, :end-line 911, :hash "1912576952"}]}
+;; {:version 1, :tested-at "2026-07-24T14:43:18.796331-05:00", :module-hash "-1416519454", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 4, :hash "692061305"} {:id "defn-/assert-playfield-dimension", :kind "defn-", :line 6, :end-line 12, :hash "-1180112229"} {:id "defn-/living-cities", :kind "defn-", :line 14, :end-line 16, :hash "-548423997"} {:id "defn-/batteries", :kind "defn-", :line 18, :end-line 20, :hash "2112668418"} {:id "defn-/battery", :kind "defn-", :line 22, :end-line 25, :hash "-1798101236"} {:id "defn-/city-xs", :kind "defn-", :line 27, :end-line 29, :hash "-1231463410"} {:id "defn-/city-span", :kind "defn-", :line 31, :end-line 34, :hash "-826397513"} {:id "defn-/example-width", :kind "defn-", :line 36, :end-line 38, :hash "1667157547"} {:id "defn-/example-height", :kind "defn-", :line 40, :end-line 42, :hash "-1096613354"} {:id "defn-/one-third", :kind "defn-", :line 44, :end-line 46, :hash "1669847708"} {:id "defn-/two-thirds", :kind "defn-", :line 48, :end-line 50, :hash "1105411976"} {:id "defn-/assert-entities-in-ground-band", :kind "defn-", :line 52, :end-line 58, :hash "-247193944"} {:id "defn-/assert-xs-in-playfield", :kind "defn-", :line 60, :end-line 65, :hash "-807069005"} {:id "defn-/assert-between-open", :kind "defn-", :line 67, :end-line 69, :hash "1230020693"} {:id "defn-/earlier-fallback-batteries", :kind "defn-", :line 70, :end-line 76, :hash "113626062"} {:id "defn-/disable-earlier-batteries", :kind "defn-", :line 78, :end-line 80, :hash "1165353126"} {:id "defn-/max-fireball-radius", :kind "defn-", :line 82, :end-line 86, :hash "1308487225"} {:id "def/fireball-peak-fraction", :kind "def", :line 88, :end-line 88, :hash "-1421501801"} {:id "defn-/fireball-reached-peak?", :kind "defn-", :line 90, :end-line 94, :hash "1083437537"} {:id "defn-/fireball-in-shrink-phase?", :kind "defn-", :line 96, :end-line 100, :hash "1989596245"} {:id "defn-/fireball-radius-at-least?", :kind "defn-", :line 102, :end-line 104, :hash "-1598181125"} {:id "defn-/advance-until", :kind "defn-", :line 106, :end-line 109, :hash "832982022"} {:id "def/step-handlers", :kind "def", :line 111, :end-line 956, :hash "-1122615374"} {:id "defn-/match-handler", :kind "defn-", :line 958, :end-line 963, :hash "-760290467"} {:id "def/gherkin-phases", :kind "def", :line 965, :end-line 968, :hash "762060511"} {:id "defn-/apply-gherkin-phase", :kind "defn-", :line 970, :end-line 974, :hash "-1691268912"} {:id "defn/dispatch-step", :kind "defn", :line 976, :end-line 982, :hash "1912576952"}]}
 ;; clj-mutate-manifest-end
