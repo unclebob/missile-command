@@ -97,9 +97,18 @@
   [state event]
   (mouse-moved state event))
 
-(defn mouse-clicked
-  [state _event]
-  (apply-handle state (input/click-command (q/mouse-x) (q/mouse-y))))
+(defn- left-button?
+  "True for primary button across quil/Processing event shapes."
+  [event]
+  (let [b (or (:button event) (q/mouse-button))]
+    (or (nil? b) (= b :left) (= b 37) (= (str b) "left"))))
+
+(defn mouse-pressed
+  "Fire on button press (more reliable than mouse-clicked when the pointer moves)."
+  [state event]
+  (if (left-button? event)
+    (apply-handle state (input/click-command (q/mouse-x) (q/mouse-y)))
+    state))
 
 (defn key-pressed
   [state _event]
@@ -126,7 +135,7 @@
     :draw draw
     :mouse-moved mouse-moved
     :mouse-dragged mouse-dragged
-    :mouse-clicked mouse-clicked
+    :mouse-pressed mouse-pressed
     :key-pressed key-pressed
     :middleware [m/fun-mode]
     :features [:resizable]
