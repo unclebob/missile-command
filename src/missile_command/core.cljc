@@ -750,8 +750,8 @@
   (if (the-end? state)
     state
     (let [restored (apply-bonus-cities-from-reserve state)]
-      (if (and (zero? (count (living-cities restored)))
-               (zero? (bonus-cities restored)))
+      (if (game-end/should-enter? (count (living-cities restored))
+                                  (bonus-cities restored))
         (enter-the-end restored)
         restored))))
 

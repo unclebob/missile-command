@@ -1,9 +1,15 @@
 (ns missile-command.game-end
-  "Pure THE END geometry and presentation helpers."
+  "Pure THE END policy, geometry, and presentation helpers."
   (:require [missile-command.missiles :as missiles]))
 
 (def message-text "THE END")
 (def wrong-message-text "Game Over")
+
+(defn should-enter?
+  "True when no living cities remain and the bonus reserve is empty."
+  [living-city-count bonus-reserve]
+  (and (zero? (long living-city-count))
+       (zero? (long bonus-reserve))))
 
 (defn fill-radius
   "Radius from center that covers the playfield corners."

@@ -8,6 +8,7 @@
             [missile-command.acceptance.city-steps :as city-steps]
             [missile-command.acceptance.defensive-steps :as defensive-steps]
             [missile-command.core :as core]))
+
 (defn- assert-playfield-dimension
   [world example param-name label reader]
   (let [expected (support/example-int example param-name label)
