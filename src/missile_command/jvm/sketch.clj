@@ -231,6 +231,14 @@
       (swap! launch-options assoc :last-emitted-fate (core/last-enemy-fate state')))
     state'))
 
+(defn- toggle-pause
+  "Pause while playing, resume while paused; otherwise leave state alone."
+  [state]
+  (cond
+    (core/playing? state) (apply-handle state {:type :pause})
+    (core/paused? state) (apply-handle state {:type :resume})
+    :else state))
+
 (defn- drain-one-qa-event
   [state]
   (let [events @pending-qa-events]
@@ -285,8 +293,14 @@
                          (when (:qa-telemetry? @launch-options)
                            (emit! (input/format-sim-telemetry-line s)))
                          s)
-              :pause (apply-handle state {:type :pause})
-              :resume (apply-handle state {:type :resume})
+              :pause (let [s (apply-handle state {:type :pause})]
+                       (when (:qa-telemetry? @launch-options)
+                         (emit! (input/format-sim-telemetry-line s)))
+                       s)
+              :resume (let [s (apply-handle state {:type :resume})]
+                        (when (:qa-telemetry? @launch-options)
+                          (emit! (input/format-sim-telemetry-line s)))
+                        s)
               :key (cond
                      (input/key-char->command (:ch ev))
                      (apply-handle state (input/key-char->command (:ch ev)))
@@ -334,14 +348,6 @@
   [event]
   (let [b (or (:button event) (q/mouse-button))]
     (or (nil? b) (= b :left) (= b 37) (= (str b) "left"))))
-
-(defn- toggle-pause
-  "Pause while playing, resume while paused; otherwise leave state alone."
-  [state]
-  (cond
-    (core/playing? state) (apply-handle state {:type :pause})
-    (core/paused? state) (apply-handle state {:type :resume})
-    :else state))
 
 (defn mouse-pressed
   [state event]

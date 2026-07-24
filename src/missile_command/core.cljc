@@ -1310,7 +1310,7 @@
 
 (defn tick
   "Advance simulation by dt seconds (clamped). Returns {:state s :events [...]}.
-  Title is idle (clock only); THE END only expands the end fireball."
+  Title advances clock only; paused freezes sim; THE END expands end fireball."
   [state dt]
   (let [applied (missiles/clamp-dt dt)]
     (cond
@@ -1326,7 +1326,6 @@
                   (advance-clock applied)
                   (wave-banner/tick applied start-next-wave))
        :events []}
-
       (the-end? state)
       {:state (-> state
                   (advance-clock applied)

@@ -17,8 +17,7 @@
             [missile-command.acceptance.browser-host-steps :as browser-host-steps]
             [missile-command.acceptance.wave-banner-steps :as wave-banner-steps]
             [missile-command.core :as core]
-            [missile-command.waves :as waves]))(defn- assert-playfield-dimension  [world example param-name label reader]
-  (let [expected (support/example-int example param-name label)
+            [missile-command.waves :as waves]))(defn- assert-playfield-dimension  [world example param-name label reader]  (let [expected (support/example-int example param-name label)
         actual (reader (:state world))]
     (when-not (= expected actual)
       (support/fail! (str "playfield " label " " actual " expected " expected)))
