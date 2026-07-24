@@ -51,14 +51,17 @@
   (it "parses width height and switches"
     (let [opts (input/parse-cli-args
                 ["1280" "720" "--qa-telemetry" "--destroy-batteries" "left,center"
-                 "--qa-events" "tmp/events.txt" "--qa-target" "400,200"]
+                 "--qa-events" "tmp/events.txt" "--qa-target" "400,200"
+                 "--qa-enemy" "city:0" "--qa-fireball" "10,20,30"]
                 800 600)]
       (should= 1280 (:width opts))
       (should= 720 (:height opts))
       (should (:qa-telemetry? opts))
       (should= [:left :center] (:destroy-batteries opts))
       (should= "tmp/events.txt" (:qa-events opts))
-      (should= [{:x 400 :y 200}] (:qa-targets opts))))
+      (should= [{:x 400 :y 200}] (:qa-targets opts))
+      (should= [{:kind :city :id 0}] (:qa-enemies opts))
+      (should= [{:x 10 :y 20 :radius 30.0}] (:qa-fireballs opts))))
 
   (it "ignores a bare -- separator"
     (let [opts (input/parse-cli-args ["--" "--qa-telemetry"] 800 600)]
@@ -113,6 +116,10 @@
     (should= {:type :aim :x 30 :y 40} (input/parse-qa-event-line "aim 30 40"))
     (should= {:type :key :ch \z} (input/parse-qa-event-line "key z"))
     (should= {:type :wait :seconds 2.5} (input/parse-qa-event-line "wait 2.5"))
+    (should= {:type :enemy :spec {:kind :city :id 1}}
+             (input/parse-qa-event-line "enemy city:1"))
+    (should= {:type :fireball :spec {:x 1 :y 2 :radius 3.0}}
+             (input/parse-qa-event-line "fireball 1,2,3"))
     (should= {:type :quit} (input/parse-qa-event-line "quit")))
 
   (it "ignores blank lines"

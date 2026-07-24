@@ -108,6 +108,19 @@
     (q/no-stroke)
     (q/ellipse (:x t) (:y t) 12 12)))
 
+(defn- enemies!
+  [state]
+  (doseq [e (core/enemy-missiles state)]
+    (let [x (double (or (:x e) (:x0 e)))
+          y (double (or (:y e) (:y0 e)))]
+      (q/stroke 255 80 80)
+      (q/stroke-weight 2)
+      (q/line (:x0 e) (:y0 e) x y)
+      (q/fill 255 60 60)
+      (q/no-stroke)
+      (q/ellipse x y 8 8)))
+  (q/no-stroke))
+
 (defn crosshair-at!
   [x y]
   (q/stroke 255 70 70)
@@ -138,6 +151,7 @@
   (let [w (core/playfield-width state)
         h (core/playfield-height state)]
     (sky! w h)
+    (enemies! state)
     (missiles! state)
     (fireballs! state)
     (targets! state)
