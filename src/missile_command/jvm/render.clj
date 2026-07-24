@@ -111,10 +111,12 @@
 
 (defn- hud!
   [state]
-  (let [line (str "Ammo L:" (:missiles (core/battery state :left))
+  (let [hud (core/hud state)
+        line (str "Wave:" (:wave hud)
+                  "  Ammo L:" (:missiles (core/battery state :left))
                   " C:" (:missiles (core/battery state :center))
                   " R:" (:missiles (core/battery state :right))
-                  "  Score:" (core/score state)
+                  "  Score:" (:score hud)
                   "  | Z/1 X/2 C/3 fire  Esc quit")]
     (q/fill 0 0 0 140)
     (q/no-stroke)
