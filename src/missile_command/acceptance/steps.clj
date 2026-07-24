@@ -1,7 +1,6 @@
 (ns missile-command.acceptance.steps
   (:require [missile-command.acceptance.step-support :as support]
-            [missile-command.core :as core]
-            [missile-command.world :as world]))
+            [missile-command.core :as core]))
 
 (defn- assert-playfield-dimension
   [world example param-name label reader]
@@ -60,9 +59,10 @@
     (support/fail! message)))
 
 (defn- assert-entities-in-ground-band
-  [entities height entity-label]
+  [state entities height entity-label]
   (doseq [entity entities]
-    (when-not (world/in-ground-band? (:y entity) height)
+    (when-not (and (= height (core/playfield-height state))
+                   (core/on-ground? state entity))
       (support/fail! (str entity-label " " (:id entity) " y " (:y entity)
                           " not in ground band for height " height)))))
 
@@ -153,7 +153,8 @@
 
    {:pattern #"^every city y is in the ground band for height <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ height-param] example]
-          (assert-entities-in-ground-band (core/cities (:state world))
+          (assert-entities-in-ground-band (:state world)
+                                          (core/cities (:state world))
                                           (example-height example height-param)
                                           "city")
           world)}
@@ -218,7 +219,8 @@
 
    {:pattern #"^every battery y is in the ground band for height <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ height-param] example]
-          (assert-entities-in-ground-band (batteries world)
+          (assert-entities-in-ground-band (:state world)
+                                          (batteries world)
                                           (example-height example height-param)
                                           "battery")
           world)}

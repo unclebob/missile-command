@@ -18,6 +18,13 @@
    "java.io"
    "java.nio"])
 
+;; Acceptance adapters must depend on the core public API, not layout internals.
+(def acceptance-forbidden-require-prefixes
+  ["missile-command.world"
+   "quil."
+   "missile-command.jvm."
+   "missile-command.browser."])
+
 (defn- balanced-form
   [content start]
   (loop [i (inc start) depth 1]
@@ -57,34 +64,50 @@
        (remove #(str/includes? % "/acceptance/"))
        sort))
 
+(defn- acceptance-files
+  []
+  (->> (fs/glob src-root "**/*.clj")
+       (map str)
+       (filter #(str/includes? % "/missile_command/acceptance/"))
+       sort))
+
 (defn- forbidden-require?
-  [req]
-  (some #(str/starts-with? req %) forbidden-require-prefixes))
+  [req prefixes]
+  (some #(or (= req %) (str/starts-with? req (str % ".")) (str/starts-with? req %))
+        prefixes))
 
 (defn- violations-for
-  [{:keys [path ns requires]}]
+  [{:keys [path ns requires]} prefixes]
   (for [req (or requires [])
-        :when (forbidden-require? req)]
+        :when (forbidden-require? req prefixes)]
     {:path path :ns ns :require req}))
 
-(defn- report!
-  [violations]
-  (if (seq violations)
-    (do
-      (println "Architecture check FAILED: pure core depends on forbidden namespaces")
-      (doseq [{:keys [path ns require]} violations]
-        (println (str "  " path " (" ns ") requires " require)))
-      (System/exit 1))
-    (do
-      (println "Architecture check OK")
-      (println (str "  pure core files: " (count (pure-core-files))))
-      (System/exit 0))))
+(defn- report-section!
+  [label violations]
+  (when (seq violations)
+    (println (str "Architecture check FAILED: " label))
+    (doseq [{:keys [path ns require]} violations]
+      (println (str "  " path " (" ns ") requires " require)))))
 
-(let [files (pure-core-files)]
-  (when (empty? files)
+(let [core-files (pure-core-files)
+      acceptance (acceptance-files)]
+  (when (empty? core-files)
     (println "Architecture check FAILED: no pure core .cljc files under src/missile_command")
     (System/exit 1))
-  (->> files
-       (map read-ns-and-requires)
-       (mapcat violations-for)
-       report!))
+  (let [core-violations (->> core-files
+                             (map read-ns-and-requires)
+                             (mapcat #(violations-for % forbidden-require-prefixes)))
+        acceptance-violations (->> acceptance
+                                   (map read-ns-and-requires)
+                                   (mapcat #(violations-for % acceptance-forbidden-require-prefixes)))]
+    (if (or (seq core-violations) (seq acceptance-violations))
+      (do
+        (report-section! "pure core depends on forbidden namespaces" core-violations)
+        (report-section! "acceptance depends on non-core internals/hosts"
+                         acceptance-violations)
+        (System/exit 1))
+      (do
+        (println "Architecture check OK")
+        (println (str "  pure core files: " (count core-files)))
+        (println (str "  acceptance files: " (count acceptance)))
+        (System/exit 0)))))

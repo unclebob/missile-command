@@ -40,6 +40,11 @@
   [state id]
   (first (filter #(= id (:id %)) (batteries state))))
 
+(defn on-ground?
+  "True when the entity's y sits in the ground band for this playfield."
+  [state entity]
+  (world/in-ground-band? (:y entity) (playfield-height state)))
+
 (defn city-on-ground?
   [state city]
-  (world/in-ground-band? (:y city) (playfield-height state)))
+  (on-ground? state city))

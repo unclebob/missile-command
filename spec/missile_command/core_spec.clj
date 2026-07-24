@@ -21,7 +21,11 @@
                (set (map :id (core/batteries state))))
       (doseq [b (core/batteries state)]
         (should-not (:destroyed? b))
-        (should= 10 (:missiles b))))))
+        (should= 10 (:missiles b)))
+      (doseq [c (core/cities state)]
+        (should (core/on-ground? state c)))
+      (doseq [b (core/batteries state)]
+        (should (core/on-ground? state b))))))
 
 (describe "resize"
   (it "updates playfield size and reflows cities and batteries"
