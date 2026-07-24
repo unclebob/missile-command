@@ -22,6 +22,18 @@
   [example param-name label]
   (parse-int (require-value example param-name) label))
 
+(defn parse-number
+  [value label]
+  (try
+    (Double/parseDouble (str value))
+    (catch NumberFormatException _
+      (fail! (str "invalid number for " label ": " value)))))
+
+(defn example-double
+  "Read and parse a floating-point example parameter."
+  [example param-name label]
+  (parse-number (require-value example param-name) label))
+
 (def battery-ids
   {"left" :left
    "center" :center

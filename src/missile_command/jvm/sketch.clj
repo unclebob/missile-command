@@ -4,6 +4,7 @@
             [quil.middleware :as m]
             [quil.applet :as applet]
             [missile-command.core :as core]
+            [missile-command.missiles :as missiles]
             [missile-command.jvm.input :as input]
             [missile-command.jvm.render :as render]
             [missile-command.jvm.window :as window]))
@@ -13,8 +14,10 @@
 
 (defonce launch-options
   (atom {:qa-telemetry? false
+         :qa-speed 1.0
          :destroy-batteries []
          :qa-events nil
+         :qa-scenario nil
          :qa-targets []
          :qa-enemies []
          :qa-fireballs []
@@ -28,8 +31,10 @@
 (defn configure!
   [opts]
   (reset! launch-options (select-keys opts [:qa-telemetry?
+                                            :qa-speed
                                             :destroy-batteries
                                             :qa-events
+                                            :qa-scenario
                                             :qa-targets
                                             :qa-enemies
                                             :qa-fireballs
@@ -111,38 +116,95 @@
       (binding [*out* *err*]
         (println "window placement skipped:" (.getMessage e))))))
 
+(defn- apply-qa-scenario
+  [state]
+  (if-let [path (:qa-scenario @launch-options)]
+    (input/apply-scenario state (input/load-scenario-edn path))
+    state))
+
+(defn- spawn-scheduled-wave-enemies
+  "Launch the current wave's scheduled enemy count (cities only)."
+  [state]
+  (let [n (long (:enemy-count (core/wave-schedule-metrics (core/wave state))))]
+    (if (pos? n)
+      (core/set-wave-enemies-active state n)
+      state)))
+
+(defn- ensure-wave-enemies
+  "If no enemies are in flight, spawn this wave's schedule (normal play)."
+  [state]
+  (if (seq (core/enemy-missiles state))
+    state
+    (spawn-scheduled-wave-enemies state)))
+
 (defn setup
   []
   (q/frame-rate 60)
   (q/no-cursor)
   (configure-display!)
   (reset! last-frame-ms (System/currentTimeMillis))
-  (-> (core/new-game {:width (q/width) :height (q/height)})
-      apply-destroy-options
-      apply-qa-targets
-      apply-qa-enemies
-      apply-qa-fireballs))
+  (let [state (-> (core/new-game {:width (q/width) :height (q/height)})
+                  apply-destroy-options
+                  apply-qa-scenario
+                  apply-qa-targets
+                  apply-qa-enemies
+                  apply-qa-fireballs
+                  ;; Normal play: wave 1 attacks begin immediately unless
+                  ;; QA already staged enemies via scenario/flags.
+                  ensure-wave-enemies)]
+    (when (:qa-telemetry? @launch-options)
+      (emit! (input/format-sim-telemetry-line state)))
+    state))
 
 (defn- frame-dt-seconds
+  "Wall-clock seconds since last frame, clamped. Multiplied by :qa-speed."
   []
   (let [now (System/currentTimeMillis)
         prev (or @last-frame-ms now)
-        raw (/ (double (- now prev)) 1000.0)]
+        raw (/ (double (- now prev)) 1000.0)
+        wall (max 0.0 (min raw 0.25))
+        speed (double (or (:qa-speed @launch-options) 1.0))]
     (reset! last-frame-ms now)
-    (max 0.0 (min raw 0.25))))
+    (* wall speed)))
+
+(defn- advance-one-step
+  "One core tick + rearm/spawn on wave complete. Returns [state completed?]."
+  [state dt]
+  (let [result (core/tick state dt)
+        state' (:state result)
+        completed? (and (core/wave-complete? state')
+                        (not (core/wave-complete? state)))
+        ;; Continuous play: rearm survivors and launch next wave attacks.
+        state' (if completed?
+                 (-> state'
+                     core/start-next-wave
+                     ensure-wave-enemies)
+                 state')]
+    [state' completed?]))
 
 (defn- tick-state
+  "Advance sim by wall-dt * qa-speed, substepping at missiles/max-dt."
   [state]
-  (let [dt (frame-dt-seconds)
-        result (core/tick state dt)
-        state' (:state result)]
+  (let [budget (frame-dt-seconds)
+        wave-before (core/wave state)
+        step-max (double missiles/max-dt)
+        [state' completed-any?]
+        (loop [s state
+               remaining budget
+               completed-any? false]
+          (if (<= remaining 1.0e-12)
+            [s completed-any?]
+            (let [step (min remaining step-max)
+                  [s' completed?] (advance-one-step s step)]
+              (recur s' (- remaining step) (or completed-any? completed?)))))
+        active? (or (seq (core/fireballs state'))
+                    (seq (core/enemy-missiles state'))
+                    (seq (core/destroyable-targets state')))
+        wave-changed? (not= wave-before (core/wave state'))]
     (emit-fireball-phases! state')
     (when (and (:qa-telemetry? @launch-options)
-               (or (seq (core/fireballs state'))
-                   (seq (core/enemy-missiles state'))
-                   (seq (core/destroyable-targets state'))))
+               (or active? completed-any? wave-changed?))
       (emit! (input/format-sim-telemetry-line state')))
-    ;; One final snapshot when an enemy just resolved and nothing is flying.
     (when (and (:qa-telemetry? @launch-options)
                (core/last-enemy-fate state')
                (empty? (core/enemy-missiles state'))
