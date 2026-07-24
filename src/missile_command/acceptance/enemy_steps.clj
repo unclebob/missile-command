@@ -21,8 +21,11 @@
    m (first (core/enemy-missiles (:state world)))
    actual (double (:progress m))]
    (support/assert-condition m "missing enemy missile")
-   (support/assert-condition (< (Math/abs (- actual expected)) 1.0e-9)
-   (str "enemy progress " actual " expected " expected)))
+   (let [scale 1000000000.0]
+   (support/assert-condition
+   (= (long (Math/round (* actual scale)))
+   (long (Math/round (* expected scale))))
+   (str "enemy progress " actual " expected " expected))))
    world)}
 
    {:pattern #"^an enemy missile targeting city (\d+)$"
@@ -192,20 +195,23 @@
 
    {:pattern #"^time advances until enemy missiles impact or are destroyed$"
     :fn (fn [world _ _]
-   (loop [s (:state world) n 0]
-   (cond
-   (empty? (core/enemy-missiles s)) (assoc world :state s)
-   (> n 10000) (support/fail! "enemy missiles never finished")
-   :else (recur (:state (core/tick s 0.05)) (inc n)))))}
+   (support/advance-until world
+                          #(empty? (core/enemy-missiles %))
+                          core/tick
+                          0.05
+                          10000
+                          "enemy missiles never finished"))}
 
    {:pattern #"^time advances until the enemy missile is inside the fireball radius or has impacted$"
     :fn (fn [world _ _]
-   (loop [s (:state world) n 0]
-   (cond
-   (empty? (core/enemy-missiles s)) (assoc world :state s)
-   (#{:fireball :impact} (core/last-enemy-fate s)) (assoc world :state s)
-   (> n 10000) (support/fail! "enemy never entered fireball or impacted")
-   :else (recur (:state (core/tick s 0.05)) (inc n)))))}
+   (support/advance-until world
+                          (fn [s]
+                            (or (empty? (core/enemy-missiles s))
+                                (#{:fireball :impact} (core/last-enemy-fate s))))
+                          core/tick
+                          0.05
+                          10000
+                          "enemy never entered fireball or impacted"))}
 
    {:pattern #"^a fireball at (-?\d+) (-?\d+) with radius (\d+)$"
     :fn (fn [world [_ x y r] _]
@@ -644,3 +650,7 @@
           world)}
 
 ])
+
+;; clj-mutate-manifest-begin
+;; {:version 1, :tested-at "2026-07-24T14:24:15.95308-05:00", :module-hash "-583711252", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 4, :hash "62993193"} {:id "defn/first-enemy-missile", :kind "defn", :line 6, :end-line 8, :hash "-301024911"} {:id "defn/between-endpoints?", :kind "defn", :line 10, :end-line 14, :hash "653045632"} {:id "def/handlers", :kind "def", :line 16, :end-line 259, :hash "1438327875"}]}
+;; clj-mutate-manifest-end

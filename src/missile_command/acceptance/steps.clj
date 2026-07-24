@@ -85,14 +85,28 @@
     (apply max (map :radius (core/fireballs state)))
     0.0))
 
+(def ^:private fireball-peak-fraction 0.999)
+
+(defn- fireball-reached-peak?
+  "True when the largest live fireball is at (or past) the configured peak fraction."
+  [state]
+  (>= (max-fireball-radius state)
+      (* fireball-peak-fraction (core/max-fireball-radius state))))
+
+(defn- fireball-in-shrink-phase?
+  [state]
+  (and (seq (core/fireballs state))
+       (< (max-fireball-radius state)
+          (core/max-fireball-radius state))))
+
+(defn- fireball-radius-at-least?
+  [state min-r]
+  (>= (max-fireball-radius state) min-r))
+
 (defn- advance-until
   "Tick the world state until pred returns truthy, or fail after max-steps ticks."
   [world pred dt max-steps fail-message]
-  (loop [s (:state world) steps-left max-steps]
-    (cond
-      (pred s) (assoc world :state s)
-      (zero? steps-left) (support/fail! fail-message)
-      :else (recur (:state (core/tick s dt)) (dec steps-left)))))
+  (support/advance-until world pred core/tick dt max-steps fail-message))
 
 (def step-handlers
   (into
@@ -590,9 +604,7 @@
     :fn (fn [world _ _]
           (let [advanced (advance-until
                           world
-                          (fn [s]
-                            (>= (max-fireball-radius s)
-                                (* 0.999 (core/max-fireball-radius s))))
+                          fireball-reached-peak?
                           0.01 5000 "fireball never reached max radius")]
             (assoc advanced :fireball-max-time (core/sim-time (:state advanced)))))}
 
@@ -600,10 +612,7 @@
     :fn (fn [world _ _]
           (let [advanced (advance-until
                           world
-                          (fn [s]
-                            (and (seq (core/fireballs s))
-                                 (< (max-fireball-radius s)
-                                    (core/max-fireball-radius s))))
+                          fireball-in-shrink-phase?
                           0.01 5000 "fireball never entered shrink phase")]
             (assoc advanced :fireball-shrink-time
                    (core/sim-time (:state advanced)))))}
@@ -619,7 +628,7 @@
     :fn (fn [world [_ r-text] _]
           (let [min-r (Double/parseDouble r-text)]
             (advance-until world
-                           (fn [s] (>= (max-fireball-radius s) min-r))
+                           #(fireball-radius-at-least? % min-r)
                            0.01 5000
                            (str "fireball never reached radius " min-r))))}
 
@@ -627,18 +636,15 @@
     :fn (fn [world [_ r-param] example]
           (let [min-r (Double/parseDouble (str (support/require-value example r-param)))]
             (advance-until world
-                           (fn [s] (>= (max-fireball-radius s) min-r))
+                           #(fireball-radius-at-least? % min-r)
                            0.01 5000
                            (str "fireball never reached radius " min-r))))}
 
    {:pattern #"^time advances until fireballs reach peak radius$"
     :fn (fn [world _ _]
           (advance-until world
-                         (fn [s]
-                           (>= (max-fireball-radius s)
-                               (* 0.999 (core/max-fireball-radius s))))
+                         fireball-reached-peak?
                          0.01 5000 "fireball never peaked"))}
-
    {:pattern #"^there are (\d+) fireballs$"
     :fn (fn [world [_ count-text] _]
           (support/assert-count (count (core/fireballs (:state world)))
@@ -880,25 +886,13 @@
 
    {:pattern #"^time advances until all wave enemies are destroyed or have impacted$"
     :fn (fn [world _ _]
-          (loop [s (:state world) n 0]
-            (cond
-              (and (core/wave-complete? s)
-                   (empty? (core/enemy-missiles s)))
-              (assoc world :state s)
-
-              (and (empty? (core/enemy-missiles s))
-                   (not (core/wave-complete? s))
-                   (not (:wave-had-enemies? s)))
-              ;; tick once more to allow maybe-complete-wave if needed
-              (let [s2 (:state (core/tick s 0.05))]
-                (if (core/wave-complete? s2)
-                  (assoc world :state s2)
-                  (if (> n 10000)
-                    (support/fail! "wave never completed")
-                    (recur s2 (inc n)))))
-
-              (> n 10000) (support/fail! "wave enemies never finished")
-              :else (recur (:state (core/tick s 0.05)) (inc n)))))}
+          (advance-until world
+                         (fn [s]
+                           (and (core/wave-complete? s)
+                                (empty? (core/enemy-missiles s))))
+                         0.05
+                         10000
+                         "wave enemies never finished"))}
 
    {:pattern #"^every non-destroyed battery has <([A-Za-z0-9_]+)> missiles$"
     :fn (fn [world [_ ammo-param] example]
@@ -988,5 +982,5 @@
       (support/fail! (str "unsupported step: " text)))))
 
 ;; clj-mutate-manifest-begin
-;; {:version 1, :tested-at "2026-07-24T12:38:39.401044-05:00", :module-hash "-787964173", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 3, :hash "817333596"} {:id "defn-/assert-playfield-dimension", :kind "defn-", :line 5, :end-line 11, :hash "-1180112229"} {:id "defn-/living-cities", :kind "defn-", :line 13, :end-line 15, :hash "-548423997"} {:id "defn-/batteries", :kind "defn-", :line 17, :end-line 19, :hash "2112668418"} {:id "defn-/battery", :kind "defn-", :line 21, :end-line 24, :hash "-1798101236"} {:id "defn-/assert-count", :kind "defn-", :line 26, :end-line 29, :hash "-734119864"} {:id "defn-/city-xs", :kind "defn-", :line 31, :end-line 33, :hash "-1231463410"} {:id "defn-/city-span", :kind "defn-", :line 35, :end-line 38, :hash "-826397513"} {:id "defn-/example-width", :kind "defn-", :line 40, :end-line 42, :hash "1667157547"} {:id "defn-/example-height", :kind "defn-", :line 44, :end-line 46, :hash "-1096613354"} {:id "defn-/one-third", :kind "defn-", :line 48, :end-line 50, :hash "1669847708"} {:id "defn-/two-thirds", :kind "defn-", :line 52, :end-line 54, :hash "1105411976"} {:id "defn-/assert-condition", :kind "defn-", :line 56, :end-line 59, :hash "2075522906"} {:id "defn-/assert-entities-in-ground-band", :kind "defn-", :line 61, :end-line 67, :hash "-247193944"} {:id "defn-/assert-xs-in-playfield", :kind "defn-", :line 69, :end-line 74, :hash "-807069005"} {:id "defn-/assert-lt", :kind "defn-", :line 76, :end-line 78, :hash "-545222397"} {:id "defn-/assert-gt", :kind "defn-", :line 80, :end-line 82, :hash "497978739"} {:id "defn-/assert-between-open", :kind "defn-", :line 84, :end-line 86, :hash "788381149"} {:id "defn-/earlier-fallback-batteries", :kind "defn-", :line 88, :end-line 94, :hash "-1064032304"} {:id "defn-/disable-earlier-batteries", :kind "defn-", :line 96, :end-line 98, :hash "1165353126"} {:id "defn-/max-fireball-radius", :kind "defn-", :line 100, :end-line 104, :hash "1308487225"} {:id "defn-/advance-until", :kind "defn-", :line 106, :end-line 113, :hash "940725477"} {:id "def/step-handlers", :kind "def", :line 115, :end-line 818, :hash "1322629691"} {:id "defn-/match-handler", :kind "defn-", :line 820, :end-line 825, :hash "-760290467"} {:id "def/gherkin-phases", :kind "def", :line 827, :end-line 830, :hash "762060511"} {:id "defn-/apply-gherkin-phase", :kind "defn-", :line 832, :end-line 836, :hash "-1691268912"} {:id "defn/dispatch-step", :kind "defn", :line 838, :end-line 844, :hash "1912576952"}]}
+;; {:version 1, :tested-at "2026-07-24T14:33:10.063191-05:00", :module-hash "347503470", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 4, :hash "692061305"} {:id "defn-/assert-playfield-dimension", :kind "defn-", :line 6, :end-line 12, :hash "-1180112229"} {:id "defn-/living-cities", :kind "defn-", :line 14, :end-line 16, :hash "-548423997"} {:id "defn-/batteries", :kind "defn-", :line 18, :end-line 20, :hash "2112668418"} {:id "defn-/battery", :kind "defn-", :line 22, :end-line 25, :hash "-1798101236"} {:id "defn-/city-xs", :kind "defn-", :line 27, :end-line 29, :hash "-1231463410"} {:id "defn-/city-span", :kind "defn-", :line 31, :end-line 34, :hash "-826397513"} {:id "defn-/example-width", :kind "defn-", :line 36, :end-line 38, :hash "1667157547"} {:id "defn-/example-height", :kind "defn-", :line 40, :end-line 42, :hash "-1096613354"} {:id "defn-/one-third", :kind "defn-", :line 44, :end-line 46, :hash "1669847708"} {:id "defn-/two-thirds", :kind "defn-", :line 48, :end-line 50, :hash "1105411976"} {:id "defn-/assert-entities-in-ground-band", :kind "defn-", :line 52, :end-line 58, :hash "-247193944"} {:id "defn-/assert-xs-in-playfield", :kind "defn-", :line 60, :end-line 65, :hash "-807069005"} {:id "defn-/assert-between-open", :kind "defn-", :line 67, :end-line 69, :hash "1230020693"} {:id "defn-/earlier-fallback-batteries", :kind "defn-", :line 70, :end-line 76, :hash "113626062"} {:id "defn-/disable-earlier-batteries", :kind "defn-", :line 78, :end-line 80, :hash "1165353126"} {:id "defn-/max-fireball-radius", :kind "defn-", :line 82, :end-line 86, :hash "1308487225"} {:id "def/fireball-peak-fraction", :kind "def", :line 88, :end-line 88, :hash "-1421501801"} {:id "defn-/fireball-reached-peak?", :kind "defn-", :line 90, :end-line 94, :hash "1083437537"} {:id "defn-/fireball-in-shrink-phase?", :kind "defn-", :line 96, :end-line 100, :hash "1989596245"} {:id "defn-/fireball-radius-at-least?", :kind "defn-", :line 102, :end-line 104, :hash "-1598181125"} {:id "defn-/advance-until", :kind "defn-", :line 106, :end-line 109, :hash "832982022"} {:id "def/step-handlers", :kind "def", :line 111, :end-line 885, :hash "869456202"} {:id "defn-/match-handler", :kind "defn-", :line 887, :end-line 892, :hash "-760290467"} {:id "def/gherkin-phases", :kind "def", :line 894, :end-line 897, :hash "762060511"} {:id "defn-/apply-gherkin-phase", :kind "defn-", :line 899, :end-line 903, :hash "-1691268912"} {:id "defn/dispatch-step", :kind "defn", :line 905, :end-line 911, :hash "1912576952"}]}
 ;; clj-mutate-manifest-end

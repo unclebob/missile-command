@@ -81,6 +81,7 @@ fallback). Default fire keys: left `Z`/`1`, center `X`/`2`, right `C`/`3`. Esc q
 OS cursor is hidden; only the game crosshair is shown. Host only draws and routes
 input; rules stay in the pure core. The HUD includes ammo, score, and **wave**.
 
+
 ### QA mode (CLI affordances)
 
 QA uses a small, stable launch surface—not a private core API:
@@ -134,7 +135,7 @@ flags. Omitted keys keep normal new-game defaults.
              :center {:ammo 2}
              :right  {:ammo 2 :destroyed false}}
  :cities {:destroyed [4 5]}          ; indices 0–5 left-to-right; others living
- :enemies [{:target [:city 0]}
+ :enemies [{:origin [50 0] :target [:city 0]}   ; optional angled sky entry
            {:target [:battery :left]}]
  :targets [{:x 400 :y 200}]}         ; optional destroyable stubs (fireball tests)
 ```
@@ -149,7 +150,7 @@ bb play --qa --qa-speed 10 --qa-scenario tmp/wave-rearm-depleted.edn --qa-events
 | `:wave` | Starting wave number |
 | `:batteries` | Per `:left` / `:center` / `:right`: `:ammo` (0–10), optional `:destroyed` |
 | `:cities` | `:destroyed` and/or `:alive` vectors of city indices `0`–`5`; layout positions follow normal world layout |
-| `:enemies` | Scripted enemy missiles at start; each `:target` is `[:city n]` or `[:battery :left|:center|:right]` |
+| `:enemies` | Scripted enemies at start; each `:target` is `[:city n]` or `[:battery :left|:center|:right]`; optional `:origin [x y]` for angled sky entry (`y` is top of sky, typically `0`) |
 | `:targets` | Optional destroyable test targets at playfield coordinates |
 
 Examples for common setups:
@@ -224,6 +225,8 @@ qa-sim t=1.5 missiles_in_flight=0 fireballs=1 enemy_missiles=1 center_x=200 cent
 | Fireball `phase=` | `start` \| `max` \| `shrink` \| `end` with monotonic `t=` |
 | `enemy_missiles=` | Enemy missiles in flight |
 | `enemy_x` / `enemy_y` / `enemy_target=` | Per-enemy position and target (`city:N` or `battery:id`) |
+| `enemy_origin_x=` / `enemy_origin_y=` | Per-enemy sky entry (typically `y=0`); used for angle checks |
+| `enemy_target_x=` / `enemy_target_y=` | Per-enemy impact aim point |
 | `cities_alive=` / battery destroyed flags | Living cities / battery state |
 | `battery_*_ammo=` | Remaining missiles per battery |
 | `wave=` / `wave_complete=` | Wave lifecycle |
