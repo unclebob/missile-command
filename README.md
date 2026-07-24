@@ -71,12 +71,13 @@ bb play
 ```
 
 Opens a resizable Quil window at full playfield resolution (default 800×600;
-optional `bb play 1280 720`). The window opens on the **screen under the mouse
-pointer** (not forced onto the main display) and **does not steal keyboard
-focus**. Mouse moves the crosshair (clamped to the playfield). **Click** fires by
-horizontal third (with empty/destroyed fallback). Default fire keys: left `Z`/`1`,
-center `X`/`2`, right `C`/`3`. Esc quits. OS cursor is hidden; only the game
-crosshair is shown. Host only draws and routes input; rules stay in the pure core.
+optional `bb play 1280 720`). The window opens on the **screen where the launch
+command was typed** (frontmost terminal window at process start; falls back to
+the pointer’s screen) and **does not steal keyboard focus**. Mouse moves the
+crosshair (clamped to the playfield). **Click** fires by horizontal third (with
+empty/destroyed fallback). Default fire keys: left `Z`/`1`, center `X`/`2`, right
+`C`/`3`. Esc quits. OS cursor is hidden; only the game crosshair is shown. Host
+only draws and routes input; rules stay in the pure core.
 
 ### QA telemetry and setup switches
 

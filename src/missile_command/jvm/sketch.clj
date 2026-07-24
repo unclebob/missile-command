@@ -14,7 +14,8 @@
 (defonce launch-options
   (atom {:qa-telemetry? false
          :destroy-batteries []
-         :qa-events nil}))
+         :qa-events nil
+         :launch-anchor nil}))
 
 (defonce pending-qa-events
   (atom []))
@@ -23,7 +24,8 @@
   [opts]
   (reset! launch-options (select-keys opts [:qa-telemetry?
                                             :destroy-batteries
-                                            :qa-events]))
+                                            :qa-events
+                                            :launch-anchor]))
   (reset! pending-qa-events
           (if-let [path (:qa-events opts)]
             (input/load-qa-events path)
@@ -50,11 +52,12 @@
           (:destroy-batteries @launch-options)))
 
 (defn- configure-display!
-  "Open on the screen under the pointer; do not steal keyboard focus."
+  "Open on the screen where the launch command was typed; do not steal focus."
   []
   (try
-    (let [surface (.getSurface (applet/current-applet))]
-      (window/place-on-pointer-screen! surface (q/width) (q/height)))
+    (let [surface (.getSurface (applet/current-applet))
+          anchor (:launch-anchor @launch-options)]
+      (window/place-on-launch-screen! surface (q/width) (q/height) anchor))
     (catch Exception e
       (binding [*out* *err*]
         (println "window placement skipped:" (.getMessage e))))))

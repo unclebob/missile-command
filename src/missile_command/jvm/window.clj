@@ -1,5 +1,6 @@
 (ns missile-command.jvm.window
-  "Host window placement: open on the pointer's screen without stealing focus."
+  "Host window placement: open on the command's screen without stealing focus."
+  (:require [clojure.string :as str])
   (:import [java.awt GraphicsEnvironment MouseInfo Window Component]
            [javax.swing SwingUtilities]))
 
@@ -27,6 +28,49 @@
   {:x (+ (:x bounds) (quot (- (:width bounds) width) 2))
    :y (+ (:y bounds) (quot (- (:height bounds) height) 2))})
 
+(defn parse-point-csv
+  "Parse \"x,y\" (optional whitespace) into {:x :y}, or nil."
+  [s]
+  (when-let [[_ xs ys] (re-matches #"\s*(-?\d+)\s*,\s*(-?\d+)\s*" (str s))]
+    {:x (Integer/parseInt xs)
+     :y (Integer/parseInt ys)}))
+
+(defn- run-osascript
+  [source]
+  (let [pb (doto (ProcessBuilder. ["osascript" "-e" source])
+             (.redirectError (ProcessBuilder$Redirect/DISCARD)))
+        proc (.start pb)
+        out (slurp (.getInputStream proc))
+        code (.waitFor proc)]
+    (when (zero? code)
+      (str/trim out))))
+
+(defn frontmost-window-center
+  "macOS: center of the frontmost app's first window (the terminal that typed
+  the command, if still frontmost). Returns {:x :y} or nil."
+  []
+  (try
+    (parse-point-csv
+     (run-osascript
+      (str "tell application \"System Events\"\n"
+           "  tell (first process whose frontmost is true)\n"
+           "    if (count of windows) is 0 then error \"no window\"\n"
+           "    set p to position of window 1\n"
+           "    set s to size of window 1\n"
+           "    set x to (item 1 of p) + (item 1 of s) / 2\n"
+           "    set y to (item 2 of p) + (item 2 of s) / 2\n"
+           "    return (x as integer as text) & \",\" & (y as integer as text)\n"
+           "  end tell\n"
+           "end tell")))
+    (catch Exception _ nil)))
+
+(defn capture-launch-anchor!
+  "Point that identifies the screen where the launch command was typed.
+  Prefer the frontmost window (terminal) at process start; fall back to mouse."
+  []
+  (or (frontmost-window-center)
+      (pointer-location)))
+
 (defn- as-awt-window
   [native]
   (cond
@@ -41,13 +85,11 @@
     (or (try (.setLocation ^Window native (int x) (int y)) true
              (catch Exception _ false))
         (try
-          ;; NEWT GLWindow duck-typing
           (.setPosition native (int x) (int y))
           true
           (catch Exception _ false)))))
 
 (defn- disable-focus-steal!
-  "Prefer opening without taking keyboard focus from the current app."
   [awt-window]
   (when (instance? Window awt-window)
     (try (.setAutoRequestFocus ^Window awt-window false) (catch Exception _))
@@ -59,27 +101,33 @@
   (when (instance? Window awt-window)
     (try (.setFocusableWindowState ^Window awt-window true) (catch Exception _))))
 
+(defn place-on-launch-screen!
+  "Center the Processing surface on the screen of launch-anchor {:x :y}.
+  Avoids stealing keyboard focus. launch-anchor should be captured at process
+  start (frontmost terminal window), before the sketch appears."
+  ([surface sketch-w sketch-h]
+   (place-on-launch-screen! surface sketch-w sketch-h (capture-launch-anchor!)))
+  ([surface sketch-w sketch-h launch-anchor]
+   (let [anchor (or launch-anchor (capture-launch-anchor!))
+         bounds (screen-bounds-containing (:x anchor) (:y anchor))
+         loc (centered-location bounds sketch-w sketch-h)
+         lx (int (:x loc))
+         ly (int (:y loc))
+         native (try (.getNative surface) (catch Exception _ nil))
+         awt (as-awt-window native)]
+     (disable-focus-steal! awt)
+     (try (.setVisible surface false) (catch Exception _))
+     (try (.setLocation surface lx ly) (catch Exception _))
+     (try-set-position! (or awt native) lx ly)
+     (try (.setVisible surface true) (catch Exception _))
+     (future
+       (try
+         (Thread/sleep 200)
+         (reenable-focusable! awt)
+         (catch Exception _)))
+     {:screen bounds :location loc :anchor anchor})))
+
+;; Back-compat alias
 (defn place-on-pointer-screen!
-  "Move the Processing surface onto the screen under the mouse and avoid focus steal.
-  surface must implement setLocation(int,int) and getNative() (PSurface)."
   [surface sketch-w sketch-h]
-  (let [{:keys [x y]} (pointer-location)
-        bounds (screen-bounds-containing x y)
-        loc (centered-location bounds sketch-w sketch-h)
-        lx (int (:x loc))
-        ly (int (:y loc))
-        native (try (.getNative surface) (catch Exception _ nil))
-        awt (as-awt-window native)]
-    (disable-focus-steal! awt)
-    ;; Hide briefly so re-show with autoRequestFocus=false is less grabby.
-    (try (.setVisible surface false) (catch Exception _))
-    (try (.setLocation surface lx ly) (catch Exception _))
-    (try-set-position! (or awt native) lx ly)
-    (try (.setVisible surface true) (catch Exception _))
-    ;; Allow the user to focus later by clicking the window.
-    (future
-      (try
-        (Thread/sleep 200)
-        (reenable-focusable! awt)
-        (catch Exception _)))
-    {:screen bounds :location loc :pointer {:x x :y y}}))
+  (place-on-launch-screen! surface sketch-w sketch-h (pointer-location)))

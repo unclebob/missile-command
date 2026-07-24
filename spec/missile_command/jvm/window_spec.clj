@@ -26,3 +26,19 @@
     (let [p (window/pointer-location)]
       (should (number? (:x p)))
       (should (number? (:y p))))))
+
+(describe "parse-point-csv"
+  (it "parses x,y pairs"
+    (should= {:x 10 :y 20} (window/parse-point-csv "10,20"))
+    (should= {:x -5 :y 100} (window/parse-point-csv " -5 , 100 "))
+    (should-be-nil (window/parse-point-csv "nope")))
+
+  (it "rejects incomplete pairs"
+    (should-be-nil (window/parse-point-csv "1,"))
+    (should-be-nil (window/parse-point-csv ""))))
+
+(describe "capture-launch-anchor!"
+  (it "returns a point usable for screen selection"
+    (let [p (window/capture-launch-anchor!)]
+      (should (number? (:x p)))
+      (should (number? (:y p))))))
