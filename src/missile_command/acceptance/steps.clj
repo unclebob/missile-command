@@ -11,6 +11,10 @@
             [missile-command.acceptance.pause-steps :as pause-steps]
             [missile-command.acceptance.hud-steps :as hud-steps]
             [missile-command.acceptance.high-score-steps :as high-score-steps]
+            [missile-command.acceptance.options-steps :as options-steps]
+            [missile-command.acceptance.sfx-steps :as sfx-steps]
+            [missile-command.acceptance.desktop-host-steps :as desktop-host-steps]
+            [missile-command.acceptance.browser-host-steps :as browser-host-steps]
             [missile-command.core :as core]))
 
 (defn- assert-playfield-dimension
@@ -463,6 +467,16 @@
             (support/assert-condition (= expected actual)
                               (str "battery " battery-id " missiles "
                                    actual " expected " expected)))
+          world)}
+
+   {:pattern #"^the <([A-Za-z0-9_]+)> battery has (\d+) missiles$"
+    :fn (fn [world [_ battery-param ammo-text] example]
+          (let [battery-id (support/example-battery example battery-param)
+                expected (support/parse-int ammo-text "ammo")
+                actual (:missiles (core/battery (:state world) battery-id))]
+            (support/assert-condition (= expected actual)
+                                      (str "battery " battery-id " missiles "
+                                           actual " expected " expected)))
           world)}
 
    {:pattern #"^the <([A-Za-z0-9_]+)> battery has <([A-Za-z0-9_]+)> missiles$"
@@ -1030,8 +1044,11 @@
         title-steps/handlers
         pause-steps/handlers
         hud-steps/handlers
-        high-score-steps/handlers)))
-
+        high-score-steps/handlers
+        options-steps/handlers
+        sfx-steps/handlers
+        desktop-host-steps/handlers
+        browser-host-steps/handlers)))
 (defn- match-handler
   [text]
   (some (fn [handler]

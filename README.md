@@ -80,7 +80,19 @@ click the game window when you want to type into it. Mouse moves the crosshair
 fallback). Default fire keys: left `Z`/`1`, center `X`/`2`, right `C`/`3`. Esc quits.
 OS cursor is hidden; only the game crosshair is shown. Host only draws and routes
 input; rules stay in the pure core. The HUD includes ammo, score, and **wave**.
+High scores and options persist under `tmp/missile-command-settings.edn`
+(override with `MC_SETTINGS_PATH`).
 
+### Launch (browser host)
+
+```sh
+bb browser
+```
+
+Builds the ClojureScript Quil host (via `shadow-cljs` when available) and
+documents the open path **`index.html`** under `resources/public/index.html`.
+Open that page (or the shadow-cljs dev server URL) for mouse/keyboard play with
+the same pure core. Options and high scores persist in **`localStorage`**.
 
 ### QA mode (CLI affordances)
 

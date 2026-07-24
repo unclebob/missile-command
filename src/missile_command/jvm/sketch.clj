@@ -7,8 +7,8 @@
             [missile-command.core :as core]
             [missile-command.missiles :as missiles]
             [missile-command.jvm.input :as input]
+            [missile-command.jvm.persist :as persist]
             [missile-command.jvm.render :as render]
-            [missile-command.jvm.scores-store :as scores-store]
             [missile-command.jvm.window :as window]))
 
 (def default-width 800)
@@ -53,9 +53,11 @@
   (reset! last-frame-ms nil)
   (reset! initials-draft ""))
 
-(defn- scores-file-path
+(defn- settings-path
+  "QA --scores-file overrides host settings path; else MC_SETTINGS_PATH/default."
   []
-  (scores-store/scores-path @launch-options))
+  (or (:scores-file @launch-options)
+      (persist/default-settings-path)))
 
 (defn- emit!
   [line]
@@ -68,20 +70,18 @@
   (emit! (input/format-sim-telemetry-line
           (assoc state :initials-draft @initials-draft))))
 
-(defn- persist-scores!
+(defn- persist-settings!
   [state]
   (try
-    (scores-store/save-table! (scores-file-path) state)
+    (persist/save-settings! state (settings-path))
     (catch Exception e
       (binding [*out* *err*]
-        (println "high-score save failed:" (.getMessage e)))))
+        (println "settings save failed:" (.getMessage e)))))
   state)
 
-(defn- load-persisted-scores
+(defn- load-persisted
   [state]
-  (scores-store/apply-loaded
-   state
-   (scores-store/load-table (scores-file-path))))
+  (persist/load-into state (settings-path)))
 
 (defn- emit-telemetry-fire!
   [result]
@@ -106,7 +106,7 @@
                (not (core/high-score-entry? state'))
                (core/high-score-entry? state))
       (reset! initials-draft "")
-      (persist-scores! state'))
+      (persist-settings! state'))
     state'))
 
 (defn- apply-destroy-options
@@ -180,7 +180,7 @@
   (configure-display!)
   (reset! last-frame-ms (System/currentTimeMillis))
   (let [state (-> (core/new-game {:width (q/width) :height (q/height)})
-                  load-persisted-scores
+                  load-persisted
                   apply-destroy-options
                   apply-qa-scenario
                   apply-qa-targets
@@ -290,6 +290,7 @@
 
           :quit
           (do (reset! pending-qa-events [])
+              (persist-settings! state)
               (q/exit)
               state)
 
@@ -439,7 +440,7 @@
         (core/high-score-entry? state)
         state
         :else
-        (do (q/exit) state))
+        (do (persist-settings! state) (q/exit) state))
 
       (or (= \p ch) (= \P ch))
       (toggle-pause state)

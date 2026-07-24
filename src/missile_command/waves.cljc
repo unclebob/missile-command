@@ -1,4 +1,5 @@
-(ns missile-command.waves)
+(ns missile-command.waves
+  (:require [missile-command.options :as options]))
 
 (def initial-wave 1)
 (def full-ammo 10)
@@ -10,12 +11,12 @@
 (def enemy-speed-wave-factor 0.25)
 
 (defn enemy-count
-  "Number of ballistic enemies scheduled for a wave."
+  "Number of ballistic enemies scheduled for a wave (arcade base)."
   [wave]
   (+ 2 wave))
 
 (defn enemy-speed
-  "Enemy missile speed (px/s) for a wave."
+  "Enemy missile speed (px/s) for a wave (arcade base)."
   [wave]
   (* base-enemy-speed (+ 1.0 (* enemy-speed-wave-factor (dec wave)))))
 
@@ -50,16 +51,22 @@
   (min max-multiplier (+ 1 (quot (dec (long wave)) 2))))
 
 (defn schedule-metrics
-  "Observable difficulty metrics for a wave."
-  [wave]
-  {:wave wave
-   :enemy-count (enemy-count wave)
-   :enemy-speed (enemy-speed wave)
-   :multiplier (multiplier wave)
-   :mirv-count (mirv-count wave)
-   :smart-bomb-count (smart-bomb-count wave)
-   :bomber-count (bomber-count wave)
-   :satellite-count (satellite-count wave)})
+  "Observable difficulty metrics for a wave.
+  Optional difficulty preset scales enemy count/speed (arcade default)."
+  ([wave]
+   (schedule-metrics wave options/difficulty-arcade))
+  ([wave difficulty]
+   (let [factor (options/difficulty-factor difficulty)
+         arcade-count (enemy-count wave)
+         arcade-speed (enemy-speed wave)]
+     {:wave wave
+      :enemy-count (options/scale-enemy-count arcade-count factor)
+      :enemy-speed (options/scale-enemy-speed arcade-speed factor)
+      :multiplier (multiplier wave)
+      :mirv-count (mirv-count wave)
+      :smart-bomb-count (smart-bomb-count wave)
+      :bomber-count (bomber-count wave)
+      :satellite-count (satellite-count wave)})))
 
 (defn harder?
   "True when high-wave metrics exceed low-wave by count or speed."
@@ -87,5 +94,5 @@
   (if (seq pool) (vec (take n (cycle pool))) []))
 
 ;; clj-mutate-manifest-begin
-;; {:version 1, :tested-at "2026-07-24T15:48:44.370148-05:00", :module-hash "-1238958286", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 1, :hash "644944117"} {:id "def/initial-wave", :kind "def", :line 3, :end-line 3, :hash "-1132024059"} {:id "def/full-ammo", :kind "def", :line 4, :end-line 4, :hash "1169396743"} {:id "def/max-multiplier", :kind "def", :line 5, :end-line 5, :hash "315372844"} {:id "def/base-enemy-speed", :kind "def", :line 9, :end-line 9, :hash "-227771228"} {:id "def/enemy-speed-wave-factor", :kind "def", :line 10, :end-line 10, :hash "-600801268"} {:id "defn/enemy-count", :kind "defn", :line 12, :end-line 15, :hash "761033334"} {:id "defn/enemy-speed", :kind "defn", :line 17, :end-line 20, :hash "-341813790"} {:id "defn/mirv-count", :kind "defn", :line 22, :end-line 25, :hash "-969546742"} {:id "defn/smart-bomb-count", :kind "defn", :line 27, :end-line 30, :hash "1265738633"} {:id "defn-/flyer-count-from-wave", :kind "defn-", :line 32, :end-line 35, :hash "-1203787558"} {:id "defn/bomber-count", :kind "defn", :line 37, :end-line 40, :hash "1315798360"} {:id "defn/satellite-count", :kind "defn", :line 42, :end-line 45, :hash "2000732935"} {:id "defn/multiplier", :kind "defn", :line 47, :end-line 50, :hash "666855802"} {:id "defn/schedule-metrics", :kind "defn", :line 52, :end-line 62, :hash "-951056565"} {:id "defn/harder?", :kind "defn", :line 64, :end-line 68, :hash "346906739"} {:id "defn/sky-origin-x", :kind "defn", :line 70, :end-line 76, :hash "-107469784"} {:id "defn/target-pool", :kind "defn", :line 78, :end-line 82, :hash "101013267"} {:id "defn/cycle-targets", :kind "defn", :line 84, :end-line 87, :hash "595141872"}]}
+;; {:version 1, :tested-at "2026-07-24T16:17:53.663955-05:00", :module-hash "1686128174", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 2, :hash "1345759526"} {:id "def/initial-wave", :kind "def", :line 4, :end-line 4, :hash "-1132024059"} {:id "def/full-ammo", :kind "def", :line 5, :end-line 5, :hash "1169396743"} {:id "def/max-multiplier", :kind "def", :line 6, :end-line 6, :hash "315372844"} {:id "def/base-enemy-speed", :kind "def", :line 10, :end-line 10, :hash "-227771228"} {:id "def/enemy-speed-wave-factor", :kind "def", :line 11, :end-line 11, :hash "-600801268"} {:id "defn/enemy-count", :kind "defn", :line 13, :end-line 16, :hash "-1819525145"} {:id "defn/enemy-speed", :kind "defn", :line 18, :end-line 21, :hash "688271298"} {:id "defn/mirv-count", :kind "defn", :line 23, :end-line 26, :hash "-969546742"} {:id "defn/smart-bomb-count", :kind "defn", :line 28, :end-line 31, :hash "1265738633"} {:id "defn-/flyer-count-from-wave", :kind "defn-", :line 33, :end-line 36, :hash "-1203787558"} {:id "defn/bomber-count", :kind "defn", :line 38, :end-line 41, :hash "1315798360"} {:id "defn/satellite-count", :kind "defn", :line 43, :end-line 46, :hash "2000732935"} {:id "defn/multiplier", :kind "defn", :line 48, :end-line 51, :hash "666855802"} {:id "defn/schedule-metrics", :kind "defn", :line 53, :end-line 69, :hash "-372091869"} {:id "defn/harder?", :kind "defn", :line 71, :end-line 75, :hash "346906739"} {:id "defn/sky-origin-x", :kind "defn", :line 77, :end-line 83, :hash "-107469784"} {:id "defn/target-pool", :kind "defn", :line 85, :end-line 89, :hash "101013267"} {:id "defn/cycle-targets", :kind "defn", :line 91, :end-line 94, :hash "595141872"}]}
 ;; clj-mutate-manifest-end
