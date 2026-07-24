@@ -244,4 +244,19 @@
       (should= world
                (dispatch world
                          "the center defensive missile is faster than each side defensive missile"
-                         {})))))
+                         {}))))
+
+  (it "fires by click zone"
+    (let [world (fresh-world 900 600)
+          clicked (dispatch world "the player clicks at <x> <y>" {"x" "100" "y" "100"})]
+      (should= :left (:battery (first (core/defensive-missiles (:state clicked)))))
+      (should= {:x 100 :y 100} (core/crosshair (:state clicked)))))
+
+  (it "prepares click fallback by emptying earlier batteries"
+    (let [world (fresh-world 900 600)
+          prepared (dispatch world
+                             "the click must fall back to the <battery> battery because earlier batteries are empty"
+                             {"battery" "center" "x" "100"})
+          clicked (dispatch prepared "the player clicks at <x> <y>" {"x" "100" "y" "100"})]
+      (should= 0 (:missiles (core/battery (:state prepared) :left)))
+      (should= :center (:battery (first (core/defensive-missiles (:state clicked))))))))

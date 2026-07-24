@@ -85,6 +85,18 @@
   [actual lo hi message]
   (assert-condition (and (< lo actual) (< actual hi)) message))
 
+(defn- earlier-fallback-batteries
+  [state x target]
+  (let [zone (core/click-zone (core/playfield-width state) x)
+        order (core/click-fallback-order zone)]
+    (assert-condition (some #{target} order)
+                      (str "battery " target " not in fallback for zone " zone))
+    (take-while #(not= % target) order)))
+
+(defn- disable-earlier-batteries
+  [state x target disable-fn]
+  (reduce disable-fn state (earlier-fallback-batteries state x target)))
+
 (def step-handlers
   [{:pattern #"^a new game with width <([A-Za-z0-9_]+)> and height <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ width-param height-param] example]
@@ -286,6 +298,46 @@
             (assert-condition (= expected actual)
                               (str "crosshair " actual " expected " expected)))
           world)}
+   {:pattern #"^the player clicks at (-?\d+) (-?\d+)$"
+    :fn (fn [world [_ x y] _]
+          (let [result (core/handle (:state world)
+                                    {:type :click
+                                     :x (support/parse-int x "x")
+                                     :y (support/parse-int y "y")})]
+            (assoc world :state (:state result))))}
+
+   {:pattern #"^the player clicks at <([A-Za-z0-9_]+)> <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ x-param y-param] example]
+          (let [result (core/handle (:state world)
+                                    {:type :click
+                                     :x (support/example-int example x-param "x")
+                                     :y (support/example-int example y-param "y")})]
+            (assoc world :state (:state result))))}
+
+   {:pattern #"^the click must fall back to the <([A-Za-z0-9_]+)> battery because earlier batteries are empty$"
+    :fn (fn [world [_ battery-param] example]
+          (assoc world :state
+                 (disable-earlier-batteries
+                  (:state world)
+                  (support/example-int example "x" "x")
+                  (support/example-battery example battery-param)
+                  (fn [s id] (core/set-battery-ammo s id 0)))))}
+
+   {:pattern #"^the click must fall back to the <([A-Za-z0-9_]+)> battery because earlier batteries are destroyed$"
+    :fn (fn [world [_ battery-param] example]
+          (assoc world :state
+                 (disable-earlier-batteries
+                  (:state world)
+                  (support/example-int example "x" "x")
+                  (support/example-battery example battery-param)
+                  core/destroy-battery)))}
+
+   {:pattern #"^no battery can fire$"
+    :fn (fn [world _ _]
+          (assoc world :state
+                 (reduce (fn [s id] (core/set-battery-ammo s id 0))
+                         (:state world)
+                         [:left :center :right])))}
 
    {:pattern #"^the crosshair is at <([A-Za-z0-9_]+)> <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ x-param y-param] example]
@@ -304,6 +356,13 @@
                               (str "score " actual " expected " expected)))
           world)}
 
+   {:pattern #"^the player fires the (left|center|right) battery$"
+    :fn (fn [world [_ battery-name] _]
+          (let [battery-id (support/parse-battery-id battery-name)
+                result (core/handle (:state world)
+                                    {:type :fire :battery battery-id})]
+            (assoc world :state (:state result))))}
+
    {:pattern #"^the player fires the <([A-Za-z0-9_]+)> battery$"
     :fn (fn [world [_ battery-param] example]
           (let [battery-id (support/example-battery example battery-param)
@@ -318,6 +377,16 @@
                               (:state world)
                               [:left :center :right])]
             (assoc world :state state)))}
+
+   {:pattern #"^the (left|center|right) battery has (\d+) missiles$"
+    :fn (fn [world [_ battery-name ammo] _]
+          (let [battery-id (support/parse-battery-id battery-name)
+                expected (support/parse-int ammo "ammo")
+                actual (:missiles (battery world battery-id))]
+            (assert-condition (= expected actual)
+                              (str "battery " battery-id " missiles "
+                                   actual " expected " expected)))
+          world)}
 
    {:pattern #"^the <([A-Za-z0-9_]+)> battery has <([A-Za-z0-9_]+)> missiles$"
     :fn (fn [world [_ battery-param ammo-param] example]
@@ -340,11 +409,32 @@
                                      (:missiles b) " expected " expected))))
           world)}
 
+   {:pattern #"^there are (\d+) defensive missiles in flight$"
+    :fn (fn [world [_ count-text] _]
+          (assert-count (count (core/defensive-missiles (:state world)))
+                        (support/parse-int count-text "missile count")
+                        "defensive missiles")
+          world)}
+
    {:pattern #"^there are <([A-Za-z0-9_]+)> defensive missiles in flight$"
     :fn (fn [world [_ count-param] example]
           (assert-count (count (core/defensive-missiles (:state world)))
                         (support/example-int example count-param "missile count")
                         "defensive missiles")
+          world)}
+
+   {:pattern #"^a defensive missile from the (left|center|right) battery targets (-?\d+) (-?\d+)$"
+    :fn (fn [world [_ battery-name x y] _]
+          (let [battery-id (support/parse-battery-id battery-name)
+                target-x (support/parse-int x "x")
+                target-y (support/parse-int y "y")
+                match (first (filter #(and (= battery-id (:battery %))
+                                           (= target-x (:x1 %))
+                                           (= target-y (:y1 %)))
+                                     (core/defensive-missiles (:state world))))]
+            (assert-condition match
+                              (str "no defensive missile from " battery-id
+                                   " targeting " target-x "," target-y)))
           world)}
 
    {:pattern #"^a defensive missile from the <([A-Za-z0-9_]+)> battery targets <([A-Za-z0-9_]+)> <([A-Za-z0-9_]+)>$"
@@ -407,5 +497,5 @@
       (support/fail! (str "unsupported step: " text)))))
 
 ;; clj-mutate-manifest-begin
-;; {:version 1, :tested-at "2026-07-24T11:47:32.547007-05:00", :module-hash "83529897", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 3, :hash "817333596"} {:id "defn-/assert-playfield-dimension", :kind "defn-", :line 5, :end-line 11, :hash "-1180112229"} {:id "defn-/living-cities", :kind "defn-", :line 13, :end-line 15, :hash "-548423997"} {:id "defn-/batteries", :kind "defn-", :line 17, :end-line 19, :hash "2112668418"} {:id "defn-/battery", :kind "defn-", :line 21, :end-line 24, :hash "-1798101236"} {:id "defn-/assert-count", :kind "defn-", :line 26, :end-line 29, :hash "-734119864"} {:id "defn-/city-xs", :kind "defn-", :line 31, :end-line 33, :hash "-1231463410"} {:id "defn-/city-span", :kind "defn-", :line 35, :end-line 38, :hash "-826397513"} {:id "defn-/example-width", :kind "defn-", :line 40, :end-line 42, :hash "1667157547"} {:id "defn-/example-height", :kind "defn-", :line 44, :end-line 46, :hash "-1096613354"} {:id "defn-/one-third", :kind "defn-", :line 48, :end-line 50, :hash "1669847708"} {:id "defn-/two-thirds", :kind "defn-", :line 52, :end-line 54, :hash "1105411976"} {:id "defn-/assert-condition", :kind "defn-", :line 56, :end-line 59, :hash "2075522906"} {:id "defn-/assert-entities-in-ground-band", :kind "defn-", :line 61, :end-line 67, :hash "-247193944"} {:id "defn-/assert-xs-in-playfield", :kind "defn-", :line 69, :end-line 74, :hash "-807069005"} {:id "defn-/assert-lt", :kind "defn-", :line 76, :end-line 78, :hash "-545222397"} {:id "defn-/assert-gt", :kind "defn-", :line 80, :end-line 82, :hash "497978739"} {:id "defn-/assert-between-open", :kind "defn-", :line 84, :end-line 86, :hash "788381149"} {:id "def/step-handlers", :kind "def", :line 88, :end-line 393, :hash "958453402"} {:id "defn-/match-handler", :kind "defn-", :line 395, :end-line 400, :hash "-760290467"} {:id "defn/dispatch-step", :kind "defn", :line 402, :end-line 407, :hash "-1121977204"}]}
+;; {:version 1, :tested-at "2026-07-24T12:01:47.330987-05:00", :module-hash "-237287548", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 3, :hash "817333596"} {:id "defn-/assert-playfield-dimension", :kind "defn-", :line 5, :end-line 11, :hash "-1180112229"} {:id "defn-/living-cities", :kind "defn-", :line 13, :end-line 15, :hash "-548423997"} {:id "defn-/batteries", :kind "defn-", :line 17, :end-line 19, :hash "2112668418"} {:id "defn-/battery", :kind "defn-", :line 21, :end-line 24, :hash "-1798101236"} {:id "defn-/assert-count", :kind "defn-", :line 26, :end-line 29, :hash "-734119864"} {:id "defn-/city-xs", :kind "defn-", :line 31, :end-line 33, :hash "-1231463410"} {:id "defn-/city-span", :kind "defn-", :line 35, :end-line 38, :hash "-826397513"} {:id "defn-/example-width", :kind "defn-", :line 40, :end-line 42, :hash "1667157547"} {:id "defn-/example-height", :kind "defn-", :line 44, :end-line 46, :hash "-1096613354"} {:id "defn-/one-third", :kind "defn-", :line 48, :end-line 50, :hash "1669847708"} {:id "defn-/two-thirds", :kind "defn-", :line 52, :end-line 54, :hash "1105411976"} {:id "defn-/assert-condition", :kind "defn-", :line 56, :end-line 59, :hash "2075522906"} {:id "defn-/assert-entities-in-ground-band", :kind "defn-", :line 61, :end-line 67, :hash "-247193944"} {:id "defn-/assert-xs-in-playfield", :kind "defn-", :line 69, :end-line 74, :hash "-807069005"} {:id "defn-/assert-lt", :kind "defn-", :line 76, :end-line 78, :hash "-545222397"} {:id "defn-/assert-gt", :kind "defn-", :line 80, :end-line 82, :hash "497978739"} {:id "defn-/assert-between-open", :kind "defn-", :line 84, :end-line 86, :hash "788381149"} {:id "defn-/earlier-fallback-batteries", :kind "defn-", :line 88, :end-line 94, :hash "-1064032304"} {:id "defn-/disable-earlier-batteries", :kind "defn-", :line 96, :end-line 98, :hash "1165353126"} {:id "def/step-handlers", :kind "def", :line 100, :end-line 483, :hash "1114522454"} {:id "defn-/match-handler", :kind "defn-", :line 485, :end-line 490, :hash "-760290467"} {:id "defn/dispatch-step", :kind "defn", :line 492, :end-line 497, :hash "-1121977204"}]}
 ;; clj-mutate-manifest-end
