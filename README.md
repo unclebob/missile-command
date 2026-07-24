@@ -231,6 +231,8 @@ qa-sim t=1.5 missiles_in_flight=0 fireballs=1 enemy_missiles=1 center_x=200 cent
 | `battery_*_ammo=` | Remaining missiles per battery |
 | `wave=` / `wave_complete=` | Wave lifecycle |
 | `wave_enemy_count=` / `wave_enemy_speed=` | Scheduled hardness metrics for current wave |
+| `score=` | Running score (starts at 0) |
+| `multiplier=` | Score multiplier for the current wave (1–6) |
 | Destroyable targets | position and `destroyed=true\|false` |
 
 Fireball phase order for one blast: `start.t` ≤ `max.t` ≤ `shrink.t` ≤ `end.t`.
