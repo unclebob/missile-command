@@ -19,4 +19,13 @@
     (should= 550 (scoring/wave-end-points 10 5 1))
     (should= 1100 (scoring/wave-end-points 10 5 2))
     (should= 500 (scoring/wave-end-points 0 5 1))
-    (should= 50 (scoring/wave-end-points 10 0 1))))
+    (should= 50 (scoring/wave-end-points 10 0 1)))
+
+  (it "counts bonus-city thresholds crossed by score"
+    (should= 10000 scoring/default-bonus-city-threshold)
+    (should= 0 (scoring/thresholds-crossed 9999 10000))
+    (should= 1 (scoring/thresholds-crossed 10000 10000))
+    (should= 2 (scoring/thresholds-crossed 20000 10000))
+    (should= 0 (scoring/thresholds-crossed 5000 0))
+    (should= 2 (scoring/new-bonus-city-awards 30000 10000 1))
+    (should= 0 (scoring/new-bonus-city-awards 9999 10000 0))))

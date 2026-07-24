@@ -272,6 +272,8 @@
               (str "wave_enemy_speed=" (:enemy-speed metrics))
               (str "score=" (core/score state))
               (str "multiplier=" (core/multiplier state))
+              (str "bonus_cities=" (core/bonus-cities state))
+              (str "bonus_city_earned_events=" (core/bonus-city-earned-events state))
               (str "missiles_in_flight=" (count missiles))
               (str "fireballs=" (count fireballs))
               (str "enemy_missiles=" (count enemies))
@@ -293,6 +295,21 @@
   (if-let [w (:wave scenario)]
     (core/set-wave state w)
     state))
+
+(defn- apply-scenario-bonus-threshold
+  [state scenario]
+  (if-let [t (:bonus-city-threshold scenario)]
+    (core/set-bonus-city-threshold state t)
+    state))
+
+(defn- apply-scenario-score-and-bonus
+  "Apply explicit score/reserve after enemies so score sync sees final score."
+  [state scenario]
+  (cond-> state
+    (contains? scenario :bonus-cities)
+    (core/set-bonus-city-reserve (:bonus-cities scenario))
+    (contains? scenario :score)
+    (core/set-score (:score scenario))))
 
 (defn- apply-scenario-size
   [state scenario]
@@ -349,12 +366,13 @@
   [state scenario]
   (-> state
       (apply-scenario-wave scenario)
+      (apply-scenario-bonus-threshold scenario)
       (apply-scenario-size scenario)
       (apply-scenario-batteries scenario)
       (apply-scenario-cities scenario)
       (apply-scenario-targets scenario)
-      (apply-scenario-enemies scenario)))
-
+      (apply-scenario-enemies scenario)
+      (apply-scenario-score-and-bonus scenario)))
 (defn format-fireball-phase-line
   "Phase timing line for one fireball."
   [state fireball phase]

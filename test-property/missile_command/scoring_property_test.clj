@@ -25,3 +25,14 @@
            (= (* base mult) pts)
            (= (scoring/wave-end-points ammo cities 1)
               (quot pts mult))))))
+
+(defspec bonus-threshold-awards-match-quotient
+  50
+  (for-all [score (gen/large-integer* {:min 0 :max 100000})
+            threshold (gen/large-integer* {:min 1 :max 20000})
+            already (gen/large-integer* {:min 0 :max 20})]
+    (let [crossed (scoring/thresholds-crossed score threshold)
+          awards (scoring/new-bonus-city-awards score threshold already)]
+      (and (= crossed (quot score threshold))
+           (= awards (max 0 (- crossed already)))
+           (>= awards 0)))))
