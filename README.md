@@ -102,6 +102,9 @@ qa-fireball phase=end t=1.80
 | `target_x=` / `target_y=` | Aim/detonation point of each in-flight missile |
 | `fireballs=` | Count of active fireballs (when reported) |
 | **Each fireball** | **Required on every live-fireball line:** `center_x`, `center_y`, `radius` |
+| `enemy_missiles=` | Enemy ballistic missiles in flight |
+| Per enemy missile | origin, current position or progress, target (city index or battery id) |
+| Cities / batteries | living vs destroyed state as needed for QA |
 | Destroyable targets (if any) | position and `destroyed=true\|false` |
 
 When several missiles are in flight, origin/target pairs repeat on the same line
@@ -162,6 +165,22 @@ and `qa/procedures/defensive-missiles-fireballs.qa.md`).
 ```sh
 bb play --qa-telemetry --qa-target 400,200
 ```
+
+#### `--qa-enemy <spec>`
+
+Spawns a scripted enemy ballistic missile for tests (wave system may still be
+minimal). `<spec>` forms:
+
+- `city:<index>` — target living city index `0`–`5`
+- `battery:left` | `battery:center` | `battery:right` — target that battery
+
+```sh
+bb play --qa-telemetry --qa-enemy city:0
+bb play --qa-telemetry --qa-enemy battery:left
+```
+
+Equivalent lines may also appear in `--qa-events` files, e.g. `enemy city 0` or
+`enemy battery left` (exact spelling documented here if it differs).
 
 ### Hardening (mutation / CRAP / DRY)
 
