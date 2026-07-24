@@ -469,6 +469,16 @@
                                    actual " expected " expected)))
           world)}
 
+   {:pattern #"^the <([A-Za-z0-9_]+)> battery has (\d+) missiles$"
+    :fn (fn [world [_ battery-param ammo-text] example]
+          (let [battery-id (support/example-battery example battery-param)
+                expected (support/parse-int ammo-text "ammo")
+                actual (:missiles (core/battery (:state world) battery-id))]
+            (support/assert-condition (= expected actual)
+                                      (str "battery " battery-id " missiles "
+                                           actual " expected " expected)))
+          world)}
+
    {:pattern #"^the <([A-Za-z0-9_]+)> battery has <([A-Za-z0-9_]+)> missiles$"
     :fn (fn [world [_ battery-param ammo-param] example]
           (let [battery-id (support/example-battery example battery-param)
