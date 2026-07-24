@@ -2,6 +2,7 @@
   (:require [missile-command.batteries :as batteries]
             [missile-command.input :as input]
             [missile-command.missiles :as missiles]
+            [missile-command.waves :as waves]
             [missile-command.world :as world]))
 
 (def initial-score 0)
@@ -44,6 +45,9 @@
   (merge {:width width
           :height height
           :score initial-score
+          :wave waves/initial-wave
+          :wave-complete? false
+          :wave-had-enemies? false
           :crosshair (center-crosshair width height)
           :defensive-missiles []
           :fireballs []
@@ -104,6 +108,20 @@
 (defn score
   [state]
   (:score state))
+
+(defn wave
+  [state]
+  (or (:wave state) waves/initial-wave))
+
+(defn wave-complete?
+  [state]
+  (boolean (:wave-complete? state)))
+
+(defn hud
+  "Minimal HUD projection for hosts and tests."
+  [state]
+  {:wave (wave state)
+   :score (score state)})
 
 (defn defensive-missiles
   [state]
@@ -176,14 +194,21 @@
   [state city-id]
   (update-city state city-id #(assoc % :alive? false)))
 
+(defn- enemy-speed-for-state
+  [state]
+  (waves/enemy-speed (wave state)))
+
 (defn spawn-enemy-at
   "Spawn an enemy missile from origin toward a target point."
   [state origin target target-kind target-id]
   (let [[mid state] (next-entity-id state)
         missile (missiles/make-enemy mid origin target
-                                     missiles/default-enemy-speed
+                                     (enemy-speed-for-state state)
                                      target-kind target-id)]
-    (update state :enemy-missiles (fnil conj []) missile)))
+    (-> state
+        (update :enemy-missiles (fnil conj []) missile)
+        (assoc :wave-had-enemies? true
+               :wave-complete? false))))
 
 (defn spawn-enemy-targeting-city
   "Spawn an enemy missile from the top of the sky toward a living city."
@@ -382,6 +407,77 @@
             (assoc state :enemy-missiles [])
             (enemy-missiles state))))
 
+(defn- maybe-complete-wave
+  "When all active wave enemies are gone, mark the wave complete and advance."
+  [state]
+  (if (and (:wave-had-enemies? state)
+           (not (:wave-complete? state))
+           (empty? (enemy-missiles state)))
+    (-> state
+        (assoc :wave-complete? true
+               :wave-had-enemies? false)
+        (update :wave (fnil inc waves/initial-wave)))
+    state))
+
+(defn- map-living-batteries
+  [state f]
+  (update state :batteries
+          (fn [bs]
+            (mapv (fn [b]
+                    (if (:destroyed? b) b (f b)))
+                  bs))))
+
+(defn rearm-surviving-batteries
+  "Refill non-destroyed batteries to full ammo."
+  [state]
+  (map-living-batteries state #(batteries/set-ammo % waves/full-ammo)))
+
+(defn set-wave-enemies-active
+  "Test helper: replace in-flight enemies with n scheduled wave enemies."
+  [state n]
+  (let [state (assoc state
+                     :enemy-missiles []
+                     :wave-complete? false
+                     :wave-had-enemies? (pos? n))
+        living (mapv :id (living-cities state))
+        targets (if (seq living)
+                  (take n (cycle living))
+                  [])]
+    (reduce (fn [s city-id]
+              (spawn-enemy-targeting-city s city-id))
+            state
+            targets)))
+
+(defn set-non-destroyed-battery-ammo
+  "Test helper: set ammo on every non-destroyed battery."
+  [state ammo]
+  (map-living-batteries state #(batteries/set-ammo % ammo)))
+
+(defn wave-schedule-metrics
+  [wave-number]
+  (waves/schedule-metrics wave-number))
+
+(defn harder-wave?
+  [low-metrics high-metrics]
+  (waves/harder? low-metrics high-metrics))
+
+(defn set-wave
+  "Test helper: jump to a wave number without auto-completing."
+  [state wave-number]
+  (assoc state
+         :wave wave-number
+         :wave-complete? false
+         :wave-had-enemies? false
+         :enemy-missiles []))
+
+(defn start-next-wave
+  "Begin the next wave: rearm survivors; wave number already advanced on complete."
+  [state]
+  (-> state
+      (assoc :wave-complete? false
+             :wave-had-enemies? false)
+      (rearm-surviving-batteries)))
+
 (defn tick
   "Advance simulation by dt seconds (clamped). Returns {:state s :events [...]}."
   [state dt]
@@ -392,7 +488,8 @@
                   (tick-defensive-missiles applied)
                   (tick-fireballs applied)
                   (destroy-targets-in-fireballs)
-                  (tick-enemy-missiles applied))]
+                  (tick-enemy-missiles applied)
+                  (maybe-complete-wave))]
     {:state state :events []}))
 
 ;; clj-mutate-manifest-begin

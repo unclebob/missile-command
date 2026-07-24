@@ -79,109 +79,116 @@ horizontal third (with empty/destroyed fallback). Default fire keys: left `Z`/`1
 center `X`/`2`, right `C`/`3`. Esc quits. OS cursor is hidden; only the game
 crosshair is shown. Host only draws and routes input; rules stay in the pure core.
 
-### QA telemetry and setup switches
+### QA mode (CLI affordances)
 
-These flags are **user-facing CLI affordances** on the normal launch command
-(not a private in-process API).
+QA uses a small, stable launch surface—not a private core API:
 
-#### `--qa-telemetry`
-
-Prints lines on stdout for fires, simulation snapshots, fireball phases, and targets:
-
-```text
-qa-fire battery=left missiles_in_flight=1 origin_x=40 origin_y=540 target_x=200 target_y=120
-qa-fireball id=3 phase=start t=1.2 center_x=200 center_y=120 radius=0.0
-qa-fireball id=3 phase=max t=1.6 center_x=200 center_y=120 radius=40.0
-qa-fireball id=3 phase=shrink t=1.7 center_x=200 center_y=120 radius=30.0
-qa-fireball id=3 phase=end t=2.0 center_x=0 center_y=0 radius=0.0
-qa-sim t=1.5 missiles_in_flight=0 fireballs=1 center_x=200 center_y=120 radius=20.0
-```
-
-| Field | Meaning |
-|-------|---------|
-| `battery=` | `left`, `center`, `right`, or `none` (on `qa-fire`) |
-| `missiles_in_flight=` | Defensive missiles currently in flight |
-| `origin_x=` / `origin_y=` | Launch point of each in-flight missile |
-| `target_x=` / `target_y=` | Aim/detonation point of each in-flight missile |
-| `phase=` | Fireball lifecycle: `start`, `expand`, `max`, `shrink`, `end` |
-| `center_x` / `center_y` / `radius` | Fireball blast geometry (required on live-fireball lines) |
-| `destroyed=` | Destroyable target status when targets are present |
-| `enemy_missiles=` | Enemy ballistic missiles in flight (when reported) |
-
-When several missiles are in flight, origin/target pairs may repeat on the same
-line (or one line per missile). Multiple fireballs each report center and radius.
-
-Ordering of fireball phases: `start.t` ≤ `max.t` ≤ `shrink.t` ≤ `end.t`.
+| Flag | Role |
+|------|------|
+| `--qa` | Enable QA mode: **telemetry on**, accept scenario/events |
+| `--qa-scenario <file>` | Initial world state (EDN) |
+| `--qa-events <file>` | Timed input script (text) |
 
 ```sh
-bb play --qa-telemetry
+bb play --qa
+bb play --qa --qa-scenario tmp/wave-rearm.edn
+bb play --qa --qa-scenario tmp/setup.edn --qa-events tmp/clicks.txt
+bb play 1280 720 --qa --qa-scenario tmp/setup.edn
 ```
 
-#### `--qa-target x,y`
+Optional: `--qa-events` alone with `--qa` (default new-game state, scripted input only).
 
-Spawn a destroyable test target at playfield coordinates (repeatable flag).
+#### Scenario file (EDN)
 
-```sh
-bb play --qa-telemetry --qa-target 400,200
+One structured map for **setup**. New stories add keys; they do not add new CLI
+flags. Omitted keys keep normal new-game defaults.
+
+```edn
+{:width 800
+ :height 600
+ :wave 1
+ :batteries {:left   {:ammo 2}
+             :center {:ammo 2}
+             :right  {:ammo 2 :destroyed false}}
+ :cities {:destroyed [4 5]}          ; indices 0–5 left-to-right; others living
+ :enemies [{:target [:city 0]}
+           {:target [:battery :left]}]
+ :targets [{:x 400 :y 200}]}         ; optional destroyable stubs (fireball tests)
 ```
 
-#### `--destroy-batteries <list>`
+| Key | Meaning |
+|-----|---------|
+| `:width` / `:height` | Playfield size (else CLI size / default) |
+| `:wave` | Starting wave number |
+| `:batteries` | Per `:left` / `:center` / `:right`: `:ammo` (0–10), optional `:destroyed` |
+| `:cities` | `:destroyed` and/or `:alive` vectors of city indices `0`–`5`; layout positions follow normal world layout |
+| `:enemies` | Scripted enemy missiles at start; each `:target` is `[:city n]` or `[:battery :left|:center|:right]` |
+| `:targets` | Optional destroyable test targets at playfield coordinates |
 
-Starts with named batteries already destroyed (`left`, `center`, `right`, comma-separated).
+Examples for common setups:
 
-```sh
-bb play --qa-telemetry --destroy-batteries left
-bb play --qa-telemetry --destroy-batteries left,center
-bb play --qa-telemetry --destroy-batteries left,center,right
+```edn
+;; Depleted ammo, two cities ruined — stage a wave rearm check
+{:batteries {:left {:ammo 2} :center {:ammo 2} :right {:ammo 2}}
+ :cities {:destroyed [4 5]}
+ :enemies [{:target [:city 0]}]}
+
+;; Left battery destroyed; empty preferred click-zone fallback tests
+{:batteries {:left {:destroyed true :ammo 10}}}
+
+;; Fireball hit/miss stub target
+{:targets [{:x 400 :y 200}]}
 ```
 
-Destroyed batteries cannot key-fire. Click-zone fire skips them in the zone
-fallback order (`features/fire-click-zone.feature`).
+#### Events file (text)
 
-#### `--qa-events <file>`
-
-Host automation: after launch, the host applies one event per frame from a text
-file (same path as mouse/key handlers — not a private core API). Lines:
+**Actions over time** only (not initial state). Host applies one line per frame
+(or documented pacing) through the same input path as mouse/keyboard:
 
 ```text
 aim 400 200
 click 100 150
 key z
-wait 2.5
+key 1
+key x
+wait 10
 quit
 ```
 
-`wait SECONDS` pauses scripted events for wall-clock time while simulation ticks.
+| Line | Meaning |
+|------|---------|
+| `aim <x> <y>` | Move crosshair (clamped) |
+| `click <x> <y>` | Click-zone fire at point |
+| `key <name>` | Key fire / UI key (`z`, `1`, `x`, `2`, `c`, `3`, …) |
+| `wait <n>` | Optional: wait `n` frames (if implemented) |
+| `quit` | Exit cleanly |
 
-```sh
-bb play --qa-telemetry --qa-events tmp/qa-events.txt
+#### Telemetry (stdout when `--qa`)
+
+Line-oriented `key=value` records after fires and simulation updates:
+
+```text
+qa-fire battery=left missiles_in_flight=1 origin_x=40 origin_y=540 target_x=200 target_y=120
+qa-fireball phase=start t=1.20 center_x=200 center_y=120 radius=1
+qa-fireball phase=max t=1.45 center_x=200 center_y=120 radius=40
+qa-fireball phase=shrink t=1.55 center_x=200 center_y=120 radius=28
+qa-fireball phase=end t=1.80
 ```
 
-#### `--qa-target <x>,<y>`
+| Field | Meaning |
+|-------|---------|
+| `battery=` | `left`, `center`, `right`, or `none` (fire attempts) |
+| `missiles_in_flight=` | Defensive missiles in flight |
+| `origin_*` / `target_*` | Per defensive missile flight vector |
+| **Each live fireball** | **Required:** `center_x`, `center_y`, `radius` |
+| Fireball `phase=` | `start` \| `max` \| `shrink` \| `end` with monotonic `t=` |
+| `enemy_missiles=` | Enemy missiles in flight; per-enemy origin/position/target |
+| Cities / batteries | Living vs destroyed; ammo as needed |
+| `wave=` / `wave_complete=` | Wave lifecycle |
+| Destroyable targets | position and `destroyed=true\|false` |
 
-Places a single destroyable test target at playfield coordinates `(x, y)` for
-fireball hit/miss checks (see `features/defensive-missiles-fireballs.feature`
-and `qa/procedures/defensive-missiles-fireballs.qa.md`).
-
-```sh
-bb play --qa-telemetry --qa-target 400,200
-```
-
-#### `--qa-enemy <spec>`
-
-Spawns a scripted enemy ballistic missile for tests (wave system may still be
-minimal). `<spec>` forms:
-
-- `city:<index>` — target living city index `0`–`5`
-- `battery:left` | `battery:center` | `battery:right` — target that battery
-
-```sh
-bb play --qa-telemetry --qa-enemy city:0
-bb play --qa-telemetry --qa-enemy battery:left
-```
-
-Equivalent lines may also appear in `--qa-events` files, e.g. `enemy city 0` or
-`enemy battery left` (exact spelling documented here if it differs).
+Fireball phase order for one blast: `start.t` ≤ `max.t` ≤ `shrink.t` ≤ `end.t`.
+Radius at max > start; shrink radius < max; center stays on detonation point.
 
 ### Hardening (mutation / CRAP / DRY)
 
