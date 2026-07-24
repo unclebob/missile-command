@@ -190,8 +190,7 @@
                (dispatch world
                          "the horizontal span of the cities is less than width <width>"
                          ex))))
-
-  (it "aims the crosshair"
+(it "aims the crosshair"
     (let [world (fresh-world)
           aimed (dispatch world "the player aims at <x> <y>" {"x" "100" "y" "200"})]
       (should= {:x 100 :y 200} (core/crosshair (:state aimed)))))
@@ -259,4 +258,21 @@
                              {"battery" "center" "x" "100"})
           clicked (dispatch prepared "the player clicks at <x> <y>" {"x" "100" "y" "100"})]
       (should= 0 (:missiles (core/battery (:state prepared) :left)))
-      (should= :center (:battery (first (core/defensive-missiles (:state clicked))))))))
+      (should= :center (:battery (first (core/defensive-missiles (:state clicked)))))))
+
+  (it "advances time until defensive missiles arrive and form fireballs"
+    (let [world (-> (fresh-world)
+                    (dispatch "the player aims at <x> <y>" {"x" "400" "y" "100"})
+                    (dispatch "the player fires the <battery> battery" {"battery" "center"})
+                    (dispatch "time advances until defensive missiles arrive" {}))]
+      (should= 0 (count (core/defensive-missiles (:state world))))
+      (should= 1 (count (core/fireballs (:state world))))
+      (should= world
+               (dispatch world "there are <fireball_count> fireballs"
+                         {"fireball_count" "1"}))))
+
+  (it "advances time by an example number of seconds"
+    (let [world (fresh-world)
+          advanced (dispatch world "time advances by <dt> seconds" {"dt" "0.02"})]
+      (should= 0.02 (core/last-applied-dt (:state advanced)))
+      (should= 0.02 (core/sim-time (:state advanced))))))

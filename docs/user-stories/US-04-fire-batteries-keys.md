@@ -1,6 +1,6 @@
 # US-04 — Fire batteries with keys
 
-**Status:** in-implementation  
+**Status:** done  
 **Depends on:** US-03  
 **Design:** §5.3, §5.4
 
