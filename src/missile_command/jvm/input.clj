@@ -263,7 +263,8 @@
         fireballs (core/fireballs state)
         enemies (core/enemy-missiles state)
         targets (core/destroyable-targets state)
-        metrics (core/wave-schedule-metrics (core/wave state))]
+        metrics (core/wave-schedule-metrics (core/wave state))
+        hud (core/hud state)]
     (str/join
      " "
      (concat [(str "qa-sim t=" (core/sim-time state))
@@ -287,7 +288,13 @@
               (str "missiles_in_flight=" (count missiles))
               (str "fireballs=" (count fireballs))
               (str "enemy_missiles=" (count enemies))
-              (str "cities_alive=" (count (core/living-cities state)))]
+              (str "cities_alive=" (count (core/living-cities state)))
+              (str "hud_score=" (:score hud))
+              (str "hud_wave=" (:wave hud))
+              (str "hud_multiplier=" (:multiplier hud))
+              (str "hud_living_cities=" (:living-cities hud))
+              (str "hud_bonus_cities=" (:bonus-cities hud))
+              (str "hud_full=" (boolean (:full-playing-hud? hud)))]
              (battery-sim-fields state)
              (fireball-sim-fields fireballs)
              (enemy-sim-fields enemies)
