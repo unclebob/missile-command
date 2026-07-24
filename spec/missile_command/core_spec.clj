@@ -195,12 +195,34 @@
       (should= :left (:battery (first (core/defensive-missiles after)))))))
 
 (describe "waves and rearm"
-  (it "starts at wave one with full ammo"
+  (it "starts at wave one with full ammo and incomplete wave flags"
     (let [state (core/new-game {:width 800 :height 600})]
+      (should= false core/wave-flag-off)
+      (should= true core/wave-flag-on)
+      (should= false core/wave-starts-complete?)
+      (should= false core/wave-starts-with-enemies?)
+      (should= false core/target-starts-destroyed?)
+      (should= 0 core/initial-entity-id)
+      (should= 0 core/clamp-lo)
+      (should= {:x 0 :y 0} core/default-crosshair)
       (should= 1 (core/wave state))
       (should= 1 (:wave (core/hud state)))
+      (should-not (core/wave-complete? state))
+      (should-not (:wave-had-enemies? state))
+      (should= false (:wave-complete? state))
+      (should= false (:wave-had-enemies? state))
+      (should= 0 (:next-entity-id state))
       (doseq [b (core/batteries state)]
         (should= 10 (:missiles b)))))
+
+  (it "marks that enemies have been seen and wave is not complete after spawn"
+    (let [state (core/spawn-enemy-targeting-city
+                 (core/new-game {:width 800 :height 600}) 0)]
+      (should (:wave-had-enemies? state))
+      (should= true (:wave-had-enemies? state))
+      (should-not (core/wave-complete? state))
+      (should= false (:wave-complete? state))
+      (should= 1 (count (core/enemy-missiles state)))))
 
   (it "completes a wave when enemies are cleared and advances the number"
     (let [state (-> (core/new-game {:width 800 :height 600})
@@ -210,7 +232,54 @@
                     s
                     (recur (:state (core/tick s 0.05)) (inc n))))]
       (should (core/wave-complete? after))
-      (should= 2 (core/wave after))))
+      (should= true (:wave-complete? after))
+      (should= false (:wave-had-enemies? after))
+      (should= 2 (core/wave after))
+      (should (empty? (core/enemy-missiles after)))))
+
+  (it "does not complete a wave while enemies remain"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (core/set-wave-enemies-active 1))
+          after (:state (core/tick state 0.05))]
+      (should-not (core/wave-complete? after))
+      (should (:wave-had-enemies? after))
+      (should= 1 (core/wave after))
+      (should= 1 (count (core/enemy-missiles after)))))
+
+  (it "does not complete when enemies never appeared"
+    (let [state (core/new-game {:width 800 :height 600})
+          after (:state (core/tick state 0.1))]
+      (should-not (core/wave-complete? after))
+      (should= 1 (core/wave after))))
+
+  (it "set-wave-enemies-active with zero does not mark enemies seen"
+    (let [state (core/set-wave-enemies-active
+                 (core/new-game {:width 800 :height 600}) 0)]
+      (should= false (:wave-had-enemies? state))
+      (should= false (:wave-complete? state))
+      (should (empty? (core/enemy-missiles state)))))
+
+  (it "set-wave clears enemies and wave flags"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (core/set-wave-enemies-active 2)
+                    (core/set-wave 4))]
+      (should= 4 (core/wave state))
+      (should= false (:wave-complete? state))
+      (should= false (:wave-had-enemies? state))
+      (should (empty? (core/enemy-missiles state)))))
+
+  (it "start-next-wave rearms and clears complete flags"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (core/set-non-destroyed-battery-ammo 1)
+                    (assoc :wave-complete? true
+                           :wave-had-enemies? true
+                           :wave 2)
+                    (core/start-next-wave))]
+      (should= false (:wave-complete? state))
+      (should= false (:wave-had-enemies? state))
+      (should= 2 (core/wave state))
+      (doseq [b (core/batteries state)]
+        (should= 10 (:missiles b)))))
 
   (it "rearms surviving batteries but not destroyed ones"
     (let [state (-> (core/new-game {:width 800 :height 600})
@@ -221,7 +290,43 @@
       (should (:destroyed? (core/battery state :left)))
       (should= 3 (:missiles (core/battery state :left)))
       (should= 10 (:missiles (core/battery state :center)))
-      (should= 10 (:missiles (core/battery state :right))))))
+      (should= 10 (:missiles (core/battery state :right)))))
+
+  (it "exposes wave schedule metrics and harder-wave?"
+    (let [low (core/wave-schedule-metrics 1)
+          high (core/wave-schedule-metrics 3)]
+      (should (core/harder-wave? low high))
+      (should-not (core/harder-wave? high low))))
+
+  (it "throws on unknown city or battery spawn targets"
+    (let [state (core/new-game {:width 800 :height 600})]
+      (should-throw (core/spawn-enemy-targeting-city state 99))
+      (should-throw (core/spawn-enemy-targeting-battery state :missing))))
+
+  (it "set-wave-enemies-active with no living cities leaves no enemies"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (assoc :cities [])
+                    (core/set-wave-enemies-active 2))]
+      (should (empty? (core/enemy-missiles state)))
+      (should (:wave-had-enemies? state))))
+
+  (it "resize reclamps when crosshair is missing"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (dissoc :crosshair)
+                    (core/resize 400 300))
+          ch (core/crosshair state)]
+      (should (<= 0 (:x ch)))
+      (should (<= 0 (:y ch)))
+      (should (< (:x ch) 400))
+      (should (< (:y ch) 300))))
+
+  (it "add-destroyable-target starts not destroyed"
+    (let [state (core/add-destroyable-target
+                 (core/new-game {:width 800 :height 600}) 10 20)
+          t (first (core/destroyable-targets state))]
+      (should= false (:destroyed? t))
+      (should= 10 (:x t))
+      (should= 20 (:y t)))))
 
 (describe "enemy missiles"
   (it "spawns city-bound enemies from the top of the sky"
