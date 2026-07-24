@@ -247,17 +247,31 @@
   [state]
   (:end-fireball state))
 
+(defn- battery-ammo
+  [state battery-id]
+  (long (or (:missiles (battery state battery-id)) 0)))
+
 (defn hud
-  "Minimal HUD projection for hosts and tests."
+  "In-game HUD projection: score, wave, multiplier, ammo, cities, reserve.
+  Present during playing and paused; not required on title."
   [state]
-  {:wave (wave state)
-   :score (score state)
-   :multiplier (multiplier state)
-   :bonus-cities (bonus-cities state)
-   :screen (screen state)
-   :the-end? (the-end? state)
-   :end-message (end-message state)
-   :title-game-name (title-game-name-of state)})
+  (let [playing-or-paused? (or (playing? state) (paused? state))]
+    {:wave (wave state)
+     :score (score state)
+     :multiplier (multiplier state)
+     :bonus-cities (bonus-cities state)
+     :living-cities (count (living-cities state))
+     :left-ammo (battery-ammo state :left)
+     :center-ammo (battery-ammo state :center)
+     :right-ammo (battery-ammo state :right)
+     :ammo {:left (battery-ammo state :left)
+            :center (battery-ammo state :center)
+            :right (battery-ammo state :right)}
+     :full-playing-hud? playing-or-paused?
+     :screen (screen state)
+     :the-end? (the-end? state)
+     :end-message (end-message state)
+     :title-game-name (title-game-name-of state)}))
 
 (defn defensive-missiles
   [state]

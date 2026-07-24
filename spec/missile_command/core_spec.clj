@@ -515,6 +515,43 @@
       (should= 25 (core/score after-kill))
       (should= 25 (core/score after-aim)))))
 
+(describe "HUD"
+  (it "exposes full playing fields while playing"
+    (let [state (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+          hud (core/hud state)]
+      (should (:full-playing-hud? hud))
+      (should= 0 (:score hud))
+      (should= 1 (:wave hud))
+      (should= 1 (:multiplier hud))
+      (should= 10 (:left-ammo hud))
+      (should= 10 (:center-ammo hud))
+      (should= 10 (:right-ammo hud))
+      (should= 6 (:living-cities hud))
+      (should= 0 (:bonus-cities hud))))
+
+  (it "matches core after score fire and city loss"
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+                    (core/set-score 2500)
+                    (core/set-wave 3)
+                    (core/destroy-city 0)
+                    (core/set-bonus-city-reserve 2)
+                    (#(:state (core/handle % {:type :fire :battery :left}))))
+          hud (core/hud state)]
+      (should= (core/score state) (:score hud))
+      (should= (core/wave state) (:wave hud))
+      (should= (core/multiplier state) (:multiplier hud))
+      (should= 9 (:left-ammo hud))
+      (should= (count (core/living-cities state)) (:living-cities hud))
+      (should= (core/bonus-cities state) (:bonus-cities hud))))
+
+  (it "remains available while paused and not on title"
+    (let [playing (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+          paused (core/pause-game (core/set-score playing 500))
+          title (core/new-game {:width 800 :height 600})]
+      (should (:full-playing-hud? (core/hud paused)))
+      (should= 500 (:score (core/hud paused)))
+      (should-not (:full-playing-hud? (core/hud title))))))
+
 (describe "pause and resume"
   (it "pauses from playing and freezes simulation"
     (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)

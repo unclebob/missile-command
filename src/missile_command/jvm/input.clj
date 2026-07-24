@@ -287,7 +287,13 @@
               (str "missiles_in_flight=" (count missiles))
               (str "fireballs=" (count fireballs))
               (str "enemy_missiles=" (count enemies))
-              (str "cities_alive=" (count (core/living-cities state)))]
+              (str "cities_alive=" (count (core/living-cities state)))
+              (str "hud_score=" (:score (core/hud state)))
+              (str "hud_wave=" (:wave (core/hud state)))
+              (str "hud_multiplier=" (:multiplier (core/hud state)))
+              (str "hud_living_cities=" (:living-cities (core/hud state)))
+              (str "hud_bonus_cities=" (:bonus-cities (core/hud state)))
+              (str "hud_full=" (boolean (:full-playing-hud? (core/hud state))))]
              (battery-sim-fields state)
              (fireball-sim-fields fireballs)
              (enemy-sim-fields enemies)
