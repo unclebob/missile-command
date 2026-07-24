@@ -340,4 +340,20 @@
       (should= 2 (count enemies))
       (should= (double (:x (core/city state 0))) (double (:x0 city-enemy)))
       (should= 100.0 (double (:x0 bat-enemy)))
-      (should= :center (:target-id bat-enemy)))))
+      (should= :center (:target-id bat-enemy))))
+
+  (it "spawns MIRV scenario enemies with child count and split progress"
+    (let [state (input/apply-scenario
+                 (core/new-game {:width 800 :height 600})
+                 {:enemies [{:kind :mirv
+                             :target [:city 1]
+                             :child-count 4
+                             :split-progress 0.4}]})
+          m (first (core/enemy-missiles state))
+          line (input/format-sim-telemetry-line state)]
+      (should= 1 (count (core/mirv-parents state)))
+      (should= core/enemy-kind-mirv (:enemy-kind m))
+      (should= 4 (:child-count m))
+      (should= 0.4 (double (:split-progress m)))
+      (should= 1 (:target-id m))
+      (should (str/includes? line "enemy_kind=mirv")))))

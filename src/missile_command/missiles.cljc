@@ -144,23 +144,25 @@
                   (* max-r (- 1.0 t)))
       :post 0.0)))
 
+(defn- fireball-age-after
+  [fireball dt]
+  (+ (double (:age fireball 0.0)) (double dt)))
+
 (defn advance-fireball
   "Advance a fireball by dt. Returns updated fireball or `expired`.
    Static fireballs keep a fixed radius until their TTL elapses."
   [fireball dt]
-  (if (:static? fireball)
-    (let [age (+ (double (:age fireball 0.0)) (double dt))
-          ttl (double (or (:static-ttl fireball) static-fireball-ttl))]
-      (if (>= age ttl)
-        expired
-        (assoc fireball :age age)))
-    (let [age (+ (double (:age fireball 0.0)) (double dt))]
+  (let [age (fireball-age-after fireball dt)]
+    (if (:static? fireball)
+      (let [ttl (double (or (:static-ttl fireball) static-fireball-ttl))]
+        (if (>= age ttl)
+          expired
+          (assoc fireball :age age)))
       (if (>= age (fireball-lifetime fireball))
         expired
         (assoc fireball
                :age age
                :radius (fireball-radius-at fireball age))))))
-
 (defn point-in-fireball?
   [fireball x y]
   (let [dx (- x (:x fireball))
@@ -169,5 +171,5 @@
     (<= (hypot dx dy) r)))
 
 ;; clj-mutate-manifest-begin
-;; {:version 1, :tested-at "2026-07-24T14:10:55.663289-05:00", :module-hash "1795636229", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 1, :hash "-1619932998"} {:id "def/max-dt", :kind "def", :line 3, :end-line 3, :hash "-989171296"} {:id "def/fireball-expand-seconds", :kind "def", :line 4, :end-line 4, :hash "-972619994"} {:id "def/fireball-contract-seconds", :kind "def", :line 5, :end-line 5, :hash "-36764573"} {:id "def/fireball-max-radius", :kind "def", :line 6, :end-line 6, :hash "-1156590171"} {:id "def/static-fireball-flag", :kind "def", :line 7, :end-line 7, :hash "421322458"} {:id "def/default-enemy-speed", :kind "def", :line 8, :end-line 8, :hash "982539494"} {:id "def/arrived", :kind "def", :line 10, :end-line 12, :hash "1968139005"} {:id "defn/arrived?", :kind "defn", :line 14, :end-line 16, :hash "522520574"} {:id "def/expired", :kind "def", :line 18, :end-line 20, :hash "1501164590"} {:id "defn-/hypot", :kind "defn-", :line 22, :end-line 24, :hash "80937335"} {:id "defn/path-length", :kind "defn", :line 26, :end-line 29, :hash "1657109437"} {:id "defn/position-at-progress", :kind "defn", :line 31, :end-line 35, :hash "-1851331410"} {:id "defn/make-defensive", :kind "defn", :line 37, :end-line 48, :hash "-1218311748"} {:id "defn/clamp-dt", :kind "defn", :line 50, :end-line 52, :hash "1581799727"} {:id "defn/advance-defensive", :kind "defn", :line 54, :end-line 68, :hash "924066886"} {:id "defn/make-enemy", :kind "defn", :line 70, :end-line 82, :hash "1173309442"} {:id "defn/advance-enemy", :kind "defn", :line 84, :end-line 87, :hash "-1663219647"} {:id "defn/make-fireball", :kind "defn", :line 89, :end-line 98, :hash "-585279014"} {:id "defn/make-static-fireball", :kind "defn", :line 100, :end-line 111, :hash "-520659645"} {:id "defn/fireball-lifetime", :kind "defn", :line 113, :end-line 115, :hash "-21731022"} {:id "defn/fireball-phase", :kind "defn", :line 117, :end-line 127, :hash "-1988616685"} {:id "defn/fireball-radius-at", :kind "defn", :line 129, :end-line 140, :hash "511592659"} {:id "defn/advance-fireball", :kind "defn", :line 142, :end-line 153, :hash "554281146"} {:id "defn/point-in-fireball?", :kind "defn", :line 155, :end-line 160, :hash "1166764552"}]}
+;; {:version 1, :tested-at "2026-07-24T14:38:28.020375-05:00", :module-hash "-1520076950", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 1, :hash "-1619932998"} {:id "def/max-dt", :kind "def", :line 3, :end-line 3, :hash "-989171296"} {:id "def/fireball-expand-seconds", :kind "def", :line 4, :end-line 4, :hash "-972619994"} {:id "def/fireball-contract-seconds", :kind "def", :line 5, :end-line 5, :hash "-36764573"} {:id "def/fireball-max-radius", :kind "def", :line 6, :end-line 6, :hash "-1156590171"} {:id "def/static-fireball-flag", :kind "def", :line 7, :end-line 7, :hash "421322458"} {:id "def/default-enemy-speed", :kind "def", :line 8, :end-line 8, :hash "982539494"} {:id "def/arrived", :kind "def", :line 10, :end-line 12, :hash "1968139005"} {:id "defn/arrived?", :kind "defn", :line 14, :end-line 16, :hash "522520574"} {:id "def/expired", :kind "def", :line 18, :end-line 20, :hash "1501164590"} {:id "defn-/hypot", :kind "defn-", :line 22, :end-line 24, :hash "80937335"} {:id "defn/path-length", :kind "defn", :line 26, :end-line 29, :hash "1657109437"} {:id "defn/position-at-progress", :kind "defn", :line 31, :end-line 35, :hash "-1851331410"} {:id "defn/make-defensive", :kind "defn", :line 37, :end-line 48, :hash "-1218311748"} {:id "defn/clamp-dt", :kind "defn", :line 50, :end-line 52, :hash "1581799727"} {:id "defn/advance-defensive", :kind "defn", :line 54, :end-line 68, :hash "924066886"} {:id "defn/make-enemy", :kind "defn", :line 70, :end-line 82, :hash "1173309442"} {:id "defn/advance-enemy", :kind "defn", :line 84, :end-line 87, :hash "-1663219647"} {:id "defn/make-fireball", :kind "defn", :line 89, :end-line 98, :hash "-585279014"} {:id "def/static-fireball-ttl", :kind "def", :line 102, :end-line 102, :hash "-1825729445"} {:id "defn/make-static-fireball", :kind "defn", :line 104, :end-line 116, :hash "-1427183199"} {:id "defn/fireball-lifetime", :kind "defn", :line 118, :end-line 120, :hash "-21731022"} {:id "defn/fireball-phase", :kind "defn", :line 122, :end-line 132, :hash "-1988616685"} {:id "defn/fireball-radius-at", :kind "defn", :line 134, :end-line 145, :hash "511592659"} {:id "defn-/fireball-age-after", :kind "defn-", :line 147, :end-line 149, :hash "1521060501"} {:id "defn/advance-fireball", :kind "defn", :line 151, :end-line 165, :hash "-1418836775"} {:id "defn/point-in-fireball?", :kind "defn", :line 166, :end-line 171, :hash "1166764552"}]}
 ;; clj-mutate-manifest-end
