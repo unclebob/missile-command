@@ -64,6 +64,19 @@ bb property
 
 Runs generative property tests (`test-property/`) separately from unit coverage.
 
+### Hardening (mutation / CRAP / DRY)
+
+```sh
+bb mutate src/missile_command/core.cljc --max-workers 8
+bb accept-mutate
+bb crap
+bb dry src
+```
+
+Language mutation uses differential manifests embedded in source files.
+Gherkin acceptance mutation uses `gherkin-mutator` with the project runner
+adapter (`clojure -M:acceptance-mutation-runner`).
+
 ## Core smoke API
 
 ```clojure

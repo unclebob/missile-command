@@ -3,21 +3,40 @@
         org.clojure/data.json {:mvn/version "2.5.1"}}
  :aliases
  {:test {:extra-paths ["spec"]
-         :extra-deps {speclj/speclj {:mvn/version "3.12.1"}}
+         :extra-deps {speclj/speclj {:mvn/version "3.12.2"}}
+         :main-opts ["-m" "speclj.main" "-c"]}
+  :spec {:extra-paths ["spec"]
+         :extra-deps {speclj/speclj {:mvn/version "3.12.2"}}
          :main-opts ["-m" "speclj.main" "-c"]}
   :accept {:extra-paths ["acceptance/generated"]
            :extra-deps {io.github.cognitect-labs/test-runner
                         {:git/tag "v0.5.1" :git/sha "dfb30dd"}}
            :main-opts ["-m" "cognitect.test-runner"
                        "-d" "acceptance/generated"]}
+  :acceptance-mutation-runner {:main-opts ["-m" "missile-command.acceptance.mutation-runner"]}
   :check {:extra-deps {io.github.unclebob/speclj-structure-check
                        {:git/url "https://github.com/unclebob/speclj-structure-check.git"
                         :git/sha "6bdc1621e96bcf90f84849e2c48d750ae6bc7297"}}
           :main-opts ["-m" "speclj-structure-check.core"]}
   :cov {:extra-paths ["spec"]
         :extra-deps {cloverage/cloverage {:mvn/version "1.2.4"}
-                     speclj/speclj {:mvn/version "3.12.1"}}
+                     speclj/speclj {:mvn/version "3.12.2"}}
         :main-opts ["-m" "speclj.cloverage" "--" "-p" "src" "-s" "spec" "--lcov"]}
+  :mutate {:main-opts ["-m" "clj-mutate.core"]
+           :extra-deps {io.github.unclebob/clj-mutate
+                        {:git/url "https://github.com/unclebob/clj-mutate.git"
+                         :git/sha "e27dd5df63c4efdd66438587d1c5f49e73661b69"}
+                        org.clojure/tools.reader {:mvn/version "1.4.2"}
+                        speclj/speclj {:mvn/version "3.12.2"}}
+           :extra-paths ["spec"]}
+  :crap {:extra-deps {io.github.unclebob/crap4clj
+                      {:git/url "https://github.com/unclebob/crap4clj.git"
+                       :git/sha "63a56db38f898d8d63cb044c71da09c7bfa3abcd"}}
+         :main-opts ["-m" "crap4clj.core"]}
+  :dry {:extra-deps {io.github.unclebob/dry4clj
+                     {:git/url "https://github.com/unclebob/dry4clj.git"
+                      :git/sha "5994ef2bcaaae8d12bcd0afb4f091ae09083228c"}}
+        :main-opts ["-m" "dry4clj.core"]}
   :property {:extra-paths ["test-property"]
              :extra-deps {org.clojure/test.check {:mvn/version "1.1.1"}
                           io.github.cognitect-labs/test-runner
