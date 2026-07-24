@@ -97,6 +97,21 @@
   [state x target disable-fn]
   (reduce disable-fn state (earlier-fallback-batteries state x target)))
 
+(defn- max-fireball-radius
+  [state]
+  (if (seq (core/fireballs state))
+    (apply max (map :radius (core/fireballs state)))
+    0.0))
+
+(defn- advance-until
+  "Tick the world state until pred returns truthy, or fail after max-steps ticks."
+  [world pred dt max-steps fail-message]
+  (loop [s (:state world) steps-left max-steps]
+    (cond
+      (pred s) (assoc world :state s)
+      (zero? steps-left) (support/fail! fail-message)
+      :else (recur (:state (core/tick s dt)) (dec steps-left)))))
+
 (def step-handlers
   [{:pattern #"^a new game with width <([A-Za-z0-9_]+)> and height <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ width-param height-param] example]
@@ -339,7 +354,6 @@
                  (reduce (fn [s id] (core/set-battery-ammo s id 0))
                          (:state world)
                          [:left :center :right])))}
-
    {:pattern #"^the crosshair is at <([A-Za-z0-9_]+)> <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ x-param y-param] example]
           (let [expected {:x (support/example-int example x-param "x")
@@ -488,6 +502,12 @@
                        "center missile not faster than right"))
           world)}
 
+   {:pattern #"^time advances by ([0-9.]+) seconds$"
+    :fn (fn [world [_ dt-text] _]
+          (let [dt (Double/parseDouble dt-text)
+                result (core/tick (:state world) dt)]
+            (assoc world :state (:state result))))}
+
    {:pattern #"^time advances by <([A-Za-z0-9_]+)> seconds$"
     :fn (fn [world [_ dt-param] example]
           (let [dt (Double/parseDouble (str (support/require-value example dt-param)))
@@ -496,70 +516,69 @@
 
    {:pattern #"^time advances until defensive missiles arrive$"
     :fn (fn [world _ _]
-          (loop [s (:state world) n 0]
-            (cond
-              (empty? (core/defensive-missiles s)) (assoc world :state s)
-              (> n 5000) (support/fail! "missiles never arrived")
-              :else (recur (:state (core/tick s 0.05)) (inc n)))))}
+          (advance-until world
+                         (comp empty? core/defensive-missiles)
+                         0.05 5000 "missiles never arrived"))}
 
    {:pattern #"^time advances until the fireball reaches max radius$"
     :fn (fn [world _ _]
-          (loop [s (:state world) n 0]
-            (let [r (if (seq (core/fireballs s))
-                      (apply max (map :radius (core/fireballs s)))
-                      0.0)
-                  max-r (core/max-fireball-radius s)]
-              (cond
-                (>= r (* 0.999 max-r))
-                (assoc world :state s :fireball-max-time (core/sim-time s))
-                (> n 5000) (support/fail! "fireball never reached max radius")
-                :else (recur (:state (core/tick s 0.01)) (inc n))))))}
+          (let [advanced (advance-until
+                          world
+                          (fn [s]
+                            (>= (max-fireball-radius s)
+                                (* 0.999 (core/max-fireball-radius s))))
+                          0.01 5000 "fireball never reached max radius")]
+            (assoc advanced :fireball-max-time (core/sim-time (:state advanced)))))}
 
    {:pattern #"^time advances into the fireball shrink phase$"
     :fn (fn [world _ _]
-          (loop [s (:state world) n 0]
-            (let [r (if (seq (core/fireballs s))
-                      (apply max (map :radius (core/fireballs s)))
-                      0.0)
-                  max-r (core/max-fireball-radius s)]
-              (cond
-                (and (seq (core/fireballs s)) (< r max-r))
-                (assoc world :state s :fireball-shrink-time (core/sim-time s))
-                (> n 5000) (support/fail! "fireball never entered shrink phase")
-                :else (recur (:state (core/tick s 0.01)) (inc n))))))}
+          (let [advanced (advance-until
+                          world
+                          (fn [s]
+                            (and (seq (core/fireballs s))
+                                 (< (max-fireball-radius s)
+                                    (core/max-fireball-radius s))))
+                          0.01 5000 "fireball never entered shrink phase")]
+            (assoc advanced :fireball-shrink-time
+                   (core/sim-time (:state advanced)))))}
 
    {:pattern #"^time advances until fireballs expire$"
     :fn (fn [world _ _]
-          (loop [s (:state world) n 0]
-            (cond
-              (empty? (core/fireballs s))
-              (assoc world :state s :fireball-end-time (core/sim-time s))
-              (> n 5000) (support/fail! "fireballs never expired")
-              :else (recur (:state (core/tick s 0.05)) (inc n)))))}
+          (let [advanced (advance-until world
+                                        (comp empty? core/fireballs)
+                                        0.05 5000 "fireballs never expired")]
+            (assoc advanced :fireball-end-time (core/sim-time (:state advanced)))))}
+
+   {:pattern #"^time advances until fireballs reach at least radius ([0-9.]+)$"
+    :fn (fn [world [_ r-text] _]
+          (let [min-r (Double/parseDouble r-text)]
+            (advance-until world
+                           (fn [s] (>= (max-fireball-radius s) min-r))
+                           0.01 5000
+                           (str "fireball never reached radius " min-r))))}
 
    {:pattern #"^time advances until fireballs reach at least radius <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ r-param] example]
           (let [min-r (Double/parseDouble (str (support/require-value example r-param)))]
-            (loop [s (:state world) n 0]
-              (let [r (if (seq (core/fireballs s))
-                        (apply max (map :radius (core/fireballs s)))
-                        0.0)]
-                (cond
-                  (>= r min-r) (assoc world :state s)
-                  (> n 5000) (support/fail! (str "fireball never reached radius " min-r))
-                  :else (recur (:state (core/tick s 0.01)) (inc n)))))))}
+            (advance-until world
+                           (fn [s] (>= (max-fireball-radius s) min-r))
+                           0.01 5000
+                           (str "fireball never reached radius " min-r))))}
 
    {:pattern #"^time advances until fireballs reach peak radius$"
     :fn (fn [world _ _]
-          (loop [s (:state world) n 0]
-            (let [r (if (seq (core/fireballs s))
-                      (apply max (map :radius (core/fireballs s)))
-                      0.0)
-                  max-r (core/max-fireball-radius s)]
-              (cond
-                (>= r (* 0.999 max-r)) (assoc world :state s)
-                (> n 5000) (support/fail! "fireball never peaked")
-                :else (recur (:state (core/tick s 0.01)) (inc n))))))}
+          (advance-until world
+                         (fn [s]
+                           (>= (max-fireball-radius s)
+                               (* 0.999 (core/max-fireball-radius s))))
+                         0.01 5000 "fireball never peaked"))}
+
+   {:pattern #"^there are (\d+) fireballs$"
+    :fn (fn [world [_ count-text] _]
+          (assert-count (count (core/fireballs (:state world)))
+                        (support/parse-int count-text "fireball count")
+                        "fireballs")
+          world)}
 
    {:pattern #"^there are <([A-Za-z0-9_]+)> fireballs$"
     :fn (fn [world [_ count-param] example]
@@ -609,6 +628,13 @@
                             "end time before shrink time")
           world)}
 
+   {:pattern #"^a fireball radius is greater than ([0-9.]+)$"
+    :fn (fn [world [_ r-text] _]
+          (let [min-r (Double/parseDouble r-text)
+                r (apply max 0.0 (map :radius (core/fireballs (:state world))))]
+            (assert-gt r min-r (str "fireball radius " r " not > " min-r)))
+          world)}
+
    {:pattern #"^a fireball radius is greater than <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ r-param] example]
           (let [min-r (Double/parseDouble (str (support/require-value example r-param)))
@@ -622,6 +648,14 @@
                 r (apply max 0.0 (map :radius (core/fireballs (:state world))))]
             (assert-lt r max-r (str "fireball radius " r " not < max " max-r)))
           world)}
+
+   {:pattern #"^a destroyable target at (-?\d+) (-?\d+)$"
+    :fn (fn [world [_ x y] _]
+          (assoc world :state
+                 (core/add-destroyable-target
+                  (:state world)
+                  (support/parse-int x "x")
+                  (support/parse-int y "y"))))}
 
    {:pattern #"^a destroyable target at <([A-Za-z0-9_]+)> <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ x-param y-param] example]
@@ -643,6 +677,14 @@
           (let [targets (core/destroyable-targets (:state world))]
             (assert-condition (every? (complement :destroyed?) targets)
                               "expected no destroyed targets"))
+          world)}
+
+   {:pattern #"^the last applied time step is at most ([0-9.]+) seconds$"
+    :fn (fn [world [_ max-dt-text] _]
+          (let [max-dt (Double/parseDouble max-dt-text)
+                actual (core/last-applied-dt (:state world))]
+            (assert-condition (<= actual max-dt)
+                              (str "last applied dt " actual " > " max-dt)))
           world)}
 
    {:pattern #"^the last applied time step is at most <([A-Za-z0-9_]+)> seconds$"
@@ -911,5 +953,5 @@
       (support/fail! (str "unsupported step: " text)))))
 
 ;; clj-mutate-manifest-begin
-;; {:version 1, :tested-at "2026-07-24T12:01:47.330987-05:00", :module-hash "-237287548", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 3, :hash "817333596"} {:id "defn-/assert-playfield-dimension", :kind "defn-", :line 5, :end-line 11, :hash "-1180112229"} {:id "defn-/living-cities", :kind "defn-", :line 13, :end-line 15, :hash "-548423997"} {:id "defn-/batteries", :kind "defn-", :line 17, :end-line 19, :hash "2112668418"} {:id "defn-/battery", :kind "defn-", :line 21, :end-line 24, :hash "-1798101236"} {:id "defn-/assert-count", :kind "defn-", :line 26, :end-line 29, :hash "-734119864"} {:id "defn-/city-xs", :kind "defn-", :line 31, :end-line 33, :hash "-1231463410"} {:id "defn-/city-span", :kind "defn-", :line 35, :end-line 38, :hash "-826397513"} {:id "defn-/example-width", :kind "defn-", :line 40, :end-line 42, :hash "1667157547"} {:id "defn-/example-height", :kind "defn-", :line 44, :end-line 46, :hash "-1096613354"} {:id "defn-/one-third", :kind "defn-", :line 48, :end-line 50, :hash "1669847708"} {:id "defn-/two-thirds", :kind "defn-", :line 52, :end-line 54, :hash "1105411976"} {:id "defn-/assert-condition", :kind "defn-", :line 56, :end-line 59, :hash "2075522906"} {:id "defn-/assert-entities-in-ground-band", :kind "defn-", :line 61, :end-line 67, :hash "-247193944"} {:id "defn-/assert-xs-in-playfield", :kind "defn-", :line 69, :end-line 74, :hash "-807069005"} {:id "defn-/assert-lt", :kind "defn-", :line 76, :end-line 78, :hash "-545222397"} {:id "defn-/assert-gt", :kind "defn-", :line 80, :end-line 82, :hash "497978739"} {:id "defn-/assert-between-open", :kind "defn-", :line 84, :end-line 86, :hash "788381149"} {:id "defn-/earlier-fallback-batteries", :kind "defn-", :line 88, :end-line 94, :hash "-1064032304"} {:id "defn-/disable-earlier-batteries", :kind "defn-", :line 96, :end-line 98, :hash "1165353126"} {:id "def/step-handlers", :kind "def", :line 100, :end-line 483, :hash "1114522454"} {:id "defn-/match-handler", :kind "defn-", :line 485, :end-line 490, :hash "-760290467"} {:id "defn/dispatch-step", :kind "defn", :line 492, :end-line 497, :hash "-1121977204"}]}
+;; {:version 1, :tested-at "2026-07-24T12:37:03.04922-05:00", :module-hash "1722633569", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 3, :hash "817333596"} {:id "defn-/assert-playfield-dimension", :kind "defn-", :line 5, :end-line 11, :hash "-1180112229"} {:id "defn-/living-cities", :kind "defn-", :line 13, :end-line 15, :hash "-548423997"} {:id "defn-/batteries", :kind "defn-", :line 17, :end-line 19, :hash "2112668418"} {:id "defn-/battery", :kind "defn-", :line 21, :end-line 24, :hash "-1798101236"} {:id "defn-/assert-count", :kind "defn-", :line 26, :end-line 29, :hash "-734119864"} {:id "defn-/city-xs", :kind "defn-", :line 31, :end-line 33, :hash "-1231463410"} {:id "defn-/city-span", :kind "defn-", :line 35, :end-line 38, :hash "-826397513"} {:id "defn-/example-width", :kind "defn-", :line 40, :end-line 42, :hash "1667157547"} {:id "defn-/example-height", :kind "defn-", :line 44, :end-line 46, :hash "-1096613354"} {:id "defn-/one-third", :kind "defn-", :line 48, :end-line 50, :hash "1669847708"} {:id "defn-/two-thirds", :kind "defn-", :line 52, :end-line 54, :hash "1105411976"} {:id "defn-/assert-condition", :kind "defn-", :line 56, :end-line 59, :hash "2075522906"} {:id "defn-/assert-entities-in-ground-band", :kind "defn-", :line 61, :end-line 67, :hash "-247193944"} {:id "defn-/assert-xs-in-playfield", :kind "defn-", :line 69, :end-line 74, :hash "-807069005"} {:id "defn-/assert-lt", :kind "defn-", :line 76, :end-line 78, :hash "-545222397"} {:id "defn-/assert-gt", :kind "defn-", :line 80, :end-line 82, :hash "497978739"} {:id "defn-/assert-between-open", :kind "defn-", :line 84, :end-line 86, :hash "788381149"} {:id "defn-/earlier-fallback-batteries", :kind "defn-", :line 88, :end-line 94, :hash "-1064032304"} {:id "defn-/disable-earlier-batteries", :kind "defn-", :line 96, :end-line 98, :hash "1165353126"} {:id "defn-/max-fireball-radius", :kind "defn-", :line 100, :end-line 104, :hash "1308487225"} {:id "defn-/advance-until", :kind "defn-", :line 106, :end-line 113, :hash "940725477"} {:id "def/step-handlers", :kind "def", :line 115, :end-line 717, :hash "-957065701"} {:id "defn-/match-handler", :kind "defn-", :line 719, :end-line 724, :hash "-760290467"} {:id "defn/dispatch-step", :kind "defn", :line 726, :end-line 731, :hash "-1121977204"}]}
 ;; clj-mutate-manifest-end

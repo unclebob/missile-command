@@ -4,7 +4,8 @@
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :refer [for-all]]
             [missile-command.core :as core]
-            [missile-command.input :as input]))
+            [missile-command.input :as input]
+            [missile-command.missiles :as missiles]))
 
 ;; Layout math truncates to longs; keep sizes large enough for distinct city xs.
 (def playfield-size-gen
@@ -317,9 +318,97 @@
            (in-playfield? width height (core/crosshair after))
            (= 0 (total-ammo after))))))
 
+(defn- fire-and-aim
+  [width height battery-id aim-x aim-y]
+  (-> (core/new-game {:width width :height height})
+      (aim aim-x aim-y)
+      (fire battery-id)
+      :state))
+
+(defn- tick-n
+  [state dt n]
+  (reduce (fn [s _] (:state (core/tick s dt))) state (range n)))
+
+(defspec tick-clamps-large-dt
+  50
+  (for-all [dt (gen/double* {:min 0.06 :max 10.0 :NaN? false :infinite? false})]
+    (let [state (fire-and-aim 800 600 :center 400 100)
+          after (:state (core/tick state dt))]
+      (<= (core/last-applied-dt after) 0.05))))
+
+(defspec tick-advances-missile-progress
+  40
+  (for-all [battery-id battery-id-gen]
+    (let [before (fire-and-aim 800 600 battery-id 400 100)
+          p0 (:progress (first (core/defensive-missiles before)))
+          after (:state (core/tick before 0.05))
+          missiles (core/defensive-missiles after)]
+      (or (and (empty? missiles) (= 1 (count (core/fireballs after))))
+          (and (= 1 (count missiles))
+               (> (:progress (first missiles)) p0))))))
+
+(defspec missile-arrival-spawns-fireball-at-aim
+  30
+  (for-all [battery-id battery-id-gen
+            aim-x (gen/large-integer* {:min 50 :max 750})
+            aim-y (gen/large-integer* {:min 50 :max 550})]
+    (let [state (fire-and-aim 800 600 battery-id aim-x aim-y)
+          after (loop [s state n 0]
+                  (cond
+                    (> n 5000) s
+                    (seq (core/fireballs s)) s
+                    :else (recur (:state (core/tick s 0.05)) (inc n))))
+          fb (first (core/fireballs after))]
+      (and (empty? (core/defensive-missiles after))
+           (some? fb)
+           (= (double aim-x) (double (:x fb)))
+           (= (double aim-y) (double (:y fb)))))))
+
+(defspec fireball-expands-then-contracts-then-expires
+  20
+  (for-all []
+    (let [state (fire-and-aim 800 600 :center 400 200)
+          arrived (loop [s state n 0]
+                    (if (or (seq (core/fireballs s)) (> n 5000))
+                      s
+                      (recur (:state (core/tick s 0.05)) (inc n))))
+          expand missiles/fireball-expand-seconds
+          contract missiles/fireball-contract-seconds
+          mid-expand (:state (core/tick arrived (/ expand 2.0)))
+          peak (tick-n arrived 0.05 (int (Math/ceil (/ expand 0.05))))
+          mid-contract (tick-n peak 0.05 (max 1 (int (Math/ceil (/ contract 4.0)))))
+          gone (tick-n arrived 0.05 (int (Math/ceil (/ (+ expand contract 0.1) 0.05))))]
+      (and (pos? (:radius (first (core/fireballs mid-expand))))
+           (>= (:radius (first (core/fireballs peak)))
+               (:radius (first (core/fireballs mid-expand))))
+           (or (empty? (core/fireballs mid-contract))
+               (<= (:radius (first (core/fireballs mid-contract)))
+                   (:radius (first (core/fireballs peak)))))
+           (empty? (core/fireballs gone))))))
+
+(defspec destroyable-target-hit-depends-on-distance
+  30
+  (for-all [inside? gen/boolean]
+    (let [aim-x 400 aim-y 200
+          target-x (if inside? 400 50)
+          target-y (if inside? 200 50)
+          state (-> (fire-and-aim 800 600 :center aim-x aim-y)
+                    (core/add-destroyable-target target-x target-y))
+          after (loop [s state n 0]
+                  (cond
+                    (> n 5000) s
+                    (and (empty? (core/defensive-missiles s))
+                         (seq (core/fireballs s))
+                         (>= (apply max 0 (map :radius (core/fireballs s))) 5.0))
+                    s
+                    :else (recur (:state (core/tick s 0.05)) (inc n))))
+          target (first (core/destroyable-targets after))]
+      (= inside? (boolean (:destroyed? target))))))
+
 (deftest property-suite-loads
   (is (fn? core/new-game))
   (is (fn? core/resize))
   (is (fn? core/handle))
+  (is (fn? core/tick))
   (is (fn? core/on-ground?))
   (is (fn? input/click-zone)))

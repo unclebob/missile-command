@@ -51,13 +51,14 @@
   (it "parses width height and switches"
     (let [opts (input/parse-cli-args
                 ["1280" "720" "--qa-telemetry" "--destroy-batteries" "left,center"
-                 "--qa-events" "tmp/events.txt"]
+                 "--qa-events" "tmp/events.txt" "--qa-target" "400,200"]
                 800 600)]
       (should= 1280 (:width opts))
       (should= 720 (:height opts))
       (should (:qa-telemetry? opts))
       (should= [:left :center] (:destroy-batteries opts))
-      (should= "tmp/events.txt" (:qa-events opts))))
+      (should= "tmp/events.txt" (:qa-events opts))
+      (should= [{:x 400 :y 200}] (:qa-targets opts))))
 
   (it "ignores a bare -- separator"
     (let [opts (input/parse-cli-args ["--" "--qa-telemetry"] 800 600)]
@@ -107,10 +108,11 @@
       (should (str/includes? line "origin_x=")))))
 
 (describe "parse-qa-event-line"
-  (it "parses click aim key and quit"
+  (it "parses click aim key wait and quit"
     (should= {:type :click :x 10 :y 20} (input/parse-qa-event-line "click 10 20"))
     (should= {:type :aim :x 30 :y 40} (input/parse-qa-event-line "aim 30 40"))
     (should= {:type :key :ch \z} (input/parse-qa-event-line "key z"))
+    (should= {:type :wait :seconds 2.5} (input/parse-qa-event-line "wait 2.5"))
     (should= {:type :quit} (input/parse-qa-event-line "quit")))
 
   (it "ignores blank lines"
@@ -119,3 +121,16 @@
   (it "rejects unknown event ops"
     (should-throw Exception
       (input/parse-qa-event-line "warp 1 2"))))
+
+(describe "fireball phase detection"
+  (it "emits start then max/shrink transitions"
+    (let [fb0 {:id 1 :x 10 :y 20 :age 0.0 :radius 0.0
+               :expand-seconds 0.4 :contract-seconds 0.4 :max-radius 40.0}
+          fb1 (assoc fb0 :age 0.1 :radius 10.0)
+          fb2 (assoc fb0 :age 0.45 :radius 35.0)
+          [e0 m0] (input/detect-fireball-phase-events {} [fb0])
+          [e1 m1] (input/detect-fireball-phase-events m0 [fb1])
+          [e2 _] (input/detect-fireball-phase-events m1 [fb2])]
+      (should= :start (:phase (first e0)))
+      (should (empty? e1)) ; still expanding -> still start
+      (should= [:max :shrink] (mapv :phase e2)))))

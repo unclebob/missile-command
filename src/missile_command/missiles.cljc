@@ -4,6 +4,7 @@
 (def fireball-expand-seconds 0.4)
 (def fireball-contract-seconds 0.4)
 (def fireball-max-radius 40.0)
+(def default-enemy-speed 120.0)
 
 (defn- hypot
   [dx dy]
@@ -37,9 +38,13 @@
   [dt]
   (min (double dt) max-dt))
 
+(def arrived
+  "Sentinel returned by advance-defensive when the missile reaches its aim."
+  :arrived)
+
 (defn advance-defensive
   "Advance a defensive missile by dt seconds. Returns updated missile or
-  ::arrived when it reaches the aim point."
+  `arrived` when it reaches the aim point."
   [missile dt]
   (let [length (path-length missile)
         speed (double (:speed missile))
@@ -48,7 +53,7 @@
                 (/ (* speed dt) length))
         progress (+ (double (:progress missile 0.0)) delta)]
     (if (>= progress 1.0)
-      ::arrived
+      arrived
       (merge missile
              {:progress progress}
              (position-at-progress missile progress)))))
@@ -68,18 +73,47 @@
   [fireball]
   (+ (:expand-seconds fireball) (:contract-seconds fireball)))
 
+(defn fireball-phase
+  "Lifecycle phase for a fireball age: :pre, :expand, :contract, or :post."
+  [fireball age]
+  (let [expand (double (:expand-seconds fireball))
+        contract (double (:contract-seconds fireball))
+        a (double age)]
+    (cond
+      (<= a 0.0) :pre
+      (< a expand) :expand
+      (< a (+ expand contract)) :contract
+      :else :post)))
+
 (defn fireball-radius-at
   [fireball age]
-  (let [expand (:expand-seconds fireball)
-        contract (:contract-seconds fireball)
-        max-r (:max-radius fireball)]
-    (cond
-      (<= age 0.0) 0.0
-      (< age expand) (* max-r (/ age expand))
-      (< age (+ expand contract))
-      (let [t (/ (- age expand) contract)]
-        (* max-r (- 1.0 t)))
-      :else 0.0)))
+  (let [expand (double (:expand-seconds fireball))
+        contract (double (:contract-seconds fireball))
+        max-r (double (:max-radius fireball))
+        a (double age)]
+    (case (fireball-phase fireball a)
+      :pre 0.0
+      :expand (* max-r (/ a expand))
+      :contract (let [t (/ (- a expand) contract)]
+                  (* max-r (- 1.0 t)))
+      :post 0.0)))
+
+(def expired
+  "Sentinel returned by advance-fireball when the fireball is done."
+  :expired)
+
+(defn advance-fireball
+  "Advance a fireball by dt. Returns updated fireball or `expired`.
+   Static fireballs keep a fixed radius forever."
+  [fireball dt]
+  (if (:static? fireball)
+    fireball
+    (let [age (+ (double (:age fireball 0.0)) (double dt))]
+      (if (>= age (fireball-lifetime fireball))
+        expired
+        (assoc fireball
+               :age age
+               :radius (fireball-radius-at fireball age))))))
 
 (defn point-in-fireball?
   [fireball x y]
@@ -87,8 +121,6 @@
         dy (- y (:y fireball))
         r (double (:radius fireball 0.0))]
     (<= (hypot dx dy) r)))
-
-(def default-enemy-speed 120.0)
 
 (defn make-enemy
   "Create an enemy ballistic missile from origin toward a target point."
@@ -105,7 +137,7 @@
     (merge missile (position-at-progress missile 0.0))))
 
 (defn advance-enemy
-  "Advance an enemy missile by dt. Returns updated missile or ::arrived."
+  "Advance an enemy missile by dt. Returns updated missile or `arrived`."
   [missile dt]
   (advance-defensive missile dt))
 
@@ -121,16 +153,3 @@
    :expand-seconds 0.0
    :contract-seconds 0.0
    :static? true})
-
-(defn advance-fireball
-  "Advance a fireball by dt. Returns updated fireball or ::expired.
-   Static fireballs keep a fixed radius forever."
-  [fireball dt]
-  (if (:static? fireball)
-    fireball
-    (let [age (+ (double (:age fireball 0.0)) (double dt))]
-      (if (>= age (fireball-lifetime fireball))
-        ::expired
-        (assoc fireball
-               :age age
-               :radius (fireball-radius-at fireball age))))))
