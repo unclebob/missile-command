@@ -31,11 +31,14 @@
    {:pattern #"^mute is <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ mute-param] example]
           (let [expected (options/parse-mute
-                          (support/require-value example mute-param))
-                actual (core/mute? (:state world))]
-            (support/assert-condition (= expected actual)
-                                      (str "mute " actual " expected " expected)))
-          world)}
+                          (support/require-value example mute-param))]
+            (if (= :then (:gherkin-phase world))
+              (let [actual (core/mute? (:state world))]
+                (support/assert-condition (= expected actual)
+                                          (str "mute " actual
+                                               " expected " expected))
+                world)
+              (assoc world :state (core/set-mute (:state world) expected)))))}
 
    {:pattern #"^the player sets difficulty to <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ diff-param] example]

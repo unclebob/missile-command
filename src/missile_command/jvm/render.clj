@@ -94,7 +94,6 @@
       (core/title? state)
       (do (scenery/ground! state)
           (render-title/overlay! state))
-
       (core/the-end? state)
       (do (scenery/ground! state)
           (render-end/overlay! state)
@@ -111,7 +110,6 @@
           (hud! state)
           (when (core/paused? state)
             (render-pause/overlay! state))))))
-
 (defn draw-state!
   ([state]
    (let [ch (core/crosshair state)]
