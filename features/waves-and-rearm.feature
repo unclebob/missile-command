@@ -39,10 +39,10 @@ Scenario: Waves and rearm 02 wave does not complete while enemies remain
   And the wave is not complete
 
 Examples:
-  | width | height | remaining | wave | enemy_count | expected_applied_dt | expected_progress      | expected_width | expected_height |
-  | 800   | 600    | 1         | 1    | 1           | 0.05                | 0.0043859649122807015  | 800            | 600             |
-  | 800   | 600    | 3         | 1    | 3           | 0.05                | 0.0043859649122807015  | 800            | 600             |
-  | 1920  | 1080   | 2         | 1    | 2           | 0.05                | 0.0024366471734892786  | 1920           | 1080            |
+  | width | height | remaining | wave | enemy_count | expected_applied_dt | expected_progress     | expected_width | expected_height |
+  | 800   | 600    | 1         | 1    | 1           | 0.05                | 0.003869969040247678  | 800            | 600             |
+  | 800   | 600    | 3         | 1    | 3           | 0.05                | 0.004376587469505331  | 800            | 600             |
+  | 1920  | 1080   | 2         | 1    | 2           | 0.05                | 0.00236738178373661   | 1920           | 1080            |
 
 Scenario: Waves and rearm 03 wave completes when all enemies are gone
   Given a new game with width <width> and height <height>
