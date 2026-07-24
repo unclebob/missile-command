@@ -71,13 +71,13 @@ bb play
 ```
 
 Opens a resizable Quil window at full playfield resolution (default 800×600;
-optional `bb play 1280 720`). The window opens on the **screen where the launch
-command was typed** (frontmost terminal window at process start; falls back to
-the pointer’s screen) and **does not steal keyboard focus**. Mouse moves the
-crosshair (clamped to the playfield). **Click** fires by horizontal third (with
-empty/destroyed fallback). Default fire keys: left `Z`/`1`, center `X`/`2`, right
-`C`/`3`. Esc quits. OS cursor is hidden; only the game crosshair is shown. Host
-only draws and routes input; rules stay in the pure core.
+optional `bb play 1280 720`). The window opens on the **screen of the terminal
+where `bb play` was typed** (tmux client TTY → Terminal.app window match; then
+process TTY; then frontmost window; then pointer) and **does not steal keyboard
+focus**. Mouse moves the crosshair (clamped to the playfield). **Click** fires by
+horizontal third (with empty/destroyed fallback). Default fire keys: left `Z`/`1`,
+center `X`/`2`, right `C`/`3`. Esc quits. OS cursor is hidden; only the game
+crosshair is shown. Host only draws and routes input; rules stay in the pure core.
 
 ### QA telemetry and setup switches
 
@@ -86,24 +86,37 @@ These flags are **user-facing CLI affordances** on the normal launch command
 
 #### `--qa-telemetry`
 
-Prints a line after each fire attempt (click or key) on stdout:
+Prints lines on stdout for fires, simulation snapshots, fireball phases, and targets:
 
 ```text
 qa-fire battery=left missiles_in_flight=1 origin_x=40 origin_y=540 target_x=200 target_y=120
+qa-fireball id=3 phase=start t=1.2 center_x=200 center_y=120 radius=0.0
+qa-fireball id=3 phase=max t=1.6 center_x=200 center_y=120 radius=40.0
+qa-fireball id=3 phase=shrink t=1.7 center_x=200 center_y=120 radius=30.0
+qa-fireball id=3 phase=end t=2.0 center_x=0 center_y=0 radius=0.0
+qa-sim t=1.5 missiles_in_flight=0 fireballs=1 center_x=200 center_y=120 radius=20.0
 ```
 
 | Field | Meaning |
 |-------|---------|
-| `battery=` | `left`, `center`, `right`, or `none` |
+| `battery=` | `left`, `center`, `right`, or `none` (on `qa-fire`) |
 | `missiles_in_flight=` | Defensive missiles currently in flight |
 | `origin_x=` / `origin_y=` | Launch point of each in-flight missile |
 | `target_x=` / `target_y=` | Aim/detonation point of each in-flight missile |
-
-When several missiles are in flight, origin/target pairs repeat on the same line.
+| `phase=` | Fireball lifecycle: `start`, `expand`, `max`, `shrink`, `end` |
+| `center_x` / `center_y` / `radius` | Fireball blast geometry |
+| `destroyed=` | Destroyable target status when targets are present |
 
 ```sh
 bb play --qa-telemetry
-# or: bb play -- --qa-telemetry
+```
+
+#### `--qa-target x,y`
+
+Spawn a destroyable test target at playfield coordinates (repeatable flag).
+
+```sh
+bb play --qa-telemetry --qa-target 400,200
 ```
 
 #### `--destroy-batteries <list>`
@@ -128,9 +141,11 @@ file (same path as mouse/key handlers — not a private core API). Lines:
 aim 400 200
 click 100 150
 key z
-key 1
+wait 2.5
 quit
 ```
+
+`wait SECONDS` pauses scripted events for wall-clock time while simulation ticks.
 
 ```sh
 bb play --qa-telemetry --qa-events tmp/qa-events.txt

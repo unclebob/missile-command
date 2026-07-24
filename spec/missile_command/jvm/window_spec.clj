@@ -37,6 +37,13 @@
     (should-be-nil (window/parse-point-csv "1,"))
     (should-be-nil (window/parse-point-csv ""))))
 
+(describe "normalize-tty"
+  (it "adds /dev/ prefix and rejects blanks"
+    (should= "/dev/ttys009" (window/normalize-tty "ttys009"))
+    (should= "/dev/ttys009" (window/normalize-tty "/dev/ttys009"))
+    (should-be-nil (window/normalize-tty "??"))
+    (should-be-nil (window/normalize-tty nil))))
+
 (describe "capture-launch-anchor!"
   (it "returns a point usable for screen selection"
     (let [p (window/capture-launch-anchor!)]
