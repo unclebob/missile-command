@@ -123,19 +123,23 @@
     (q/text-size 14)
     (q/text line 12 22)))
 
+(defn draw-world!
+  "Draw playfield contents (everything except the live crosshair)."
+  [state]
+  (let [w (core/playfield-width state)
+        h (core/playfield-height state)]
+    (sky! w h)
+    (missiles! state)
+    (ground! state)
+    (cities! state)
+    (batteries! state)
+    (hud! state)))
+
 (defn draw-state!
-  "Draw one frame from core game state.
-  crosshair-x/y are live pointer coords so the reticle stays under the mouse."
+  "Draw one frame including a crosshair at the given pointer position."
   ([state]
    (let [ch (core/crosshair state)]
      (draw-state! state (:x ch) (:y ch))))
   ([state crosshair-x crosshair-y]
-   (let [w (core/playfield-width state)
-         h (core/playfield-height state)]
-     (sky! w h)
-     (missiles! state)
-     (ground! state)
-     (cities! state)
-     (batteries! state)
-     (crosshair-at! crosshair-x crosshair-y)
-     (hud! state))))
+   (draw-world! state)
+   (crosshair-at! crosshair-x crosshair-y)))

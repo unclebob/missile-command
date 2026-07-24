@@ -15,7 +15,9 @@
 
 (defn setup
   []
-  (q/frame-rate 60)
+  (q/frame-rate 120)
+  ;; Hide OS pointer so only the game crosshair is visible (locked to mouse).
+  (q/no-cursor)
   (core/new-game {:width (q/width) :height (q/height)}))
 
 (defn update-state
@@ -28,7 +30,10 @@
 
 (defn draw
   [state]
-  (render/draw-state! state (q/mouse-x) (q/mouse-y)))
+  ;; Crosshair is drawn last at raw mouse-x/mouse-y so it stays locked
+  ;; to the pointer; the OS cursor is hidden in setup.
+  (render/draw-world! state)
+  (render/crosshair-at! (q/mouse-x) (q/mouse-y)))
 
 (defn mouse-moved
   [state _event]
