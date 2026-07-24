@@ -487,4 +487,160 @@
                   (:state world)
                   (support/parse-int city-text "city"))))}
 
+
+   {:pattern #"^a <([A-Za-z0-9_]+)> flyer from <([A-Za-z0-9_]+)> <([A-Za-z0-9_]+)> toward <([A-Za-z0-9_]+)> <([A-Za-z0-9_]+)> at speed <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ kind-param x0 y0 x1 y1 speed-param] example]
+          (assoc world :state
+                 (core/spawn-flyer
+                  (:state world)
+                  (support/require-value example kind-param)
+                  (support/example-int example x0 "start x")
+                  (support/example-int example y0 "start y")
+                  (support/example-int example x1 "end x")
+                  (support/example-int example y1 "end y")
+                  (support/example-int example speed-param "speed"))))}
+
+
+   {:pattern #"^the flyer drops <([A-Za-z0-9_]+)> enemy missiles toward living cities at path progress <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ count-param progress-param] example]
+          (assoc world :state
+                 (core/set-flyer-drops-toward-living-cities
+                  (:state world)
+                  (support/example-int example count-param "drop count")
+                  (support/example-double example progress-param "drop progress"))))}
+
+
+   {:pattern #"^the flyer drops (\d+) enemy missile targeting city <([A-Za-z0-9_]+)> at path progress <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ _count city-param progress-param] example]
+          (assoc world :state
+                 (core/set-flyer-drop-targeting-city
+                  (:state world)
+                  (support/example-int example city-param "city")
+                  (support/example-double example progress-param "drop progress"))))}
+
+
+   {:pattern #"^time advances until the flyer has passed drop progress <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ progress-param] example]
+          (let [p (support/example-double example progress-param "drop progress")]
+            (loop [s (:state world) n 0]
+              (let [f (first (core/flyers s))]
+                (cond
+                  (and f (>= (double (:progress f 0.0)) p)) (assoc world :state s)
+                  (nil? f) (assoc world :state s)
+                  (> n 20000) (support/fail! "flyer never reached drop progress")
+                  :else (recur (:state (core/tick s 0.05)) (inc n)))))))}
+
+
+   {:pattern #"^there is (\d+) <([A-Za-z0-9_]+)> flyer in flight$"
+    :fn (fn [world [_ count-text kind-param] example]
+          (support/assert-count (count (core/flyers-of-kind
+                                (:state world)
+                                (support/require-value example kind-param)))
+                        (support/parse-int count-text "flyer count")
+                        "flyers")
+          world)}
+
+
+   {:pattern #"^there are (\d+) <([A-Za-z0-9_]+)> flyers in flight$"
+    :fn (fn [world [_ count-text kind-param] example]
+          (support/assert-count (count (core/flyers-of-kind
+                                (:state world)
+                                (support/require-value example kind-param)))
+                        (support/parse-int count-text "flyer count")
+                        "flyers")
+          world)}
+
+
+   {:pattern #"^the <([A-Za-z0-9_]+)> flyer has progressed along its path$"
+    :fn (fn [world [_ kind-param] example]
+          (let [f (first (core/flyers-of-kind
+                          (:state world)
+                          (support/require-value example kind-param)))]
+            (support/assert-condition f "missing flyer")
+            (support/assert-gt (double (:progress f 0.0)) 0.0 "flyer has not progressed"))
+          world)}
+
+
+   {:pattern #"^the <([A-Za-z0-9_]+)> flyer y is <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ kind-param y-param] example]
+          (let [f (first (core/flyers-of-kind
+                          (:state world)
+                          (support/require-value example kind-param)))
+                expected (support/example-int example y-param "y")]
+            (support/assert-condition f "missing flyer")
+            (support/assert-condition (= (double expected) (double (:y f)))
+                              (str "flyer y " (:y f) " expected " expected)))
+          world)}
+
+
+   {:pattern #"^every dropped enemy missile originates at the flyer position$"
+    :fn (fn [world _ _]
+          (let [f (first (core/flyers (:state world)))
+                enemies (core/enemy-missiles (:state world))
+                origin-ys (set (map #(double (:y0 %)) enemies))
+                origin-xs (set (map #(double (:x0 %)) enemies))]
+            (support/assert-condition f "missing flyer")
+            (support/assert-condition (seq enemies) "no dropped enemies")
+            (support/assert-condition (every? :dropped-from-flyer? enemies)
+                              "enemy missing dropped-from-flyer marker")
+            ;; All drops at one progress share origin; altitude matches flyer path.
+            (support/assert-condition (= 1 (count origin-xs))
+                              (str "expected shared drop origin x, got " origin-xs))
+            (support/assert-condition (= 1 (count origin-ys))
+                              (str "expected shared drop origin y, got " origin-ys))
+            (support/assert-condition (= (double (:y0 f)) (first origin-ys))
+                              (str "drop origin y " (first origin-ys)
+                                   " expected flyer altitude " (:y0 f))))
+          world)}
+
+
+   {:pattern #"^the flyer path passes within distance <([A-Za-z0-9_]+)> of that fireball center$"
+    :fn (fn [world _ _]
+          (assoc world :state
+                 (core/route-flyer-through-point
+                  (:state world)
+                  (:fireball-x world)
+                  (:fireball-y world))))}
+
+
+   {:pattern #"^time advances until the flyer is inside the fireball radius or has left the playfield$"
+    :fn (fn [world _ _]
+          (loop [s (:state world) n 0]
+            (cond
+              (empty? (core/flyers s)) (assoc world :state s)
+              (= :fireball (:last-flyer-fate s)) (assoc world :state s)
+              (> n 20000) (support/fail! "flyer never hit fireball or left")
+              :else (recur (:state (core/tick s 0.01)) (inc n)))))}
+
+
+   {:pattern #"^the <([A-Za-z0-9_]+)> flyer is destroyed by the fireball$"
+    :fn (fn [world [_ kind-param] example]
+          (support/assert-condition (= :fireball (:last-flyer-fate (:state world)))
+                            (str "expected flyer fireball kill for "
+                                 (support/require-value example kind-param)
+                                 ", got " (:last-flyer-fate (:state world))))
+          world)}
+
+
+   {:pattern #"^wave <([A-Za-z0-9_]+)> bomber schedule count is <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ wave-param count-param] example]
+          (let [w (support/example-int example wave-param "wave")
+                expected (support/example-int example count-param "bomber count")
+                actual (core/wave-bomber-count w)]
+            (support/assert-condition (= expected actual)
+                              (str "wave " w " bomber count " actual
+                                   " expected " expected)))
+          world)}
+
+
+   {:pattern #"^wave <([A-Za-z0-9_]+)> satellite schedule count is <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ wave-param count-param] example]
+          (let [w (support/example-int example wave-param "wave")
+                expected (support/example-int example count-param "satellite count")
+                actual (core/wave-satellite-count w)]
+            (support/assert-condition (= expected actual)
+                              (str "wave " w " satellite count " actual
+                                   " expected " expected)))
+          world)}
+
 ])
