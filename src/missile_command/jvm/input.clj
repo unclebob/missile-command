@@ -279,7 +279,9 @@
               (str "bonus_city_earned_events=" (core/bonus-city-earned-events state))
               (str "screen=" (name (core/screen state)))
               (str "the_end=" (boolean (core/the-end? state)))
-              (str "end_message=" (or (core/end-message state) "none"))
+              ;; Single token for key=value telemetry (space would split fields).
+              (str "end_message="
+                   (str/replace (or (core/end-message state) "none") #"\s+" "_"))
               (str "title_game_name="
                    (str/replace (core/title-game-name-of state) #"\s+" "_"))
               (str "end_fireball_radius="
