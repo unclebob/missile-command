@@ -620,7 +620,28 @@
       (should= 8 (count enemies))
       (should-not (some #(and (= :battery (:target-kind %))
                               (= :left (:target-id %)))
-                        enemies)))))
+                        enemies))))
+
+  (it "spawn-wave-enemy-targeting-battery uses centered sky origin at y 0"
+    (let [width 800
+          state (core/spawn-wave-enemy-targeting-battery
+                 (assoc (core/new-game {:width width :height 600}) :screen :playing)
+                 :center)
+          enemy (first (core/enemy-missiles state))]
+      (should= 1 (count (core/enemy-missiles state)))
+      (should= :battery (:target-kind enemy))
+      (should= :center (:target-id enemy))
+      (should= 0.0 (double (:y0 enemy)))
+      (should= (* width 0.5) (double (:x0 enemy)))))
+
+  (it "wave enemies targeting batteries spawn from sky y 0"
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+                    (assoc :cities [])
+                    (core/set-wave-enemies-active 3))
+          enemies (core/enemy-missiles state)]
+      (should= 3 (count enemies))
+      (should (every? #(= :battery (:target-kind %)) enemies))
+      (should (every? #(= 0.0 (double (:y0 %))) enemies)))))
 
 (describe "THE END"
   (it "does not end a new game"
