@@ -1,5 +1,10 @@
 (ns missile-command.core
-  (:require [missile-command.world :as world]))
+  (:require [missile-command.batteries :as batteries]
+            [missile-command.missiles :as missiles]
+            [missile-command.world :as world]))
+
+(def initial-score 0)
+(def initial-entity-id 0)
 
 (defn- clamp
   [n lo hi]
@@ -21,17 +26,11 @@
 
 (defn- update-battery
   [state battery-id f]
-  (update state :batteries
-          (fn [batteries]
-            (mapv (fn [battery]
-                    (if (= battery-id (:id battery))
-                      (f battery)
-                      battery))
-                  batteries))))
+  (update state :batteries #(batteries/update-battery % battery-id f)))
 
 (defn- next-entity-id
   [state]
-  (let [id (or (:next-entity-id state) 0)]
+  (let [id (or (:next-entity-id state) initial-entity-id)]
     [id (assoc state :next-entity-id (inc id))]))
 
 (defn- no-events
@@ -43,10 +42,10 @@
   [{:keys [width height]}]
   (merge {:width width
           :height height
-          :score 0
+          :score initial-score
           :crosshair (center-crosshair width height)
           :defensive-missiles []
-          :next-entity-id 0}
+          :next-entity-id initial-entity-id}
          (world/apply-layout width height)))
 
 (defn resize
@@ -106,40 +105,24 @@
 (defn set-battery-ammo
   "Test/setup helper: set remaining missiles for a battery."
   [state battery-id ammo]
-  (update-battery state battery-id #(assoc % :missiles ammo)))
+  (update-battery state battery-id #(batteries/set-ammo % ammo)))
 
 (defn destroy-battery
   "Test/setup helper: mark a battery destroyed."
   [state battery-id]
-  (update-battery state battery-id #(assoc % :destroyed? true)))
-
-(defn- can-fire?
-  [battery]
-  (and battery
-       (not (:destroyed? battery))
-       (pos? (:missiles battery))))
-
-(defn- make-defensive-missile
-  [missile-id battery-id bat aim]
-  {:id missile-id
-   :battery battery-id
-   :x0 (:x bat)
-   :y0 (:y bat)
-   :x1 (:x aim)
-   :y1 (:y aim)
-   :speed (:missile-speed bat)})
+  (update-battery state battery-id batteries/destroy))
 
 (defn- fire-battery
   [state battery-id]
   (let [bat (battery state battery-id)]
-    (if-not (can-fire? bat)
+    (if-not (batteries/can-fire? bat)
       (no-events state)
       (let [[missile-id state] (next-entity-id state)
-            missile (make-defensive-missile missile-id battery-id bat
-                                            (crosshair state))]
+            missile (missiles/make-defensive missile-id battery-id bat
+                                             (crosshair state))]
         {:state (-> state
                     (update :defensive-missiles (fnil conj []) missile)
-                    (update-battery battery-id #(update % :missiles dec)))
+                    (update-battery battery-id batteries/spend-ammo))
          :events [{:type :sfx/launch :battery battery-id}]}))))
 
 (defn- aim
@@ -172,7 +155,7 @@
 
 (defn- first-fireable
   [state battery-ids]
-  (first (filter #(can-fire? (battery state %)) battery-ids)))
+  (first (filter #(batteries/can-fire? (battery state %)) battery-ids)))
 
 (defn- click-fire
   "Aim at the click point, then fire preferred zone battery with adjacent fallback."

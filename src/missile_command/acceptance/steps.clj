@@ -274,6 +274,14 @@
                        (str "city span " span " not < " width)))
           world)}
 
+   {:pattern #"^the player aims at (-?\d+) (-?\d+)$"
+    :fn (fn [world [_ x y] _]
+          (let [result (core/handle (:state world)
+                                    {:type :aim
+                                     :x (support/parse-int x "x")
+                                     :y (support/parse-int y "y")})]
+            (assoc world :state (:state result))))}
+
    {:pattern #"^the player aims at <([A-Za-z0-9_]+)> <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ x-param y-param] example]
           (let [result (core/handle (:state world)
@@ -314,6 +322,15 @@
                  (reduce (fn [s id] (core/set-battery-ammo s id 0))
                          (:state world)
                          [:left :center :right])))}
+
+   {:pattern #"^the crosshair is at (-?\d+) (-?\d+)$"
+    :fn (fn [world [_ x y] _]
+          (let [expected {:x (support/parse-int x "x")
+                          :y (support/parse-int y "y")}
+                actual (core/crosshair (:state world))]
+            (assert-condition (= expected actual)
+                              (str "crosshair " actual " expected " expected)))
+          world)}
 
    {:pattern #"^the crosshair is at <([A-Za-z0-9_]+)> <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ x-param y-param] example]

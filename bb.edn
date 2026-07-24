@@ -56,12 +56,29 @@
                      "done"))}
 
   crap
-  {:doc "CRAP analysis (coverage + complexity)"
-   :task (apply shell "clojure" "-M:crap" *command-line-args*)}
+  {:doc "CRAP analysis (coverage + complexity) for testable modules"
+   :task (apply shell "clojure" "-M:crap"
+                (if (seq *command-line-args*)
+                  *command-line-args*
+                  ;; Host GUI modules open windows; keep CRAP on testable code.
+                  ["missile_command/core"
+                   "missile_command/world"
+                   "missile_command/batteries"
+                   "missile_command/missiles"
+                   "missile_command/acceptance"
+                   "missile_command/jvm/input"]))}
 
   dry
-  {:doc "DRY structural duplication analysis"
-   :task (apply shell "clojure" "-M:dry" *command-line-args*)}
+  {:doc "DRY structural duplication analysis for testable modules"
+   :task (apply shell "clojure" "-M:dry"
+                (if (seq *command-line-args*)
+                  *command-line-args*
+                  ["src/missile_command/core.cljc"
+                   "src/missile_command/world.cljc"
+                   "src/missile_command/batteries.cljc"
+                   "src/missile_command/missiles.cljc"
+                   "src/missile_command/acceptance"
+                   "src/missile_command/jvm/input.clj"]))}
 
   parse-acceptance
   {:doc "Parse Gherkin features to JSON IR"
@@ -106,4 +123,8 @@
 
   property
   {:doc "Property tests (test.check); separate from unit/coverage"
-   :task (shell "clojure" "-X:property")}}}
+   :task (shell "clojure" "-X:property")}
+
+  play
+  {:doc "Launch the JVM Quil host (mouse aim, key fire)"
+   :task (apply shell "clojure" "-M:run" *command-line-args*)}}}
