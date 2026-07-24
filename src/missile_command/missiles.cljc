@@ -109,18 +109,30 @@
   [fireball]
   (+ (:expand-seconds fireball) (:contract-seconds fireball)))
 
+(defn fireball-phase
+  "Lifecycle phase for a fireball age: :pre, :expand, :contract, or :post."
+  [fireball age]
+  (let [expand (double (:expand-seconds fireball))
+        contract (double (:contract-seconds fireball))
+        a (double age)]
+    (cond
+      (<= a 0.0) :pre
+      (< a expand) :expand
+      (< a (+ expand contract)) :contract
+      :else :post)))
+
 (defn fireball-radius-at
   [fireball age]
-  (let [expand (:expand-seconds fireball)
-        contract (:contract-seconds fireball)
-        max-r (:max-radius fireball)]
-    (cond
-      (<= age 0.0) 0.0
-      (< age expand) (* max-r (/ age expand))
-      (< age (+ expand contract))
-      (let [t (/ (- age expand) contract)]
-        (* max-r (- 1.0 t)))
-      :else 0.0)))
+  (let [expand (double (:expand-seconds fireball))
+        contract (double (:contract-seconds fireball))
+        max-r (double (:max-radius fireball))
+        a (double age)]
+    (case (fireball-phase fireball a)
+      :pre 0.0
+      :expand (* max-r (/ a expand))
+      :contract (let [t (/ (- a expand) contract)]
+                  (* max-r (- 1.0 t)))
+      :post 0.0)))
 
 (defn advance-fireball
   "Advance a fireball by dt. Returns updated fireball or `expired`.
@@ -141,3 +153,7 @@
         dy (- y (:y fireball))
         r (double (:radius fireball 0.0))]
     (<= (hypot dx dy) r)))
+
+;; clj-mutate-manifest-begin
+;; {:version 1, :tested-at "2026-07-24T12:34:14.1366-05:00", :module-hash "432524746", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 1, :hash "-1619932998"} {:id "def/max-dt", :kind "def", :line 3, :end-line 3, :hash "-989171296"} {:id "def/fireball-expand-seconds", :kind "def", :line 4, :end-line 4, :hash "404326517"} {:id "def/fireball-contract-seconds", :kind "def", :line 5, :end-line 5, :hash "-1491641581"} {:id "def/fireball-max-radius", :kind "def", :line 6, :end-line 6, :hash "-1156590171"} {:id "defn-/hypot", :kind "defn-", :line 8, :end-line 10, :hash "80937335"} {:id "defn/path-length", :kind "defn", :line 12, :end-line 15, :hash "1657109437"} {:id "defn/position-at-progress", :kind "defn", :line 17, :end-line 21, :hash "-1851331410"} {:id "defn/make-defensive", :kind "defn", :line 23, :end-line 34, :hash "-1218311748"} {:id "defn/clamp-dt", :kind "defn", :line 36, :end-line 38, :hash "1581799727"} {:id "def/arrived", :kind "def", :line 40, :end-line 42, :hash "-283916625"} {:id "defn/advance-defensive", :kind "defn", :line 44, :end-line 58, :hash "924066886"} {:id "defn/make-fireball", :kind "defn", :line 60, :end-line 69, :hash "-585279014"} {:id "defn/fireball-lifetime", :kind "defn", :line 71, :end-line 73, :hash "-21731022"} {:id "defn/fireball-phase", :kind "defn", :line 75, :end-line 85, :hash "-1988616685"} {:id "defn/fireball-radius-at", :kind "defn", :line 87, :end-line 98, :hash "511592659"} {:id "def/expired", :kind "def", :line 100, :end-line 102, :hash "1501164590"} {:id "defn/advance-fireball", :kind "defn", :line 104, :end-line 112, :hash "-1544339413"} {:id "defn/point-in-fireball?", :kind "defn", :line 114, :end-line 119, :hash "1166764552"}]}
+;; clj-mutate-manifest-end

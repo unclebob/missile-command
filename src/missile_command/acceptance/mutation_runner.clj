@@ -48,5 +48,5 @@
   (process-jobs (BufferedReader. (InputStreamReader. System/in))))
 
 ;; clj-mutate-manifest-begin
-;; {:version 1, :tested-at "2026-07-24T11:57:16.705551-05:00", :module-hash "-1664654075", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 5, :hash "-1190649835"} {:id "defn-/response", :kind "defn-", :line 7, :end-line 13, :hash "-19529655"} {:id "defn-/bounded-output", :kind "defn-", :line 15, :end-line 21, :hash "-1820890353"} {:id "defn-/run-job", :kind "defn-", :line 23, :end-line 34, :hash "-211201517"} {:id "defn-/process-jobs", :kind "defn-", :line 36, :end-line 44, :hash "-852937270"} {:id "defn/-main", :kind "defn", :line 46, :end-line 48, :hash "265455301"}]}
+;; {:version 1, :tested-at "2026-07-24T12:29:38.407219-05:00", :module-hash "-1664654075", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 5, :hash "-1190649835"} {:id "defn-/response", :kind "defn-", :line 7, :end-line 13, :hash "-19529655"} {:id "defn-/bounded-output", :kind "defn-", :line 15, :end-line 21, :hash "-1820890353"} {:id "defn-/run-job", :kind "defn-", :line 23, :end-line 34, :hash "-211201517"} {:id "defn-/process-jobs", :kind "defn-", :line 36, :end-line 44, :hash "-852937270"} {:id "defn/-main", :kind "defn", :line 46, :end-line 48, :hash "265455301"}]}
 ;; clj-mutate-manifest-end

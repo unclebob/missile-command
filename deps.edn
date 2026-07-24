@@ -22,9 +22,9 @@
         :extra-deps {cloverage/cloverage {:mvn/version "1.2.4"}
                      speclj/speclj {:mvn/version "3.12.2"}}
         :main-opts ["-m" "speclj.cloverage" "--" "-p" "src" "-s" "spec" "--lcov"
-                    ;; Only testable pure/core modules; exclude Quil GUI hosts.
+                    ;; Testable modules only; exclude Quil GUI hosts (main/sketch/render).
                     "--ns-regex"
-                    "missile-command\\.(core|world|batteries|missiles|input|acceptance\\..*)"]}
+                    "missile-command\\.(core|world|batteries|missiles|input|acceptance\\..*|jvm\\.input)"]}
   :mutate {:main-opts ["-m" "clj-mutate.core"]
            :extra-deps {io.github.unclebob/clj-mutate
                         {:git/url "https://github.com/unclebob/clj-mutate.git"

@@ -271,6 +271,29 @@
                (dispatch world "there are <fireball_count> fireballs"
                          {"fireball_count" "1"}))))
 
+  (it "advance-until returns immediately when the predicate already holds"
+    (let [world (fresh-world)
+          out (@#'steps/advance-until world (constantly true) 0.05 0 "unused")]
+      (should= world out)))
+
+  (it "advance-until fails when the step budget is exhausted"
+    (let [world (fresh-world)]
+      (should-throw Exception #"exhausted"
+        (@#'steps/advance-until world (constantly false) 0.05 0 "exhausted"))
+      (should-throw Exception #"exhausted"
+        (@#'steps/advance-until world (constantly false) 0.05 2 "exhausted"))))
+
+  (it "advance-until ticks exactly the budgeted number of times when needed"
+    (let [world (fresh-world)
+          ticks (atom 0)
+          pred (fn [_]
+                 (let [n (swap! ticks inc)]
+                   (>= n 4)))
+          ;; pred checked before each tick: fails 3 times, then after 3 ticks ticks=4 succeeds
+          out (@#'steps/advance-until world pred 0.05 3 "exhausted")]
+      (should= 4 @ticks)
+      (should (map? (:state out)))))
+
   (it "advances time by an example number of seconds"
     (let [world (fresh-world)
           advanced (dispatch world "time advances by <dt> seconds" {"dt" "0.02"})]
