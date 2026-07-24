@@ -28,10 +28,15 @@
   [cx base-y bw bh]
   (q/fill 160 175 195)
   (q/rect (- cx (quot bw 2)) (- base-y bh) bw bh)
+  ;; simple window bands (cheap; keeps frame rate high for aim tracking)
   (q/fill 220 230 140)
-  (doseq [wy (range (+ (- base-y bh) 4) (- base-y 4) 6)
-          wx (range (+ (- cx (quot bw 2)) 3) (+ cx (quot bw 2) -2) 5)]
-    (q/rect wx wy 2 3)))
+  (let [left (+ (- cx (quot bw 2)) 2)
+        top (+ (- base-y bh) 4)
+        right (- (+ cx (quot bw 2)) 2)]
+    (when (> (- right left) 2)
+      (q/rect left top (- right left) 2)
+      (when (> bh 14)
+        (q/rect left (+ top 8) (- right left) 2)))))
 
 (defn- cities!
   [state]
@@ -93,16 +98,16 @@
     (q/stroke-weight 2))
   (q/no-stroke))
 
-(defn- crosshair!
-  [state]
-  (let [{:keys [x y]} (core/crosshair state)]
-    (q/stroke 255 70 70)
-    (q/stroke-weight 2)
-    (q/no-fill)
-    (q/ellipse x y 20 20)
-    (q/line (- x 14) y (+ x 14) y)
-    (q/line x (- y 14) x (+ y 14))
-    (q/no-stroke)))
+(defn crosshair-at!
+  "Draw crosshair at live screen coordinates (visual aim; avoids input lag)."
+  [x y]
+  (q/stroke 255 70 70)
+  (q/stroke-weight 2)
+  (q/no-fill)
+  (q/ellipse x y 20 20)
+  (q/line (- x 14) y (+ x 14) y)
+  (q/line x (- y 14) x (+ y 14))
+  (q/no-stroke))
 
 (defn- hud!
   [state]
@@ -119,14 +124,18 @@
     (q/text line 12 22)))
 
 (defn draw-state!
-  "Draw one frame from core game state."
-  [state]
-  (let [w (core/playfield-width state)
-        h (core/playfield-height state)]
-    (sky! w h)
-    (missiles! state)
-    (ground! state)
-    (cities! state)
-    (batteries! state)
-    (crosshair! state)
-    (hud! state)))
+  "Draw one frame from core game state.
+  crosshair-x/y are live pointer coords so the reticle stays under the mouse."
+  ([state]
+   (let [ch (core/crosshair state)]
+     (draw-state! state (:x ch) (:y ch))))
+  ([state crosshair-x crosshair-y]
+   (let [w (core/playfield-width state)
+         h (core/playfield-height state)]
+     (sky! w h)
+     (missiles! state)
+     (ground! state)
+     (cities! state)
+     (batteries! state)
+     (crosshair-at! crosshair-x crosshair-y)
+     (hud! state))))

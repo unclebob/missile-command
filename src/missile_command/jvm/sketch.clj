@@ -20,8 +20,7 @@
 
 (defn update-state
   [state]
-  ;; Aim every frame from the current pointer so the crosshair does not lag
-  ;; behind mouse-moved event delivery.
+  ;; Keep core aim synced every frame; visual reticle uses live mouse in draw.
   (-> state
       (input/resize-if-needed (q/width) (q/height)
                               core/resize core/playfield-width core/playfield-height)
@@ -29,10 +28,11 @@
 
 (defn draw
   [state]
-  (render/draw-state! state))
+  (render/draw-state! state (q/mouse-x) (q/mouse-y)))
 
 (defn mouse-moved
   [state _event]
+  ;; Still route aim on move events for responsiveness between update ticks.
   (apply-command state (input/aim-command (q/mouse-x) (q/mouse-y))))
 
 (defn mouse-dragged
