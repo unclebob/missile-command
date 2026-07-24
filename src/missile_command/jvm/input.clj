@@ -320,6 +320,9 @@
                              (or (:child-count e) 3)
                              (or (:split-progress e) 0.5))
 
+                            (= :smart enemy-kind)
+                            (core/spawn-smart-bomb-targeting-city s id)
+
                             (= kind :city)
                             (if origin
                               (core/spawn-enemy-targeting-city-from s ox oy id)

@@ -4,6 +4,7 @@
 (def full-ammo 10)
 (def max-multiplier 6)
 (def points-enemy-missile 25)
+(def points-smart-bomb 125)
 (def points-unused-missile 5)
 (def points-surviving-city 100)
 
@@ -27,6 +28,11 @@
   [wave]
   (max 0 (- (quot (long wave) 2) 1)))
 
+(defn smart-bomb-count
+  "Number of smart bombs scheduled for a wave (0 until later waves)."
+  [wave]
+  (max 0 (quot (- (long wave) 5) 2)))
+
 (defn multiplier
   "Score multiplier for a wave: +1× every two waves, capped at max-multiplier."
   [wave]
@@ -39,7 +45,8 @@
    :enemy-count (enemy-count wave)
    :enemy-speed (enemy-speed wave)
    :multiplier (multiplier wave)
-   :mirv-count (mirv-count wave)})
+   :mirv-count (mirv-count wave)
+   :smart-bomb-count (smart-bomb-count wave)})
 
 (defn harder?
   "True when high-wave metrics exceed low-wave by count or speed."

@@ -233,6 +233,11 @@
 (def enemy-kind-ballistic :ballistic)
 (def enemy-kind-mirv :mirv)
 (def enemy-kind-mirv-child :mirv-child)
+(def enemy-kind-smart :smart)
+
+;; Edge band for smart-bomb evasion: outer ring of the blast (ratio of radius).
+(def smart-bomb-edge-inner-factor 0.625)
+(def smart-bomb-evade-clearance 8.0)
 
 (defn- mirv-parent?
   [enemy]
@@ -242,6 +247,10 @@
   [enemy]
   (= enemy-kind-mirv-child (:enemy-kind enemy)))
 
+(defn- smart-bomb?
+  [enemy]
+  (= enemy-kind-smart (:enemy-kind enemy)))
+
 (defn mirv-parents
   [state]
   (filterv mirv-parent? (enemy-missiles state)))
@@ -249,6 +258,10 @@
 (defn mirv-children
   [state]
   (filterv mirv-child? (enemy-missiles state)))
+
+(defn smart-bombs
+  [state]
+  (filterv smart-bomb? (enemy-missiles state)))
 
 (defn spawn-enemy-at
   "Spawn an enemy missile from origin toward a target point.
@@ -325,6 +338,19 @@
                      :child-count (long child-count)
                      :split-progress (double split-progress)})))
 
+(defn spawn-smart-bomb-targeting-city
+  "Spawn a smart bomb toward a city (can evade edge-of-blast fireballs once)."
+  [state city-id]
+  (let [c (city state city-id)]
+    (when-not c
+      (throw (ex-info (str "unknown city " city-id) {:city-id city-id})))
+    (spawn-enemy-at state
+                    {:x (:x c) :y 0}
+                    {:x (:x c) :y (:y c)}
+                    :city city-id
+                    {:enemy-kind enemy-kind-smart
+                     :smart-evaded? false})))
+
 (defn add-static-fireball
   "Test/setup helper: place a fixed-radius fireball."
   [state x y radius]
@@ -334,7 +360,47 @@
 
 (defn- enemy-attrs-to-preserve
   [enemy]
-  (select-keys enemy [:enemy-kind :child-count :split-progress]))
+  (select-keys enemy [:enemy-kind :child-count :split-progress
+                      :smart-evaded? :last-enemy-fate-local]))
+
+(defn- first-enemy-index
+  [ms pred]
+  (first (keep-indexed (fn [i e] (when (pred e) i)) ms)))
+
+(defn- retarget-enemy-at-index
+  [ms idx x y]
+  (let [m (nth ms idx)
+        retargeted (merge (missiles/make-enemy (:id m)
+                                               {:x x :y y}
+                                               {:x (:x1 m) :y (:y1 m)}
+                                               (:speed m)
+                                               (:target-kind m)
+                                               (:target-id m))
+                          (enemy-attrs-to-preserve m))]
+    (assoc (vec ms) idx retargeted)))
+
+(defn route-first-smart-bomb-through-point
+  "Retarget the first smart bomb so its path starts at the given point."
+  [state x y]
+  (update state :enemy-missiles
+          (fn [ms]
+            (if-let [idx (first-enemy-index ms smart-bomb?)]
+              (retarget-enemy-at-index ms idx x y)
+              (vec ms)))))
+
+(defn route-smart-bomb-centered-in-fireball
+  "Place the smart bomb path through the fireball center (well-centered kill)."
+  [state fb-x fb-y _center-limit]
+  (route-first-smart-bomb-through-point state fb-x fb-y))
+
+(defn route-smart-bomb-edge-band-in-fireball
+  "Place the smart bomb path through the edge band of the fireball (evade once)."
+  [state fb-x fb-y edge-inner radius]
+  (let [mid (/ (+ (double edge-inner) (double radius)) 2.0)
+        ;; Offset east of center so approach is in the edge ring only.
+        px (+ (double fb-x) mid)
+        py (double fb-y)]
+    (route-first-smart-bomb-through-point state px py)))
 
 (defn route-enemy-through-point
   "Retarget the first enemy so its path starts at the given point (e.g. fireball)."
@@ -383,6 +449,48 @@
 (defn- enemy-hit-by-fireball?
   [enemy fireballs]
   (some #(missiles/point-in-fireball? % (:x enemy) (:y enemy)) fireballs))
+
+(defn- distance-to-fireball
+  [enemy fireball]
+  (let [dx (- (double (:x enemy)) (double (:x fireball)))
+        dy (- (double (:y enemy)) (double (:y fireball)))]
+    (Math/sqrt (+ (* dx dx) (* dy dy)))))
+
+(defn- first-touching-fireball
+  [enemy fireballs]
+  (first (filter #(missiles/point-in-fireball? % (:x enemy) (:y enemy)) fireballs)))
+
+(defn- smart-bomb-edge-band?
+  "True when distance is outside the lethal core but still inside the blast."
+  [d radius]
+  (let [edge-inner (* (double radius) smart-bomb-edge-inner-factor)]
+    (and (> d edge-inner) (<= d (double radius)))))
+
+(defn- evade-smart-bomb
+  "Steer clear of the fireball once; keep original target."
+  [enemy fireball]
+  (let [fx (double (:x fireball))
+        fy (double (:y fireball))
+        r (double (:radius fireball))
+        ex (double (:x enemy))
+        ey (double (:y enemy))
+        dx (- ex fx)
+        dy (- ey fy)
+        dist (max 1.0e-6 (Math/sqrt (+ (* dx dx) (* dy dy))))
+        clear (+ r smart-bomb-evade-clearance)
+        nx (+ fx (* dx (/ clear dist)))
+        ny (+ fy (* dy (/ clear dist)))
+        retargeted (missiles/make-enemy (:id enemy)
+                                        {:x nx :y ny}
+                                        {:x (:x1 enemy) :y (:y1 enemy)}
+                                        (:speed enemy)
+                                        (:target-kind enemy)
+                                        (:target-id enemy))]
+    (merge retargeted
+           (enemy-attrs-to-preserve enemy)
+           {:enemy-kind enemy-kind-smart
+            :smart-evaded? true
+            :smart-evaded-fireball-id (:id fireball)})))
 
 (defn- fire-battery
   [state battery-id]
@@ -550,10 +658,16 @@
   [state base-points]
   (add-score state (* (long base-points) (multiplier state))))
 
+(defn- points-for-enemy-kill
+  [enemy]
+  (if (smart-bomb? enemy)
+    waves/points-smart-bomb
+    waves/points-enemy-missile))
+
 (defn- destroy-enemy-by-fireball
-  [state]
+  [state enemy]
   (-> state
-      (award-points waves/points-enemy-missile)
+      (award-points (points-for-enemy-kill enemy))
       (assoc :last-enemy-fate :fireball)))
 
 (defn- spawn-impact-fireball
@@ -573,6 +687,18 @@
 (defn- keep-flying-enemy
   [state enemy]
   (update state :enemy-missiles (fnil conj []) enemy))
+
+(defn- resolve-fireball-contact
+  "Destroy, evade (smart bombs once), or ignore contact with a fireball."
+  [state enemy fireballs]
+  (if-let [fb (first-touching-fireball enemy fireballs)]
+    (if (and (smart-bomb? enemy)
+             (not (:smart-evaded? enemy))
+             (smart-bomb-edge-band? (distance-to-fireball enemy fb)
+                                    (:radius fb)))
+      (keep-flying-enemy state (evade-smart-bomb enemy fb))
+      (destroy-enemy-by-fireball state enemy))
+    (keep-flying-enemy state enemy)))
 
 (defn- progress-of
   [enemy-or-result]
@@ -619,7 +745,7 @@
   [state enemy dt fireballs]
   (cond
     (enemy-hit-by-fireball? enemy fireballs)
-    (destroy-enemy-by-fireball state)
+    (resolve-fireball-contact state enemy fireballs)
 
     :else
     (let [result (missiles/advance-enemy enemy dt)]
@@ -631,7 +757,7 @@
         (resolve-enemy-impact state enemy)
 
         (enemy-hit-by-fireball? result fireballs)
-        (destroy-enemy-by-fireball state)
+        (resolve-fireball-contact state result fireballs)
 
         :else
         (keep-flying-enemy state result)))))
@@ -740,6 +866,10 @@
 (defn wave-mirv-count
   [wave-number]
   (waves/mirv-count wave-number))
+
+(defn wave-smart-bomb-count
+  [wave-number]
+  (waves/smart-bomb-count wave-number))
 
 (defn harder-wave?
   [low-metrics high-metrics]

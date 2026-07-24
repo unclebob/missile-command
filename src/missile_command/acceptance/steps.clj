@@ -892,6 +892,110 @@
                                    " expected " expected)))
           world)}
 
+   {:pattern #"^there is (\d+) smart bomb in flight$"
+    :fn (fn [world [_ count-text] _]
+          (assert-count (count (core/smart-bombs (:state world)))
+                        (support/parse-int count-text "smart bomb count")
+                        "smart bombs")
+          world)}
+
+   {:pattern #"^there are (\d+) smart bombs in flight$"
+    :fn (fn [world [_ count-text] _]
+          (assert-count (count (core/smart-bombs (:state world)))
+                        (support/parse-int count-text "smart bomb count")
+                        "smart bombs")
+          world)}
+
+   {:pattern #"^a smart bomb has progressed toward city <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ city-param] example]
+          (let [city-id (support/example-int example city-param "city")
+                m (first (filter #(and (= :city (:target-kind %))
+                                       (= city-id (:target-id %)))
+                                 (core/smart-bombs (:state world))))]
+            (assert-condition m "missing smart bomb")
+            (assert-gt (double (:progress m 0.0)) 0.0
+                       "smart bomb has not progressed"))
+          world)}
+
+   {:pattern #"^the smart bomb path is centered in that fireball within distance <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ limit-param] example]
+          (assoc world :state
+                 (core/route-smart-bomb-centered-in-fireball
+                  (:state world)
+                  (:fireball-x world)
+                  (:fireball-y world)
+                  (support/example-int example limit-param "center limit"))))}
+
+   {:pattern #"^the smart bomb path is only in the edge band of that fireball between <([A-Za-z0-9_]+)> and <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ inner-param radius-param] example]
+          (assoc world :state
+                 (core/route-smart-bomb-edge-band-in-fireball
+                  (:state world)
+                  (:fireball-x world)
+                  (:fireball-y world)
+                  (support/example-int example inner-param "edge inner")
+                  (support/example-int example radius-param "radius"))))}
+
+   {:pattern #"^time advances until the smart bomb is inside the fireball radius or has impacted$"
+    :fn (fn [world _ _]
+          (loop [s (:state world) n 0]
+            (cond
+              (empty? (core/smart-bombs s)) (assoc world :state s)
+              (= :fireball (core/last-enemy-fate s)) (assoc world :state s)
+              (> n 20000) (support/fail! "smart bomb never hit fireball or impact")
+              :else (recur (:state (core/tick s 0.01)) (inc n)))))}
+
+   {:pattern #"^time advances until the smart bomb would enter the fireball edge band or has impacted$"
+    :fn (fn [world _ _]
+          (loop [s (:state world) n 0]
+            (let [bomb (first (core/smart-bombs s))]
+              (cond
+                (nil? bomb) (assoc world :state s)
+                (:smart-evaded? bomb) (assoc world :state s)
+                (= :fireball (core/last-enemy-fate s)) (assoc world :state s)
+                (> n 20000) (support/fail! "smart bomb never entered edge band")
+                :else (recur (:state (core/tick s 0.01)) (inc n))))))}
+
+   {:pattern #"^the smart bomb is destroyed by the fireball$"
+    :fn (fn [world _ _]
+          (assert-condition (= :fireball (core/last-enemy-fate (:state world)))
+                            (str "expected smart bomb fireball kill, got "
+                                 (core/last-enemy-fate (:state world))))
+          world)}
+
+   {:pattern #"^the smart bomb is not destroyed by the fireball$"
+    :fn (fn [world _ _]
+          (assert-condition (not= :fireball (core/last-enemy-fate (:state world)))
+                            "smart bomb was destroyed by fireball")
+          (assert-condition (seq (core/smart-bombs (:state world)))
+                            "smart bomb missing after evade")
+          world)}
+
+   {:pattern #"^the smart bomb has evaded the fireball$"
+    :fn (fn [world _ _]
+          (let [bomb (first (core/smart-bombs (:state world)))]
+            (assert-condition bomb "missing smart bomb")
+            (assert-condition (:smart-evaded? bomb)
+                              "smart bomb has not evaded"))
+          world)}
+
+   {:pattern #"^there is (\d+) enemy missile in flight$"
+    :fn (fn [world [_ count-text] _]
+          (assert-count (count (core/enemy-missiles (:state world)))
+                        (support/parse-int count-text "enemy count")
+                        "enemy missiles")
+          world)}
+
+   {:pattern #"^wave <([A-Za-z0-9_]+)> smart bomb schedule count is <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ wave-param count-param] example]
+          (let [w (support/example-int example wave-param "wave")
+                expected (support/example-int example count-param "smart count")
+                actual (core/wave-smart-bomb-count w)]
+            (assert-condition (= expected actual)
+                              (str "wave " w " smart bomb count " actual
+                                   " expected " expected)))
+          world)}
+
    {:pattern #"^a defensive missile from the <([A-Za-z0-9_]+)> battery has progressed toward <([A-Za-z0-9_]+)> <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ battery-param x-param y-param] example]
           (let [battery-id (support/example-battery example battery-param)
@@ -949,6 +1053,20 @@
                   (support/example-int example city-param "city")
                   (support/example-int example count-param "child count")
                   (support/example-double example progress-param "split progress"))))}
+
+   {:pattern #"^a smart bomb targeting city <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ city-param] example]
+          (assoc world :state
+                 (core/spawn-smart-bomb-targeting-city
+                  (:state world)
+                  (support/example-int example city-param "city"))))}
+
+   {:pattern #"^a smart bomb targeting city (\d+)$"
+    :fn (fn [world [_ city-text] _]
+          (assoc world :state
+                 (core/spawn-smart-bomb-targeting-city
+                  (:state world)
+                  (support/parse-int city-text "city"))))}
 
    {:pattern #"^an enemy missile from <([A-Za-z0-9_]+)> (\d+) targeting battery <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ ox-param oy-text battery-param] example]
