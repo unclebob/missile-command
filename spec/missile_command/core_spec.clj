@@ -570,6 +570,20 @@
       (should (core/paused? after))
       (should (empty? (core/defensive-missiles after)))))
 
+  (it "blocks click fire while paused"
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+                    core/pause-game)
+          after (:state (core/handle state {:type :click :x 400 :y 200}))]
+      (should (core/paused? after))
+      (should (empty? (core/defensive-missiles after)))))
+
+  (it "pauses and resumes via handle commands"
+    (let [playing (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+          paused (:state (core/handle playing {:type :pause}))
+          resumed (:state (core/handle paused {:type :resume}))]
+      (should (core/paused? paused))
+      (should (core/playing? resumed))))
+
   (it "resumes and continues enemy progress"
     (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/spawn-enemy-targeting-city 0))

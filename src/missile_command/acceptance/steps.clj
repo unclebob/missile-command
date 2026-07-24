@@ -8,6 +8,8 @@
             [missile-command.acceptance.city-steps :as city-steps]
             [missile-command.acceptance.defensive-steps :as defensive-steps]
             [missile-command.acceptance.title-steps :as title-steps]
+            [missile-command.acceptance.pause-steps :as pause-steps]
+            [missile-command.acceptance.hud-steps :as hud-steps]
             [missile-command.core :as core]
             [missile-command.high-scores :as high-scores]
             [missile-command.options :as options]))
@@ -2080,6 +2082,7 @@
               :else (recur (:state (core/tick s 0.05)) (inc n)))))}
 
 
+
    {:pattern #"^time advances until the enemy missile is inside the fireball radius or has impacted$"
     :fn (fn [world _ _]
           (loop [s (:state world) n 0]
@@ -2484,7 +2487,10 @@
    fireball-steps/handlers
    city-steps/handlers
    defensive-steps/handlers
-   title-steps/handlers)))
+   title-steps/handlers
+   pause-steps/handlers
+   hud-steps/handlers)))
+
 
 
 (defn- match-handler

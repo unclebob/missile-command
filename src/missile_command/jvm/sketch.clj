@@ -231,6 +231,14 @@
       (swap! launch-options assoc :last-emitted-fate (core/last-enemy-fate state')))
     state'))
 
+(defn- toggle-pause
+  "Pause while playing, resume while paused; otherwise leave state alone."
+  [state]
+  (cond
+    (core/playing? state) (apply-handle state {:type :pause})
+    (core/paused? state) (apply-handle state {:type :resume})
+    :else state))
+
 (defn- drain-one-qa-event
   [state]
   (let [events @pending-qa-events]
@@ -285,16 +293,19 @@
                          (when (:qa-telemetry? @launch-options)
                            (emit! (input/format-sim-telemetry-line s)))
                          s)
-              :pause (apply-handle state {:type :pause})
-              :resume (apply-handle state {:type :resume})
+              :pause (let [s (apply-handle state {:type :pause})]
+                       (when (:qa-telemetry? @launch-options)
+                         (emit! (input/format-sim-telemetry-line s)))
+                       s)
+              :resume (let [s (apply-handle state {:type :resume})]
+                        (when (:qa-telemetry? @launch-options)
+                          (emit! (input/format-sim-telemetry-line s)))
+                        s)
               :key (cond
                      (input/key-char->command (:ch ev))
                      (apply-handle state (input/key-char->command (:ch ev)))
                      (or (= \p (:ch ev)) (= \P (:ch ev)))
-                     (cond
-                       (core/playing? state) (apply-handle state {:type :pause})
-                       (core/paused? state) (apply-handle state {:type :resume})
-                       :else state)
+                     (toggle-pause state)
                      (or (= \newline (:ch ev)) (= \return (:ch ev)))
                      (cond
                        (core/title? state)
@@ -349,17 +360,12 @@
   (let [ch (q/raw-key)]
     (cond
       (input/escape-key? ch)
-      (cond
-        (core/playing? state) (apply-handle state {:type :pause})
-        (core/paused? state) (apply-handle state {:type :resume})
-        (core/title? state) (do (persist-settings! state) (q/exit) state)
-        :else (do (persist-settings! state) (q/exit) state))
+      (if (or (core/playing? state) (core/paused? state))
+        (toggle-pause state)
+        (do (persist-settings! state) (q/exit) state))
 
       (or (= \p ch) (= \P ch))
-      (cond
-        (core/playing? state) (apply-handle state {:type :pause})
-        (core/paused? state) (apply-handle state {:type :resume})
-        :else state)
+      (toggle-pause state)
 
       (or (= \newline ch) (= \return ch) (= (int 10) (int ch)))
       (cond

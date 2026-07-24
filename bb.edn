@@ -73,6 +73,7 @@
                    "missile_command/flyers"
                    "missile_command/game_end"
                    "missile_command/screens"
+                   "missile_command/hud"
                    "missile_command/acceptance"
                    "missile_command/jvm/input"]))}
 
@@ -93,6 +94,7 @@
                    "src/missile_command/flyers.cljc"
                    "src/missile_command/game_end.cljc"
                    "src/missile_command/screens.cljc"
+                   "src/missile_command/hud.cljc"
                    "src/missile_command/acceptance"
                    "src/missile_command/jvm/input.clj"]))}
 
