@@ -239,11 +239,29 @@
 (def fire-key-includes? options/fire-key-includes-state?)
 (def pause-key-includes? options/pause-key-includes-state?)
 
+(defn export-settings
+  "Serializable high scores and options for host persistence."
+  [state]
+  {:options (game-options state)
+   :high-scores (high-score-table state)
+   :high-score-capacity (high-score-capacity state)})
+
+(defn import-settings
+  "Restore high scores and options onto a shell state (e.g. after host restart)."
+  [state settings]
+  (let [settings (or settings {})]
+    (assoc state
+           :options (or (:options settings) options/default-options)
+           :high-scores (vec (or (:high-scores settings) []))
+           :high-score-capacity
+           (long (or (:high-score-capacity settings)
+                     high-scores/default-capacity)))))
+
+
 (defn- apply-shell
   "High-score shell transition that also carries options."
   [shell-state source]
   (options/carry shell-state source))
-
 (defn start-game
   "Leave title (or any shell) and begin a fresh playing run at current size."
   [state]
