@@ -8,7 +8,8 @@
              (window/centered-location {:x 0 :y 0 :width 1000 :height 700} 800 600)))
 
   (it "offsets into a non-origin screen"
-    (should= {:x 1828 :y 563}
+    ;; 1728 + (1920-800)/2 = 2288; 413 + (1080-600)/2 = 653
+    (should= {:x 2288 :y 653}
              (window/centered-location {:x 1728 :y 413 :width 1920 :height 1080}
                                        800 600))))
 
