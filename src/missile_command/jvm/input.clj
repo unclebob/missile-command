@@ -119,7 +119,10 @@
    "--qa-fireball"
    (fn [opts xs]
      [(update opts :qa-fireballs (fnil conj []) (parse-fireball-spec (second xs)))
-      (drop 2 xs)])})
+      (drop 2 xs)])
+   "--scores-file"
+   (fn [opts xs]
+     [(assoc opts :scores-file (second xs)) (drop 2 xs)])})
 
 (defn- apply-switch
   "Consume one CLI switch from xs. Returns [opts remaining-xs] or nil."
@@ -152,7 +155,8 @@
                 :qa-scenario nil
                 :qa-targets []
                 :qa-enemies []
-                :qa-fireballs []}]
+                :qa-fireballs []
+                :scores-file nil}]
      (if-not xs
        (-> opts
            (dissoc :size-phase)
@@ -258,6 +262,28 @@
   (when-let [f (core/last-enemy-fate state)]
     [(str "last_enemy_fate=" (name f))]))
 
+(defn- high-score-rank-fields
+  "Emit first few ranks as hs_rankN_initials / hs_rankN_score."
+  [state]
+  (mapcat (fn [i e]
+            (let [n (inc i)]
+              [(str "hs_rank" n "_initials=" (:initials e))
+               (str "hs_rank" n "_score=" (long (:score e)))]))
+          (range)
+          (take 10 (core/high-score-table state))))
+
+(defn- high-score-sim-fields
+  [state]
+  (let [pending (core/pending-high-score state)
+        submitted (core/submitted-high-score-initials state)
+        draft (or (:initials-draft state) "")]
+    (concat [(str "high_score_count=" (count (core/high-score-table state)))
+             (str "high_score_capacity=" (core/high-score-capacity state))
+             (str "pending_high_score=" (if pending (long pending) "none"))
+             (str "submitted_initials=" (or submitted "none"))
+             (str "initials_draft=" (if (seq draft) draft "none"))]
+            (high-score-rank-fields state))))
+
 (defn format-sim-telemetry-line
   "Periodic simulation snapshot line."
   [state]
@@ -299,6 +325,7 @@
               (str "hud_living_cities=" (:living-cities hud))
               (str "hud_bonus_cities=" (:bonus-cities hud))
               (str "hud_full=" (boolean (:full-playing-hud? hud)))]
+             (high-score-sim-fields state)
              (battery-sim-fields state)
              (fireball-sim-fields fireballs)
              (enemy-sim-fields enemies)
@@ -358,6 +385,22 @@
     (core/set-bonus-city-reserve (:bonus-cities scenario))
     (contains? scenario :score)
     (core/set-score (:score scenario))))
+
+(defn- apply-scenario-high-scores
+  "Seed table capacity and entries from scenario keys."
+  [state scenario]
+  (let [state (if (contains? scenario :high-score-capacity)
+                (core/set-high-score-capacity state (:high-score-capacity scenario))
+                state)
+        entries (or (:high-scores scenario) [])]
+    (reduce (fn [s e]
+              (core/add-high-score-entry s
+                                         (str (:initials e))
+                                         (long (:score e))))
+            (if (contains? scenario :high-scores)
+              (assoc state :high-scores [])
+              state)
+            entries)))
 
 (defn- spawn-scenario-mirv
   [state e]
@@ -444,7 +487,8 @@
       (apply-scenario-targets scenario)
       (apply-scenario-enemies scenario)
       (apply-scenario-flyers scenario)
-      (apply-scenario-score-and-bonus scenario)))
+      (apply-scenario-score-and-bonus scenario)
+      (apply-scenario-high-scores scenario)))
 
 (defn format-fireball-phase-line
   "Phase timing line for one fireball."
@@ -511,10 +555,14 @@
    "confirm" (fn [_ _] {:type :confirm})
    "pause" (fn [_ _] {:type :pause})
    "resume" (fn [_ _] {:type :resume})
+   "open-high-scores" (fn [_ _] {:type :open-high-scores})
+   "close-high-scores" (fn [_ _] {:type :close-high-scores})
+   "initials" (fn [a _] {:type :submit-high-score :initials (str a)})
    "quit" (fn [_ _] {:type :quit})})
 
 (defn parse-qa-event-line
-  "Parse host automation: click X Y | aim X Y | key CHAR | wait SECONDS | quit"
+  "Parse host automation: click X Y | aim X Y | key CHAR | wait SECONDS | quit
+  Also: open-high-scores | close-high-scores | initials ABC"
   [line]
   (let [line (str/trim (str line))]
     (when (seq line)
