@@ -78,6 +78,13 @@
    (:state world)
    (support/example-int example count-param "spawn count"))))}
 
+   {:pattern #"^there is (\d+) enemy missile in flight$"
+    :fn (fn [world [_ count-text] _]
+          (support/assert-count (count (core/enemy-missiles (:state world)))
+                                (support/parse-int count-text "enemy count")
+                                "enemy missiles")
+          world)}
+
    {:pattern #"^there are (\d+) enemy missiles in flight$"
     :fn (fn [world [_ count-text] _]
    (support/assert-count (count (core/enemy-missiles (:state world)))
