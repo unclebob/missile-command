@@ -52,6 +52,25 @@
     {:x (Integer/parseInt (str/trim xs))
      :y (Integer/parseInt (str/trim ys))}))
 
+(defn parse-enemy-spec
+  "Parse city:N or battery:left|center|right."
+  [s]
+  (let [[kind id] (str/split (str s) #":" 2)
+        kind (str/trim kind)
+        id (str/trim (str id))]
+    (case kind
+      "city" {:kind :city :id (Integer/parseInt id)}
+      "battery" {:kind :battery :id (keyword id)}
+      (throw (ex-info (str "unknown enemy spec: " s) {:spec s})))))
+
+(defn parse-fireball-spec
+  "Parse x,y,radius for a static QA fireball."
+  [s]
+  (let [[xs ys rs] (str/split (str s) #"," 3)]
+    {:x (Integer/parseInt (str/trim xs))
+     :y (Integer/parseInt (str/trim ys))
+     :radius (Double/parseDouble (str/trim rs))}))
+
 (defn- int-token?
   [s]
   (boolean (re-matches #"-?\d+" (str s))))
@@ -77,6 +96,14 @@
    "--qa-target"
    (fn [opts xs]
      [(update opts :qa-targets (fnil conj []) (parse-xy-pair (second xs)))
+      (drop 2 xs)])
+   "--qa-enemy"
+   (fn [opts xs]
+     [(update opts :qa-enemies (fnil conj []) (parse-enemy-spec (second xs)))
+      (drop 2 xs)])
+   "--qa-fireball"
+   (fn [opts xs]
+     [(update opts :qa-fireballs (fnil conj []) (parse-fireball-spec (second xs)))
       (drop 2 xs)])})
 
 (defn- apply-switch
@@ -110,7 +137,9 @@
                 :qa-telemetry? false
                 :destroy-batteries []
                 :qa-events nil
-                :qa-targets []}]
+                :qa-targets []
+                :qa-enemies []
+                :qa-fireballs []}]
      (if-not xs
        (dissoc opts :width-set? :height-set?)
        (if-let [[opts' xs'] (or (apply-switch opts xs)
@@ -159,30 +188,59 @@
             (str "missiles_in_flight=" (count missiles))]
            vectors))))
 
+(defn- enemy-target-label
+  [e]
+  (str (name (:target-kind e)) ":" (:target-id e)))
+
 (defn format-sim-telemetry-line
   "Periodic simulation snapshot line."
   [state]
   (let [missiles (core/defensive-missiles state)
         fireballs (core/fireballs state)
+        enemies (core/enemy-missiles state)
         targets (core/destroyable-targets state)
+        cities-alive (count (core/living-cities state))
         fb-fields (mapcat (fn [fb]
                             [(str "center_x=" (:x fb))
                              (str "center_y=" (:y fb))
                              (str "radius=" (:radius fb))])
                           fireballs)
+        enemy-fields (mapcat (fn [e]
+                               [(str "enemy_id=" (:id e))
+                                (str "enemy_x=" (:x e))
+                                (str "enemy_y=" (:y e))
+                                (str "enemy_origin_x=" (:x0 e))
+                                (str "enemy_origin_y=" (:y0 e))
+                                (str "enemy_target_x=" (:x1 e))
+                                (str "enemy_target_y=" (:y1 e))
+                                (str "enemy_target=" (enemy-target-label e))])
+                             enemies)
+        bat-fields [(str "battery_left_destroyed="
+                         (boolean (:destroyed? (core/battery state :left))))
+                    (str "battery_center_destroyed="
+                         (boolean (:destroyed? (core/battery state :center))))
+                    (str "battery_right_destroyed="
+                         (boolean (:destroyed? (core/battery state :right))))]
         tgt-fields (mapcat (fn [t]
                              [(str "target_id=" (:id t))
                               (str "target_x=" (:x t))
                               (str "target_y=" (:y t))
                               (str "destroyed=" (boolean (:destroyed? t)))])
-                           targets)]
+                           targets)
+        fate (when-let [f (core/last-enemy-fate state)]
+               [(str "last_enemy_fate=" (name f))])]
     (str/join
      " "
      (concat [(str "qa-sim t=" (core/sim-time state))
               (str "missiles_in_flight=" (count missiles))
-              (str "fireballs=" (count fireballs))]
+              (str "fireballs=" (count fireballs))
+              (str "enemy_missiles=" (count enemies))
+              (str "cities_alive=" cities-alive)]
+             bat-fields
              fb-fields
-             tgt-fields))))
+             enemy-fields
+             tgt-fields
+             fate))))
 
 (defn format-fireball-phase-line
   "Phase timing line for one fireball."
@@ -243,6 +301,8 @@
    "aim" (fn [a b] {:type :aim :x (parse-int-token a) :y (parse-int-token b)})
    "key" (fn [a _] {:type :key :ch (first a)})
    "wait" (fn [a _] {:type :wait :seconds (parse-float-token a)})
+   "enemy" (fn [a _] {:type :enemy :spec (parse-enemy-spec a)})
+   "fireball" (fn [a _] {:type :fireball :spec (parse-fireball-spec a)})
    "quit" (fn [_ _] {:type :quit})})
 
 (defn parse-qa-event-line

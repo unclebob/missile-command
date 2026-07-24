@@ -74,10 +74,12 @@ Opens a resizable Quil window at full playfield resolution (default 800×600;
 optional `bb play 1280 720`). The window opens on the **screen of the terminal
 where `bb play` was typed** (tmux client TTY → Terminal.app window match; then
 process TTY; then frontmost window; then pointer) and **does not steal keyboard
-focus**. Mouse moves the crosshair (clamped to the playfield). **Click** fires by
-horizontal third (with empty/destroyed fallback). Default fire keys: left `Z`/`1`,
-center `X`/`2`, right `C`/`3`. Esc quits. OS cursor is hidden; only the game
-crosshair is shown. Host only draws and routes input; rules stay in the pure core.
+focus** — the previous frontmost app (e.g. Terminal) is restored after open;
+click the game window when you want to type into it. Mouse moves the crosshair
+(clamped to the playfield). **Click** fires by horizontal third (with empty/destroyed
+fallback). Default fire keys: left `Z`/`1`, center `X`/`2`, right `C`/`3`. Esc quits.
+OS cursor is hidden; only the game crosshair is shown. Host only draws and routes
+input; rules stay in the pure core.
 
 ### QA mode (CLI affordances)
 
@@ -169,10 +171,12 @@ Line-oriented `key=value` records after fires and simulation updates:
 
 ```text
 qa-fire battery=left missiles_in_flight=1 origin_x=40 origin_y=540 target_x=200 target_y=120
-qa-fireball phase=start t=1.20 center_x=200 center_y=120 radius=1
-qa-fireball phase=max t=1.45 center_x=200 center_y=120 radius=40
-qa-fireball phase=shrink t=1.55 center_x=200 center_y=120 radius=28
-qa-fireball phase=end t=1.80
+qa-fireball id=3 phase=start t=1.2 center_x=200 center_y=120 radius=0.0
+qa-fireball id=3 phase=max t=1.6 center_x=200 center_y=120 radius=40.0
+qa-fireball id=3 phase=shrink t=1.7 center_x=200 center_y=120 radius=30.0
+qa-fireball id=3 phase=end t=2.0 center_x=0 center_y=0 radius=0.0
+qa-sim t=1.5 missiles_in_flight=0 fireballs=1 enemy_missiles=1 center_x=200 center_y=120 radius=20.0
+  enemy_x=... enemy_y=... enemy_target=city:0 cities_alive=6
 ```
 
 | Field | Meaning |
@@ -182,8 +186,9 @@ qa-fireball phase=end t=1.80
 | `origin_*` / `target_*` | Per defensive missile flight vector |
 | **Each live fireball** | **Required:** `center_x`, `center_y`, `radius` |
 | Fireball `phase=` | `start` \| `max` \| `shrink` \| `end` with monotonic `t=` |
-| `enemy_missiles=` | Enemy missiles in flight; per-enemy origin/position/target |
-| Cities / batteries | Living vs destroyed; ammo as needed |
+| `enemy_missiles=` | Enemy missiles in flight |
+| `enemy_x` / `enemy_y` / `enemy_target=` | Per-enemy position and target (`city:N` or `battery:id`) |
+| `cities_alive=` / battery destroyed flags | Living cities / battery state |
 | `wave=` / `wave_complete=` | Wave lifecycle |
 | Destroyable targets | position and `destroyed=true\|false` |
 
