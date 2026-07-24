@@ -7,6 +7,7 @@
             [missile-command.acceptance.fireball-steps :as fireball-steps]
             [missile-command.acceptance.city-steps :as city-steps]
             [missile-command.acceptance.defensive-steps :as defensive-steps]
+            [missile-command.acceptance.title-steps :as title-steps]
             [missile-command.core :as core]))
 
 (defn- assert-playfield-dimension
@@ -1040,7 +1041,8 @@
         wave-steps/handlers
         fireball-steps/handlers
         city-steps/handlers
-        defensive-steps/handlers)))
+        defensive-steps/handlers
+        title-steps/handlers)))
 
 (defn- match-handler
   [text]

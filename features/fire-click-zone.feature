@@ -13,6 +13,7 @@ Feature: Fire by click zone
 
 Scenario: Fire click zone 01 click fires battery for horizontal third
   Given a new game with width <width> and height <height>
+  And the player starts the game
   When the player clicks at <x> <y>
   Then the playfield width is <expected_width>
   And the playfield height is <expected_height>
@@ -38,6 +39,7 @@ Examples:
 
 Scenario: Fire click zone 02 empty batteries fall back along the zone order
   Given a new game with width <width> and height <height>
+  And the player starts the game
   And the click must fall back to the <battery> battery because earlier batteries are empty
   When the player clicks at <x> <y>
   Then the playfield width is <expected_width>
@@ -58,6 +60,7 @@ Examples:
 
 Scenario: Fire click zone 03 destroyed batteries fall back along the zone order
   Given a new game with width <width> and height <height>
+  And the player starts the game
   And the click must fall back to the <battery> battery because earlier batteries are destroyed
   When the player clicks at <x> <y>
   Then the playfield width is <expected_width>
@@ -78,6 +81,7 @@ Examples:
 
 Scenario: Fire click zone 04 no battery can fire yields no missile
   Given a new game with width <width> and height <height>
+  And the player starts the game
   And no battery can fire
   When the player clicks at <x> <y>
   Then the playfield width is <expected_width>
@@ -93,6 +97,7 @@ Examples:
 
 Scenario: Fire click zone 05 key fire after click left then key right
   Given a new game with width 900 and height 600
+  And the player starts the game
   When the player clicks at 100 150
   And the player aims at 800 120
   And the player fires the right battery
@@ -102,6 +107,7 @@ Scenario: Fire click zone 05 key fire after click left then key right
 
 Scenario: Fire click zone 05b key fire after click right then key left
   Given a new game with width 900 and height 600
+  And the player starts the game
   When the player clicks at 800 150
   And the player aims at 100 120
   And the player fires the left battery
@@ -111,6 +117,7 @@ Scenario: Fire click zone 05b key fire after click right then key left
 
 Scenario: Fire click zone 05c key fire after click left then key center
   Given a new game with width 900 and height 600
+  And the player starts the game
   When the player clicks at 100 150
   And the player aims at 450 120
   And the player fires the center battery
@@ -120,6 +127,7 @@ Scenario: Fire click zone 05c key fire after click left then key center
 
 Scenario: Fire click zone 06 zone mapping uses width after resize
   Given a new game with width 900 and height 600
+  And the player starts the game
   When the playfield is resized to width <new_width> and height <new_height>
   And the player clicks at <x> <y>
   Then the playfield width is <expected_width>
