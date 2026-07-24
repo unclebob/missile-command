@@ -37,9 +37,13 @@
   [dt]
   (min (double dt) max-dt))
 
+(def arrived
+  "Sentinel returned by advance-defensive when the missile reaches its aim."
+  :arrived)
+
 (defn advance-defensive
   "Advance a defensive missile by dt seconds. Returns updated missile or
-  ::arrived when it reaches the aim point."
+  `arrived` when it reaches the aim point."
   [missile dt]
   (let [length (path-length missile)
         speed (double (:speed missile))
@@ -48,7 +52,7 @@
                 (/ (* speed dt) length))
         progress (+ (double (:progress missile 0.0)) delta)]
     (if (>= progress 1.0)
-      ::arrived
+      arrived
       (merge missile
              {:progress progress}
              (position-at-progress missile progress)))))
@@ -81,12 +85,16 @@
         (* max-r (- 1.0 t)))
       :else 0.0)))
 
+(def expired
+  "Sentinel returned by advance-fireball when the fireball is done."
+  :expired)
+
 (defn advance-fireball
-  "Advance a fireball by dt. Returns updated fireball or ::expired."
+  "Advance a fireball by dt. Returns updated fireball or `expired`."
   [fireball dt]
   (let [age (+ (double (:age fireball 0.0)) (double dt))]
     (if (>= age (fireball-lifetime fireball))
-      ::expired
+      expired
       (assoc fireball
              :age age
              :radius (fireball-radius-at fireball age)))))

@@ -197,14 +197,18 @@
     (throw (ex-info (str "unsupported command: " (:type command))
                     {:command command}))))
 
+(defn- spawn-fireball-from-missile
+  [state missile]
+  (let [[fid state] (next-entity-id state)
+        fireball (missiles/make-fireball fid (:x1 missile) (:y1 missile))]
+    (update state :fireballs (fnil conj []) fireball)))
+
 (defn- tick-defensive-missiles
   [state dt]
   (reduce (fn [s missile]
             (let [result (missiles/advance-defensive missile dt)]
-              (if (= ::missiles/arrived result)
-                (let [[fid s] (next-entity-id s)
-                      fb (missiles/make-fireball fid (:x1 missile) (:y1 missile))]
-                  (update s :fireballs (fnil conj []) fb))
+              (if (= missiles/arrived result)
+                (spawn-fireball-from-missile s missile)
                 (update s :defensive-missiles (fnil conj []) result))))
           (assoc state :defensive-missiles [])
           (defensive-missiles state)))
@@ -213,11 +217,15 @@
   [state dt]
   (reduce (fn [s fireball]
             (let [result (missiles/advance-fireball fireball dt)]
-              (if (= ::missiles/expired result)
+              (if (= missiles/expired result)
                 s
                 (update s :fireballs (fnil conj []) result))))
           (assoc state :fireballs [])
           (fireballs state)))
+
+(defn- target-hit-by-fireball?
+  [target fireballs]
+  (some #(missiles/point-in-fireball? % (:x target) (:y target)) fireballs))
 
 (defn- destroy-targets-in-fireballs
   [state]
@@ -226,9 +234,7 @@
             (fn [targets]
               (mapv (fn [target]
                       (if (or (:destroyed? target)
-                              (some #(missiles/point-in-fireball?
-                                      % (:x target) (:y target))
-                                    fbs))
+                              (target-hit-by-fireball? target fbs))
                         (assoc target :destroyed? true)
                         target))
                     (or targets []))))))

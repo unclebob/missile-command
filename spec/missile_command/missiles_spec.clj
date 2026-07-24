@@ -34,7 +34,7 @@
   (it "arrives when progress reaches one"
     (let [m (missiles/make-defensive 1 :left {:x 0 :y 0 :missile-speed 1000.0}
                                      {:x 10 :y 0})]
-      (should= ::missiles/arrived (missiles/advance-defensive m 1.0)))))
+      (should= missiles/arrived (missiles/advance-defensive m 1.0)))))
 
 (describe "fireballs"
   (it "expands then contracts then expires"
@@ -49,7 +49,7 @@
       (should (< (:radius mid) missiles/fireball-max-radius))
       (should= missiles/fireball-max-radius (:radius peak))
       (should (< (:radius shrink) missiles/fireball-max-radius))
-      (should= ::missiles/expired gone)))
+      (should= missiles/expired gone)))
 
   (it "detects points inside the blast"
     (let [fb (assoc (missiles/make-fireball 1 0 0) :radius 10.0)]

@@ -97,6 +97,21 @@
   [state x target disable-fn]
   (reduce disable-fn state (earlier-fallback-batteries state x target)))
 
+(defn- max-fireball-radius
+  [state]
+  (if (seq (core/fireballs state))
+    (apply max (map :radius (core/fireballs state)))
+    0.0))
+
+(defn- advance-until
+  "Tick the world state until pred returns truthy, or fail after max-steps."
+  [world pred dt max-steps fail-message]
+  (loop [s (:state world) n 0]
+    (cond
+      (pred s) (assoc world :state s)
+      (> n max-steps) (support/fail! fail-message)
+      :else (recur (:state (core/tick s dt)) (inc n)))))
+
 (def step-handlers
   [{:pattern #"^a new game with width <([A-Za-z0-9_]+)> and height <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ width-param height-param] example]
@@ -491,70 +506,54 @@
 
    {:pattern #"^time advances until defensive missiles arrive$"
     :fn (fn [world _ _]
-          (loop [s (:state world) n 0]
-            (cond
-              (empty? (core/defensive-missiles s)) (assoc world :state s)
-              (> n 5000) (support/fail! "missiles never arrived")
-              :else (recur (:state (core/tick s 0.05)) (inc n)))))}
+          (advance-until world
+                         (comp empty? core/defensive-missiles)
+                         0.05 5000 "missiles never arrived"))}
 
    {:pattern #"^time advances until the fireball reaches max radius$"
     :fn (fn [world _ _]
-          (loop [s (:state world) n 0]
-            (let [r (if (seq (core/fireballs s))
-                      (apply max (map :radius (core/fireballs s)))
-                      0.0)
-                  max-r (core/max-fireball-radius s)]
-              (cond
-                (>= r (* 0.999 max-r))
-                (assoc world :state s :fireball-max-time (core/sim-time s))
-                (> n 5000) (support/fail! "fireball never reached max radius")
-                :else (recur (:state (core/tick s 0.01)) (inc n))))))}
+          (let [advanced (advance-until
+                          world
+                          (fn [s]
+                            (>= (max-fireball-radius s)
+                                (* 0.999 (core/max-fireball-radius s))))
+                          0.01 5000 "fireball never reached max radius")]
+            (assoc advanced :fireball-max-time (core/sim-time (:state advanced)))))}
 
    {:pattern #"^time advances into the fireball shrink phase$"
     :fn (fn [world _ _]
-          (loop [s (:state world) n 0]
-            (let [r (if (seq (core/fireballs s))
-                      (apply max (map :radius (core/fireballs s)))
-                      0.0)
-                  max-r (core/max-fireball-radius s)]
-              (cond
-                (and (seq (core/fireballs s)) (< r max-r))
-                (assoc world :state s :fireball-shrink-time (core/sim-time s))
-                (> n 5000) (support/fail! "fireball never entered shrink phase")
-                :else (recur (:state (core/tick s 0.01)) (inc n))))))}
+          (let [advanced (advance-until
+                          world
+                          (fn [s]
+                            (and (seq (core/fireballs s))
+                                 (< (max-fireball-radius s)
+                                    (core/max-fireball-radius s))))
+                          0.01 5000 "fireball never entered shrink phase")]
+            (assoc advanced :fireball-shrink-time
+                   (core/sim-time (:state advanced)))))}
 
    {:pattern #"^time advances until fireballs expire$"
     :fn (fn [world _ _]
-          (loop [s (:state world) n 0]
-            (cond
-              (empty? (core/fireballs s))
-              (assoc world :state s :fireball-end-time (core/sim-time s))
-              (> n 5000) (support/fail! "fireballs never expired")
-              :else (recur (:state (core/tick s 0.05)) (inc n)))))}
+          (let [advanced (advance-until world
+                                        (comp empty? core/fireballs)
+                                        0.05 5000 "fireballs never expired")]
+            (assoc advanced :fireball-end-time (core/sim-time (:state advanced)))))}
 
    {:pattern #"^time advances until fireballs reach at least radius <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ r-param] example]
           (let [min-r (Double/parseDouble (str (support/require-value example r-param)))]
-            (loop [s (:state world) n 0]
-              (let [r (if (seq (core/fireballs s))
-                        (apply max (map :radius (core/fireballs s)))
-                        0.0)]
-                (cond
-                  (>= r min-r) (assoc world :state s)
-                  (> n 5000) (support/fail! (str "fireball never reached radius " min-r))
-                  :else (recur (:state (core/tick s 0.01)) (inc n)))))))}
+            (advance-until world
+                           (fn [s] (>= (max-fireball-radius s) min-r))
+                           0.01 5000
+                           (str "fireball never reached radius " min-r))))}
 
    {:pattern #"^time advances until fireballs reach peak radius$"
     :fn (fn [world _ _]
-          (loop [s (:state world) n 0]
-            (let [r (if (seq (core/fireballs s))
-                      (apply max (map :radius (core/fireballs s)))
-                      0.0)
-                  max-r (core/max-fireball-radius s)]
-              (cond
-                (>= r (* 0.999 max-r)) (assoc world :state s)
-                (> n 5000) (support/fail! "fireball never peaked")
-                :else (recur (:state (core/tick s 0.01)) (inc n))))))}
+          (advance-until world
+                         (fn [s]
+                           (>= (max-fireball-radius s)
+                               (* 0.999 (core/max-fireball-radius s))))
+                         0.01 5000 "fireball never peaked"))}
 
    {:pattern #"^there are <([A-Za-z0-9_]+)> fireballs$"
     :fn (fn [world [_ count-param] example]
