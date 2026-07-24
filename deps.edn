@@ -24,7 +24,7 @@
         :main-opts ["-m" "speclj.cloverage" "--" "-p" "src" "-s" "spec" "--lcov"
                     ;; Testable modules only; exclude Quil GUI hosts (main/sketch/render).
                     "--ns-regex"
-                    "missile-command\\.(core|world|batteries|missiles|input|cities|waves|acceptance\\..*|jvm\\.input)"]}
+                    "missile-command\.(core|world|batteries|missiles|input|cities|waves|acceptance\..*|jvm\.input)"]}
   :mutate {:main-opts ["-m" "clj-mutate.core"]
            :extra-deps {io.github.unclebob/clj-mutate
                         {:git/url "https://github.com/unclebob/clj-mutate.git"

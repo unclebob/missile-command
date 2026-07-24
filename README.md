@@ -74,10 +74,12 @@ Opens a resizable Quil window at full playfield resolution (default 800×600;
 optional `bb play 1280 720`). The window opens on the **screen of the terminal
 where `bb play` was typed** (tmux client TTY → Terminal.app window match; then
 process TTY; then frontmost window; then pointer) and **does not steal keyboard
-focus**. Mouse moves the crosshair (clamped to the playfield). **Click** fires by
-horizontal third (with empty/destroyed fallback). Default fire keys: left `Z`/`1`,
-center `X`/`2`, right `C`/`3`. Esc quits. OS cursor is hidden; only the game
-crosshair is shown. Host only draws and routes input; rules stay in the pure core.
+focus** — the previous frontmost app (e.g. Terminal) is restored after open;
+click the game window when you want to type into it. Mouse moves the crosshair
+(clamped to the playfield). **Click** fires by horizontal third (with empty/destroyed
+fallback). Default fire keys: left `Z`/`1`, center `X`/`2`, right `C`/`3`. Esc quits.
+OS cursor is hidden; only the game crosshair is shown. Host only draws and routes
+input; rules stay in the pure core.
 
 ### QA mode (CLI affordances)
 
@@ -138,6 +140,16 @@ Examples for common setups:
 
 ;; Fireball hit/miss stub target
 {:targets [{:x 400 :y 200}]}
+```
+
+#### `--qa-enemy city:N` or `--qa-enemy battery:left|center|right`
+
+Spawn one enemy ballistic missile toward a city index or battery (host CLI
+affordance; enemies may also be listed under `:enemies` in a scenario file).
+
+```sh
+bb play --qa --qa-enemy city:0
+bb play --qa --qa-enemy battery:left
 ```
 
 #### Events file (text)

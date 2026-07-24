@@ -59,8 +59,11 @@
 
   (it "arrives when progress exceeds one"
     (let [m (missiles/make-defensive 1 :left {:x 0 :y 0 :missile-speed 1000.0}
-                                     {:x 10 :y 0})]
-      (should= missiles/arrived (missiles/advance-defensive m 1.0)))))
+                                     {:x 10 :y 0})
+          result (missiles/advance-defensive m 1.0)]
+      (should= missiles/arrived result)
+      (should (missiles/arrived? result))
+      (should-not (missiles/arrived? m)))))
 
 (describe "fireballs"
   (it "expands then contracts then expires"
@@ -110,7 +113,9 @@
     (let [fb (missiles/make-static-fireball 2 5 6 12.0)
           later (missiles/advance-fireball fb 10.0)]
       (should= 12.0 (:radius later))
-      (should (:static? later)))))
+      (should= true (:static? later))
+      (should= missiles/static-fireball-flag (:static? fb))
+      (should= later fb))))
 
 (describe "enemy missiles"
   (it "builds a ballistic enemy toward a target"

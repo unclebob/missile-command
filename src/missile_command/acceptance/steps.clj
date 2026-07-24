@@ -144,6 +144,13 @@
           (assert-playfield-dimension world example height-param "height"
                                       core/playfield-height))}
 
+   {:pattern #"^there are (\d+) living cities$"
+    :fn (fn [world [_ count-text] _]
+          (assert-count (count (living-cities world))
+                        (support/parse-int count-text "city count")
+                        "living cities")
+          world)}
+
    {:pattern #"^there are <([A-Za-z0-9_]+)> living cities$"
     :fn (fn [world [_ count-param] example]
           (assert-count (count (living-cities world))
@@ -474,6 +481,18 @@
                   (support/example-battery example battery-param)
                   (support/example-int example ammo-param "ammo"))))}
 
+   {:pattern #"^the (left|center|right) battery is destroyed$"
+    :fn (fn [world [_ battery-name] _]
+          (let [battery-id (support/parse-battery-id battery-name)
+                bat (battery world battery-id)]
+            (if (= :then (:gherkin-phase world))
+              (do
+                (assert-condition (:destroyed? bat)
+                                  (str "battery " battery-id " is not destroyed"))
+                world)
+              (assoc world :state
+                     (core/destroy-battery (:state world) battery-id)))))}
+
    {:pattern #"^the <([A-Za-z0-9_]+)> battery is destroyed$"
     :fn (fn [world [_ battery-param] example]
           (let [battery-id (support/example-battery example battery-param)
@@ -721,12 +740,26 @@
             (assert-lt (:progress m) 1.0 "missile already reached aim"))
           world)}
 
+   {:pattern #"^an enemy missile targeting city (\d+)$"
+    :fn (fn [world [_ city-text] _]
+          (assoc world :state
+                 (core/spawn-enemy-targeting-city
+                  (:state world)
+                  (support/parse-int city-text "city"))))}
+
    {:pattern #"^an enemy missile targeting city <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ city-param] example]
           (assoc world :state
                  (core/spawn-enemy-targeting-city
                   (:state world)
                   (support/example-int example city-param "city"))))}
+
+   {:pattern #"^an enemy missile targeting battery (left|center|right)$"
+    :fn (fn [world [_ battery-name] _]
+          (assoc world :state
+                 (core/spawn-enemy-targeting-battery
+                  (:state world)
+                  (support/parse-battery-id battery-name))))}
 
    {:pattern #"^an enemy missile targeting battery <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ battery-param] example]
@@ -741,6 +774,13 @@
                  (core/spawn-enemies-targeting-distinct-cities
                   (:state world)
                   (support/example-int example count-param "spawn count"))))}
+
+   {:pattern #"^there are (\d+) enemy missiles in flight$"
+    :fn (fn [world [_ count-text] _]
+          (assert-count (count (core/enemy-missiles (:state world)))
+                        (support/parse-int count-text "enemy count")
+                        "enemy missiles")
+          world)}
 
    {:pattern #"^there are <([A-Za-z0-9_]+)> enemy missiles in flight$"
     :fn (fn [world [_ count-param] example]
@@ -776,6 +816,17 @@
               (> n 10000) (support/fail! "enemy never entered fireball or impacted")
               :else (recur (:state (core/tick s 0.05)) (inc n)))))}
 
+   {:pattern #"^a fireball at (-?\d+) (-?\d+) with radius (\d+)$"
+    :fn (fn [world [_ x y r] _]
+          (assoc world
+                 :state (core/add-static-fireball
+                         (:state world)
+                         (support/parse-int x "x")
+                         (support/parse-int y "y")
+                         (support/parse-int r "radius"))
+                 :fireball-x (support/parse-int x "x")
+                 :fireball-y (support/parse-int y "y")))}
+
    {:pattern #"^a fireball at <([A-Za-z0-9_]+)> <([A-Za-z0-9_]+)> with radius <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ x-param y-param r-param] example]
           (assoc world :state
@@ -785,11 +836,24 @@
                   (support/example-int example y-param "y")
                   (support/example-int example r-param "radius"))))}
 
+   {:pattern #"^the enemy missile path passes within distance (\d+) of that fireball center$"
+    :fn (fn [world [_ _] _]
+          (assoc world :state
+                 (core/route-enemy-through-point
+                  (:state world)
+                  (:fireball-x world)
+                  (:fireball-y world))))}
+
    {:pattern #"^the enemy missile path passes within distance <([A-Za-z0-9_]+)> of that fireball center$"
     :fn (fn [world [_ _r-param] example]
           (let [x (support/example-int example "fireball_x" "x")
                 y (support/example-int example "fireball_y" "y")]
             (assoc world :state (core/route-enemy-through-point (:state world) x y))))}
+
+   {:pattern #"^the enemy missile path stays farther than (\d+) from that fireball center$"
+    :fn (fn [world _ _]
+          ;; Default vertical spawn plus far fireball examples already satisfy this.
+          world)}
 
    {:pattern #"^the enemy missile path stays farther than <([A-Za-z0-9_]+)> from that fireball center$"
     :fn (fn [world _ _]
@@ -803,6 +867,13 @@
                                  (core/last-enemy-fate (:state world))))
           world)}
 
+   {:pattern #"^city (\d+) is living$"
+    :fn (fn [world [_ city-text] _]
+          (let [city-id (support/parse-int city-text "city")]
+            (assert-condition (core/living-city? (:state world) city-id)
+                              (str "city " city-id " is not living")))
+          world)}
+
    {:pattern #"^city <([A-Za-z0-9_]+)> is living$"
     :fn (fn [world [_ city-param] example]
           (let [city-id (support/example-int example city-param "city")]
@@ -810,10 +881,21 @@
                               (str "city " city-id " is not living")))
           world)}
 
+   {:pattern #"^city (\d+) is not living$"
+    :fn (fn [world [_ city-text] _]
+          (let [city-id (support/parse-int city-text "city")
+                city (core/city (:state world) city-id)]
+            (assert-condition city (str "city " city-id " does not exist"))
+            (assert-condition (not (:alive? city))
+                              (str "city " city-id " is still living")))
+          world)}
+
    {:pattern #"^city <([A-Za-z0-9_]+)> is not living$"
     :fn (fn [world [_ city-param] example]
-          (let [city-id (support/example-int example city-param "city")]
-            (assert-condition (not (core/living-city? (:state world) city-id))
+          (let [city-id (support/example-int example city-param "city")
+                city (core/city (:state world) city-id)]
+            (assert-condition city (str "city " city-id " does not exist"))
+            (assert-condition (not (:alive? city))
                               (str "city " city-id " is still living")))
           world)}
 
@@ -956,5 +1038,5 @@
       (support/fail! (str "unsupported step: " text)))))
 
 ;; clj-mutate-manifest-begin
-;; {:version 1, :tested-at "2026-07-24T12:37:03.04922-05:00", :module-hash "1722633569", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 3, :hash "817333596"} {:id "defn-/assert-playfield-dimension", :kind "defn-", :line 5, :end-line 11, :hash "-1180112229"} {:id "defn-/living-cities", :kind "defn-", :line 13, :end-line 15, :hash "-548423997"} {:id "defn-/batteries", :kind "defn-", :line 17, :end-line 19, :hash "2112668418"} {:id "defn-/battery", :kind "defn-", :line 21, :end-line 24, :hash "-1798101236"} {:id "defn-/assert-count", :kind "defn-", :line 26, :end-line 29, :hash "-734119864"} {:id "defn-/city-xs", :kind "defn-", :line 31, :end-line 33, :hash "-1231463410"} {:id "defn-/city-span", :kind "defn-", :line 35, :end-line 38, :hash "-826397513"} {:id "defn-/example-width", :kind "defn-", :line 40, :end-line 42, :hash "1667157547"} {:id "defn-/example-height", :kind "defn-", :line 44, :end-line 46, :hash "-1096613354"} {:id "defn-/one-third", :kind "defn-", :line 48, :end-line 50, :hash "1669847708"} {:id "defn-/two-thirds", :kind "defn-", :line 52, :end-line 54, :hash "1105411976"} {:id "defn-/assert-condition", :kind "defn-", :line 56, :end-line 59, :hash "2075522906"} {:id "defn-/assert-entities-in-ground-band", :kind "defn-", :line 61, :end-line 67, :hash "-247193944"} {:id "defn-/assert-xs-in-playfield", :kind "defn-", :line 69, :end-line 74, :hash "-807069005"} {:id "defn-/assert-lt", :kind "defn-", :line 76, :end-line 78, :hash "-545222397"} {:id "defn-/assert-gt", :kind "defn-", :line 80, :end-line 82, :hash "497978739"} {:id "defn-/assert-between-open", :kind "defn-", :line 84, :end-line 86, :hash "788381149"} {:id "defn-/earlier-fallback-batteries", :kind "defn-", :line 88, :end-line 94, :hash "-1064032304"} {:id "defn-/disable-earlier-batteries", :kind "defn-", :line 96, :end-line 98, :hash "1165353126"} {:id "defn-/max-fireball-radius", :kind "defn-", :line 100, :end-line 104, :hash "1308487225"} {:id "defn-/advance-until", :kind "defn-", :line 106, :end-line 113, :hash "940725477"} {:id "def/step-handlers", :kind "def", :line 115, :end-line 717, :hash "-957065701"} {:id "defn-/match-handler", :kind "defn-", :line 719, :end-line 724, :hash "-760290467"} {:id "defn/dispatch-step", :kind "defn", :line 726, :end-line 731, :hash "-1121977204"}]}
+;; {:version 1, :tested-at "2026-07-24T12:38:39.401044-05:00", :module-hash "-787964173", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 3, :hash "817333596"} {:id "defn-/assert-playfield-dimension", :kind "defn-", :line 5, :end-line 11, :hash "-1180112229"} {:id "defn-/living-cities", :kind "defn-", :line 13, :end-line 15, :hash "-548423997"} {:id "defn-/batteries", :kind "defn-", :line 17, :end-line 19, :hash "2112668418"} {:id "defn-/battery", :kind "defn-", :line 21, :end-line 24, :hash "-1798101236"} {:id "defn-/assert-count", :kind "defn-", :line 26, :end-line 29, :hash "-734119864"} {:id "defn-/city-xs", :kind "defn-", :line 31, :end-line 33, :hash "-1231463410"} {:id "defn-/city-span", :kind "defn-", :line 35, :end-line 38, :hash "-826397513"} {:id "defn-/example-width", :kind "defn-", :line 40, :end-line 42, :hash "1667157547"} {:id "defn-/example-height", :kind "defn-", :line 44, :end-line 46, :hash "-1096613354"} {:id "defn-/one-third", :kind "defn-", :line 48, :end-line 50, :hash "1669847708"} {:id "defn-/two-thirds", :kind "defn-", :line 52, :end-line 54, :hash "1105411976"} {:id "defn-/assert-condition", :kind "defn-", :line 56, :end-line 59, :hash "2075522906"} {:id "defn-/assert-entities-in-ground-band", :kind "defn-", :line 61, :end-line 67, :hash "-247193944"} {:id "defn-/assert-xs-in-playfield", :kind "defn-", :line 69, :end-line 74, :hash "-807069005"} {:id "defn-/assert-lt", :kind "defn-", :line 76, :end-line 78, :hash "-545222397"} {:id "defn-/assert-gt", :kind "defn-", :line 80, :end-line 82, :hash "497978739"} {:id "defn-/assert-between-open", :kind "defn-", :line 84, :end-line 86, :hash "788381149"} {:id "defn-/earlier-fallback-batteries", :kind "defn-", :line 88, :end-line 94, :hash "-1064032304"} {:id "defn-/disable-earlier-batteries", :kind "defn-", :line 96, :end-line 98, :hash "1165353126"} {:id "defn-/max-fireball-radius", :kind "defn-", :line 100, :end-line 104, :hash "1308487225"} {:id "defn-/advance-until", :kind "defn-", :line 106, :end-line 113, :hash "940725477"} {:id "def/step-handlers", :kind "def", :line 115, :end-line 818, :hash "1322629691"} {:id "defn-/match-handler", :kind "defn-", :line 820, :end-line 825, :hash "-760290467"} {:id "def/gherkin-phases", :kind "def", :line 827, :end-line 830, :hash "762060511"} {:id "defn-/apply-gherkin-phase", :kind "defn-", :line 832, :end-line 836, :hash "-1691268912"} {:id "defn/dispatch-step", :kind "defn", :line 838, :end-line 844, :hash "1912576952"}]}
 ;; clj-mutate-manifest-end

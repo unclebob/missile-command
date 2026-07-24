@@ -16,7 +16,10 @@
          :destroy-batteries []
          :qa-events nil
          :qa-targets []
-         :launch-anchor nil}))
+         :qa-enemies []
+         :qa-fireballs []
+         :launch-anchor nil
+         :restore-focus-app nil}))
 
 (defonce pending-qa-events (atom []))
 (defonce fireball-phases (atom {}))
@@ -28,7 +31,10 @@
                                             :destroy-batteries
                                             :qa-events
                                             :qa-targets
-                                            :launch-anchor]))
+                                            :qa-enemies
+                                            :qa-fireballs
+                                            :launch-anchor
+                                            :restore-focus-app]))
   (reset! pending-qa-events
           (if-let [path (:qa-events opts)]
             (input/load-qa-events path)
@@ -76,12 +82,31 @@
           state
           (:qa-targets @launch-options)))
 
+(defn- apply-enemy-spec
+  [state {:keys [kind id]}]
+  (case kind
+    :city (core/spawn-enemy-targeting-city state id)
+    :battery (core/spawn-enemy-targeting-battery state id)
+    state))
+
+(defn- apply-qa-enemies
+  [state]
+  (reduce apply-enemy-spec state (:qa-enemies @launch-options)))
+
+(defn- apply-qa-fireballs
+  [state]
+  (reduce (fn [s {:keys [x y radius]}]
+            (core/add-static-fireball s x y radius))
+          state
+          (:qa-fireballs @launch-options)))
+
 (defn- configure-display!
   []
   (try
     (let [surface (.getSurface (applet/current-applet))
-          anchor (:launch-anchor @launch-options)]
-      (window/place-on-launch-screen! surface (q/width) (q/height) anchor))
+          anchor (:launch-anchor @launch-options)
+          prev (:restore-focus-app @launch-options)]
+      (window/place-on-launch-screen! surface (q/width) (q/height) anchor prev))
     (catch Exception e
       (binding [*out* *err*]
         (println "window placement skipped:" (.getMessage e))))))
@@ -94,7 +119,9 @@
   (reset! last-frame-ms (System/currentTimeMillis))
   (-> (core/new-game {:width (q/width) :height (q/height)})
       apply-destroy-options
-      apply-qa-targets))
+      apply-qa-targets
+      apply-qa-enemies
+      apply-qa-fireballs))
 
 (defn- frame-dt-seconds
   []
@@ -112,9 +139,18 @@
     (emit-fireball-phases! state')
     (when (and (:qa-telemetry? @launch-options)
                (or (seq (core/fireballs state'))
+                   (seq (core/enemy-missiles state'))
                    (seq (core/destroyable-targets state'))))
-      ;; Snapshot while fireballs/targets exist (for destroy checks).
       (emit! (input/format-sim-telemetry-line state')))
+    ;; One final snapshot when an enemy just resolved and nothing is flying.
+    (when (and (:qa-telemetry? @launch-options)
+               (core/last-enemy-fate state')
+               (empty? (core/enemy-missiles state'))
+               (empty? (core/fireballs state'))
+               (not= (:last-emitted-fate @launch-options)
+                     (core/last-enemy-fate state')))
+      (emit! (input/format-sim-telemetry-line state'))
+      (swap! launch-options assoc :last-emitted-fate (core/last-enemy-fate state')))
     state'))
 
 (defn- drain-one-qa-event
@@ -150,6 +186,9 @@
               :key (if-let [cmd (input/key-char->command (:ch ev))]
                      (apply-handle state cmd)
                      state)
+              :enemy (apply-enemy-spec state (:spec ev))
+              :fireball (let [{:keys [x y radius]} (:spec ev)]
+                          (core/add-static-fireball state x y radius))
               state)))))))
 
 (defn update-state
@@ -208,6 +247,8 @@
    (q/sketch
     :title "Missile Command"
     :size [width height]
+    ;; java2d → AWT Frame so setAutoRequestFocus(false) can prevent focus steal
+    :renderer :java2d
     :setup setup
     :update update-state
     :draw draw
