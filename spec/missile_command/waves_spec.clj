@@ -13,9 +13,10 @@
     (should= 5 (waves/enemy-count 3)))
 
   (it "uses faster enemies on higher waves"
-    (should= 100.0 (waves/enemy-speed 1))
-    (should= 125.0 (waves/enemy-speed 2))
-    (should= 150.0 (waves/enemy-speed 3))
+    ;; Wave 1 is deliberately moderate (~11s sky→ground on 600px) so players can react.
+    (should= 50.0 (waves/enemy-speed 1))
+    (should= 62.5 (waves/enemy-speed 2))
+    (should= 75.0 (waves/enemy-speed 3))
     (should (> (waves/enemy-speed 3) (waves/enemy-speed 1))))
 
   (it "reports harder metrics for higher waves"
