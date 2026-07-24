@@ -27,6 +27,15 @@
       (should-not (waves/harder? high low))
       (should-not (waves/harder? same same))))
 
+  (it "schedules MIRVs only from mid waves"
+    (should= 0 (waves/mirv-count 1))
+    (should= 0 (waves/mirv-count 2))
+    (should= 0 (waves/mirv-count 3))
+    (should= 1 (waves/mirv-count 4))
+    (should= 1 (waves/mirv-count 5))
+    (should= 2 (waves/mirv-count 6))
+    (should= (:mirv-count (waves/schedule-metrics 4)) (waves/mirv-count 4)))
+
   (it "raises multiplier every two waves up to six"
     (should= 1 (waves/multiplier 1))
     (should= 1 (waves/multiplier 2))

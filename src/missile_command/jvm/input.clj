@@ -222,6 +222,7 @@
   [enemies]
   (mapcat (fn [e]
             [(str "enemy_id=" (:id e))
+             (str "enemy_kind=" (name (or (:enemy-kind e) :ballistic)))
              (str "enemy_x=" (:x e))
              (str "enemy_y=" (:y e))
              (str "enemy_origin_x=" (:x0 e))
@@ -230,7 +231,6 @@
              (str "enemy_target_y=" (:y1 e))
              (str "enemy_target=" (enemy-target-label e))])
           enemies))
-
 (defn- battery-sim-fields
   [state]
   (mapcat (fn [id]
@@ -342,16 +342,22 @@
              :from core/spawn-enemy-targeting-battery-from}})
 
 (defn- spawn-scenario-enemy
-  "Spawn one scenario enemy, honoring optional angled :origin [x y]."
+  "Spawn one scenario enemy, honoring MIRV kind and optional angled :origin [x y]."
   [state e]
   (let [[kind id] (:target e)
         origin (:origin e)
+        enemy-kind (:kind e)
         spawners (get scenario-enemy-spawners kind)]
     (cond
+      (= :mirv enemy-kind)
+      (core/spawn-mirv-targeting-city
+       state id
+       (or (:child-count e) 3)
+       (or (:split-progress e) 0.5))
+
       (nil? spawners) state
       origin ((:from spawners) state (first origin) (second origin) id)
       :else ((:default spawners) state id))))
-
 (defn- apply-scenario-enemies
   [state scenario]
   (let [enemies (or (:enemies scenario) [])]
@@ -373,7 +379,6 @@
       (apply-scenario-targets scenario)
       (apply-scenario-enemies scenario)
       (apply-scenario-score-and-bonus scenario)))
-
 (defn format-fireball-phase-line
   "Phase timing line for one fireball."
   [state fireball phase]

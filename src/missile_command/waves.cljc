@@ -22,6 +22,11 @@
   [wave]
   (* base-enemy-speed (+ 1.0 (* enemy-speed-wave-factor (dec wave)))))
 
+(defn mirv-count
+  "Number of MIRV-capable enemies scheduled for a wave (0 on early waves)."
+  [wave]
+  (max 0 (- (quot (long wave) 2) 1)))
+
 (defn multiplier
   "Score multiplier for a wave: +1× every two waves, capped at max-multiplier."
   [wave]
@@ -33,7 +38,8 @@
   {:wave wave
    :enemy-count (enemy-count wave)
    :enemy-speed (enemy-speed wave)
-   :multiplier (multiplier wave)})
+   :multiplier (multiplier wave)
+   :mirv-count (mirv-count wave)})
 
 (defn harder?
   "True when high-wave metrics exceed low-wave by count or speed."
