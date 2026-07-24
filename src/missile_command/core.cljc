@@ -4,6 +4,9 @@
             [missile-command.missiles :as missiles]
             [missile-command.world :as world]))
 
+(def initial-score 0)
+(def initial-entity-id 0)
+
 (defn- clamp
   [n lo hi]
   (max lo (min hi n)))
@@ -28,7 +31,7 @@
 
 (defn- next-entity-id
   [state]
-  (let [id (or (:next-entity-id state) 0)]
+  (let [id (or (:next-entity-id state) initial-entity-id)]
     [id (assoc state :next-entity-id (inc id))]))
 
 (defn- no-events
@@ -40,10 +43,10 @@
   [{:keys [width height]}]
   (merge {:width width
           :height height
-          :score 0
+          :score initial-score
           :crosshair (center-crosshair width height)
           :defensive-missiles []
-          :next-entity-id 0}
+          :next-entity-id initial-entity-id}
          (world/apply-layout width height)))
 
 (defn resize
