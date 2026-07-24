@@ -46,16 +46,6 @@
                           (support/example-int example ammo-param "right ammo")
                           "right ammo"))}
 
-   {:pattern #"^the hud shows (left|center|right) ammo <([A-Za-z0-9_]+)>$"
-    :fn (fn [world [_ battery-name ammo-param] example]
-          (let [battery-id (support/parse-battery-id battery-name)
-                expected (support/example-int example ammo-param "ammo")
-                actual (get-in (core/hud (:state world)) [:ammo battery-id])]
-            (support/assert-condition (= expected actual)
-                                      (str "hud " battery-name " ammo " actual
-                                           " expected " expected)))
-          world)}
-
    {:pattern #"^the hud shows <([A-Za-z0-9_]+)> ammo <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ battery-param ammo-param] example]
           (let [battery-id (support/example-battery example battery-param)
@@ -96,3 +86,7 @@
            (not (:full-playing-hud? (core/hud (:state world))))
            "full playing HUD should not be required on this screen")
           world)}])
+
+;; clj-mutate-manifest-begin
+;; {:version 1, :tested-at "2026-07-24T15:58:55.631202-05:00", :module-hash "187776858", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 4, :hash "-1245219576"} {:id "defn-/batteries", :kind "defn-", :line 6, :end-line 8, :hash "2112668418"} {:id "defn-/assert-hud-int", :kind "defn-", :line 10, :end-line 16, :hash "-1910884135"} {:id "def/handlers", :kind "def", :line 18, :end-line 88, :hash "-337373597"}]}
+;; clj-mutate-manifest-end

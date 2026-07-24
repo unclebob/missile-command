@@ -30,4 +30,17 @@
       (should= {:left (:left-ammo h)
                 :center (:center-ammo h)
                 :right (:right-ammo h)}
-               (:ammo h)))))
+               (:ammo h))))
+
+  (it "defaults missing score bonus cities and ammo to zero"
+    (let [h (hud/projection {:batteries [{:id :left}
+                                         {:id :center :missiles 3}
+                                         {:id :right :missiles nil}]
+                             :cities []
+                             :screen :playing})]
+      (should= 0 (:score h))
+      (should= 0 (:bonus-cities h))
+      (should= 0 (:left-ammo h))
+      (should= 3 (:center-ammo h))
+      (should= 0 (:right-ammo h))
+      (should= 0 (:living-cities h)))))
