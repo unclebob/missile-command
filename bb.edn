@@ -141,4 +141,17 @@
 
   play
   {:doc "Launch the JVM Quil host (mouse aim, key fire)"
-   :task (apply shell "clojure" "-M:run" *command-line-args*)}}}
+   :task (apply shell "clojure" "-M:run" *command-line-args*)}
+
+  browser
+  {:doc "Build/serve the ClojureScript browser host (index.html)"
+   :task (do
+           (shell "mkdir" "-p" "resources/public/js")
+           (when-not (.exists (java.io.File. "resources/public/index.html"))
+             (println "missing resources/public/index.html"))
+           (println "Browser host assets: resources/public/index.html")
+           (println "Build with: npx shadow-cljs watch browser")
+           (println "Then open: resources/public/index.html (or http://localhost:8020)")
+           (if (zero? (:exit (shell {:continue true} "npx" "--yes" "shadow-cljs" "compile" "browser")))
+             (println "Compiled to resources/public/js/main.js")
+             (println "shadow-cljs compile skipped or failed; index.html still present for open path.")))}}}

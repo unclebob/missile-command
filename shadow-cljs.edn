@@ -1,0 +1,12 @@
+{:source-paths ["src"]
+ :dependencies [[org.clojure/clojurescript "1.11.132"]
+                [quil/quil "4.3.1563"]]
+ :builds
+ {:browser
+  {:target :browser
+   :output-dir "resources/public/js"
+   :asset-path "/js"
+   :modules {:main {:entries [missile-command.browser.main]
+                    :init-fn missile-command.browser.main/run}}
+   :devtools {:http-root "resources/public"
+              :http-port 8020}}}}

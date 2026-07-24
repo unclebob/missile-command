@@ -1,6 +1,6 @@
 # US-22 — Play in the browser (ClojureScript Quil)
 
-**Status:** backlog  
+**Status:** in-specifier  
 **Depends on:** US-21  
 **Design:** §3, §4, §7, §10
 
