@@ -38,7 +38,7 @@
 (defn- run-osascript
   [source]
   (let [pb (doto (ProcessBuilder. ["osascript" "-e" source])
-             (.redirectError (ProcessBuilder$Redirect/DISCARD)))
+             (.redirectErrorStream true))
         proc (.start pb)
         out (slurp (.getInputStream proc))
         code (.waitFor proc)]
