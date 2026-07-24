@@ -13,6 +13,7 @@ Feature: Scoring and multiplier
 
 Background:
   Given a new game with width <width> and height <height>
+  And the player starts the game
 
 Scenario: Scoring and multiplier 01 new game starts with zero score and one times multiplier
   Then the playfield width is <expected_width>

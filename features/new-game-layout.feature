@@ -12,6 +12,7 @@ Feature: New game layout
 
 Background:
   Given a new game with width <width> and height <height>
+  And the player starts the game
 
 Scenario: New game layout 01 starting cities and batteries
   Then the playfield width is <expected_width>
