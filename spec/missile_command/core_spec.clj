@@ -346,6 +346,63 @@
       (should= :battery (:target-kind m))
       (should= :left (:target-id m))))
 
+  (it "spawns a city-bound enemy from an explicit angled sky origin"
+    (let [state (core/spawn-enemy-targeting-city-from
+                 (core/new-game {:width 800 :height 600}) 50 0 0)
+          city (core/city state 0)
+          m (first (core/enemy-missiles state))]
+      (should= 50.0 (double (:x0 m)))
+      (should= 0.0 (double (:y0 m)))
+      (should= 50.0 (double (:x m)))
+      (should= 0.0 (double (:y m)))
+      (should= (double (:x city)) (double (:x1 m)))
+      (should-not= (double (:x0 m)) (double (:x1 m)))))
+
+  (it "moves an angled enemy toward its target on both axes"
+    (let [state (core/spawn-enemy-targeting-city-from
+                 (core/new-game {:width 800 :height 600}) 50 0 0)
+          before (first (core/enemy-missiles state))
+          after (:state (core/tick state 0.1))
+          m (first (core/enemy-missiles after))]
+      (should (< (double (:x before)) (double (:x m)) (double (:x1 before))))
+      (should (< (double (:y before)) (double (:y m)) (double (:y1 before))))
+      (should (pos? (double (:progress m))))))
+
+  (it "destroys a city when an angled enemy impacts unintercepted"
+    (let [state (core/spawn-enemy-targeting-city-from
+                 (core/new-game {:width 800 :height 600}) 50 0 0)
+          after (loop [s state n 0]
+                  (if (or (empty? (core/enemy-missiles s)) (> n 5000))
+                    s
+                    (recur (:state (core/tick s 0.05)) (inc n))))]
+      (should-not (core/living-city? after 0))
+      (should= 5 (count (core/living-cities after)))
+      (should= :impact (core/last-enemy-fate after))
+      (should (empty? (core/enemy-missiles after)))))
+
+  (it "destroys a battery when an angled enemy impacts unintercepted"
+    (let [state (core/spawn-enemy-targeting-battery-from
+                 (core/new-game {:width 800 :height 600}) 200 0 :left)
+          after (loop [s state n 0]
+                  (if (or (empty? (core/enemy-missiles s)) (> n 5000))
+                    s
+                    (recur (:state (core/tick s 0.05)) (inc n))))]
+      (should (:destroyed? (core/battery after :left)))
+      (should= :impact (core/last-enemy-fate after))
+      (should (empty? (core/enemy-missiles after)))))
+
+  (it "wave schedule uses varied sky origins not locked to targets"
+    (let [state (core/set-wave-enemies-active
+                 (core/new-game {:width 800 :height 600}) 3)
+          enemies (core/enemy-missiles state)
+          origin-xs (mapv #(double (:x0 %)) enemies)
+          width (core/playfield-width state)]
+      (should= 3 (count enemies))
+      (should (every? #(= 0.0 (double (:y0 %))) enemies))
+      (should (every? #(and (<= 0 %) (< % width)) origin-xs))
+      (should (< 1 (count (set origin-xs))))
+      (should (some #(not= (double (:x0 %)) (double (:x1 %))) enemies))))
+
   (it "route-enemy-through-point is a no-op without enemies"
     (let [state (core/new-game {:width 800 :height 600})
           after (core/route-enemy-through-point state 10 20)]

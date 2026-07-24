@@ -25,4 +25,14 @@
           same (waves/schedule-metrics 2)]
       (should (waves/harder? low high))
       (should-not (waves/harder? high low))
-      (should-not (waves/harder? same same)))))
+      (should-not (waves/harder? same same))))
+
+  (it "spreads sky entry origins across the playfield"
+    (let [width 800.0
+          xs (mapv #(waves/sky-origin-x width % 3) [0 1 2])]
+      (should= (* width (/ 0.5 3.0)) (nth xs 0))
+      (should= (* width (/ 1.5 3.0)) (nth xs 1))
+      (should= (* width (/ 2.5 3.0)) (nth xs 2))
+      (should (every? #(and (<= 0.0 %) (< % width)) xs))
+      (should= 3 (count (set xs)))
+      (should= 0.0 (waves/sky-origin-x width 0 0)))))

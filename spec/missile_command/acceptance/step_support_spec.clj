@@ -34,3 +34,22 @@
   (it "fails on unknown battery names"
     (should-throw Exception #"unknown battery: top"
       (support/example-battery {"battery" "top"} "battery"))))
+
+(describe "advance-until"
+  (it "returns immediately when the predicate already holds"
+    (let [world {:state {:n 0}}
+          tick (fn [s _] {:state s})
+          out (support/advance-until world (constantly true) tick 0.1 5 "fail")]
+      (should= world out)))
+
+  (it "ticks until the predicate holds"
+    (let [world {:state {:n 0}}
+          tick (fn [s _] {:state (update s :n inc)})
+          out (support/advance-until world #(>= (:n %) 3) tick 0.1 5 "fail")]
+      (should= 3 (get-in out [:state :n]))))
+
+  (it "fails when the step budget is exhausted"
+    (let [world {:state {:n 0}}
+          tick (fn [s _] {:state (update s :n inc)})]
+      (should-throw Exception #"never ready"
+        (support/advance-until world (constantly false) tick 0.1 2 "never ready")))))

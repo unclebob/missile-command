@@ -1,13 +1,9 @@
-(ns missile-command.batteries)
+(ns missile-command.batteries
+  (:require [missile-command.entities :as entities]))
 
-(defn update-battery
+(def update-battery
   "Apply f to the battery with the given id; leave others unchanged."
-  [batteries battery-id f]
-  (mapv (fn [battery]
-          (if (= battery-id (:id battery))
-            (f battery)
-            battery))
-        batteries))
+  entities/update-by-id)
 
 (defn can-fire?
   "True when the battery exists, is not destroyed, and has remaining ammo."
@@ -29,5 +25,5 @@
   (assoc battery :destroyed? true))
 
 ;; clj-mutate-manifest-begin
-;; {:version 1, :tested-at "2026-07-24T12:29:14.245936-05:00", :module-hash "573554695", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 1, :hash "1935816410"} {:id "defn/update-battery", :kind "defn", :line 3, :end-line 10, :hash "1980959089"} {:id "defn/can-fire?", :kind "defn", :line 12, :end-line 17, :hash "-1043056803"} {:id "defn/spend-ammo", :kind "defn", :line 19, :end-line 21, :hash "2076101157"} {:id "defn/set-ammo", :kind "defn", :line 23, :end-line 25, :hash "1974119726"} {:id "defn/destroy", :kind "defn", :line 27, :end-line 29, :hash "-1826858571"}]}
+;; {:version 1, :tested-at "2026-07-24T14:35:25.991954-05:00", :module-hash "814722448", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 2, :hash "1828854097"} {:id "defn/update-battery", :kind "defn", :line 4, :end-line 7, :hash "-773024030"} {:id "defn/can-fire?", :kind "defn", :line 9, :end-line 14, :hash "-1043056803"} {:id "defn/spend-ammo", :kind "defn", :line 16, :end-line 18, :hash "2076101157"} {:id "defn/set-ammo", :kind "defn", :line 20, :end-line 22, :hash "1974119726"} {:id "defn/destroy", :kind "defn", :line 24, :end-line 26, :hash "-1826858571"}]}
 ;; clj-mutate-manifest-end

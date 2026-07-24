@@ -1,8 +1,7 @@
 (ns missile-command.jvm.input
   "Pure host input mapping: UI events → core commands, CLI, telemetry. No Quil."
   (:require [clojure.string :as str]
-            [missile-command.core :as core]
-            [missile-command.missiles :as missiles]))
+            [missile-command.core :as core]))
 
 (def default-fire-keys
   {\z :left \Z :left \1 :left
@@ -133,14 +132,10 @@
   [opts xs]
   (when (int-token? (first xs))
     (let [n (parse-int-token (first xs))]
-      (cond
-        (nil? (:width-set? opts))
-        [(assoc opts :width n :width-set? true) (rest xs)]
-
-        (nil? (:height-set? opts))
-        [(assoc opts :height n :height-set? true) (rest xs)]
-
-        :else nil))))
+      (case (:size-phase opts)
+        :need-width [(assoc opts :width n :size-phase :need-height) (rest xs)]
+        :need-height [(assoc opts :height n :size-phase :done) (rest xs)]
+        nil))))
 
 (defn parse-cli-args
   "Parse launch args: optional width height, then switches."
@@ -150,7 +145,7 @@
    (loop [xs (seq args)
           opts {:width default-width
                 :height default-height
-                :qa-telemetry? false
+                :size-phase :need-width
                 :qa-speed 1.0
                 :destroy-batteries []
                 :qa-events nil
@@ -159,7 +154,9 @@
                 :qa-enemies []
                 :qa-fireballs []}]
      (if-not xs
-       (dissoc opts :width-set? :height-set?)
+       (-> opts
+           (dissoc :size-phase)
+           (update :qa-telemetry? boolean))
        (if-let [[opts' xs'] (or (apply-switch opts xs)
                                 (apply-size-token opts xs))]
          (recur (seq xs') opts')
@@ -210,6 +207,54 @@
   [e]
   (str (name (:target-kind e)) ":" (:target-id e)))
 
+(defn- fireball-sim-fields
+  [fireballs]
+  (mapcat (fn [fb]
+            [(str "center_x=" (:x fb))
+             (str "center_y=" (:y fb))
+             (str "radius=" (:radius fb))])
+          fireballs))
+
+(defn- enemy-sim-fields
+  [enemies]
+  (mapcat (fn [e]
+            [(str "enemy_id=" (:id e))
+             (str "enemy_x=" (:x e))
+             (str "enemy_y=" (:y e))
+             (str "enemy_origin_x=" (:x0 e))
+             (str "enemy_origin_y=" (:y0 e))
+             (str "enemy_target_x=" (:x1 e))
+             (str "enemy_target_y=" (:y1 e))
+             (str "enemy_target=" (enemy-target-label e))])
+          enemies))
+
+(defn- battery-ammo
+  "Ammo for telemetry; missing missiles counts as 0."
+  [battery]
+  (long (if (nil? (:missiles battery)) 0 (:missiles battery))))
+
+(defn- battery-sim-fields
+  [state]
+  (mapcat (fn [id]
+            (let [b (core/battery state id)]
+              [(str "battery_" (name id) "_destroyed=" (boolean (:destroyed? b)))
+               (str "battery_" (name id) "_ammo=" (battery-ammo b))]))
+          [:left :center :right]))
+
+(defn- target-sim-fields
+  [targets]
+  (mapcat (fn [t]
+            [(str "target_id=" (:id t))
+             (str "target_x=" (:x t))
+             (str "target_y=" (:y t))
+             (str "destroyed=" (boolean (:destroyed? t)))])
+          targets))
+
+(defn- last-enemy-fate-fields
+  [state]
+  (when-let [f (core/last-enemy-fate state)]
+    [(str "last_enemy_fate=" (name f))]))
+
 (defn format-sim-telemetry-line
   "Periodic simulation snapshot line."
   [state]
@@ -217,38 +262,7 @@
         fireballs (core/fireballs state)
         enemies (core/enemy-missiles state)
         targets (core/destroyable-targets state)
-        cities-alive (count (core/living-cities state))
-        fb-fields (mapcat (fn [fb]
-                            [(str "center_x=" (:x fb))
-                             (str "center_y=" (:y fb))
-                             (str "radius=" (:radius fb))])
-                          fireballs)
-        enemy-fields (mapcat (fn [e]
-                               [(str "enemy_id=" (:id e))
-                                (str "enemy_x=" (:x e))
-                                (str "enemy_y=" (:y e))
-                                (str "enemy_origin_x=" (:x0 e))
-                                (str "enemy_origin_y=" (:y0 e))
-                                (str "enemy_target_x=" (:x1 e))
-                                (str "enemy_target_y=" (:y1 e))
-                                (str "enemy_target=" (enemy-target-label e))])
-                             enemies)
-        bat-fields (mapcat (fn [id]
-                             (let [b (core/battery state id)]
-                               [(str "battery_" (name id) "_destroyed="
-                                     (boolean (:destroyed? b)))
-                                (str "battery_" (name id) "_ammo="
-                                     (long (or (:missiles b) 0)))]))
-                           [:left :center :right])
-        metrics (core/wave-schedule-metrics (core/wave state))
-        tgt-fields (mapcat (fn [t]
-                             [(str "target_id=" (:id t))
-                              (str "target_x=" (:x t))
-                              (str "target_y=" (:y t))
-                              (str "destroyed=" (boolean (:destroyed? t)))])
-                           targets)
-        fate (when-let [f (core/last-enemy-fate state)]
-               [(str "last_enemy_fate=" (name f))])]
+        metrics (core/wave-schedule-metrics (core/wave state))]
     (str/join
      " "
      (concat [(str "qa-sim t=" (core/sim-time state))
@@ -259,12 +273,12 @@
               (str "missiles_in_flight=" (count missiles))
               (str "fireballs=" (count fireballs))
               (str "enemy_missiles=" (count enemies))
-              (str "cities_alive=" cities-alive)]
-             bat-fields
-             fb-fields
-             enemy-fields
-             tgt-fields
-             fate))))
+              (str "cities_alive=" (count (core/living-cities state)))]
+             (battery-sim-fields state)
+             (fireball-sim-fields fireballs)
+             (enemy-sim-fields enemies)
+             (target-sim-fields targets)
+             (last-enemy-fate-fields state)))))
 
 (defn load-scenario-edn
   "Read a QA scenario EDN map from path."
@@ -272,43 +286,72 @@
   (when path
     (read-string (slurp path))))
 
+(defn- apply-scenario-wave
+  [state scenario]
+  (if-let [w (:wave scenario)]
+    (core/set-wave state w)
+    state))
+
+(defn- apply-scenario-size
+  [state scenario]
+  (if-let [w (:width scenario)]
+    (core/resize state w (or (:height scenario) (core/playfield-height state)))
+    state))
+
+(defn- apply-scenario-battery
+  [state [id opts]]
+  (cond-> state
+    (:destroyed opts) (core/destroy-battery id)
+    (contains? opts :ammo) (core/set-battery-ammo id (:ammo opts))))
+
+(defn- apply-scenario-batteries
+  [state scenario]
+  (reduce apply-scenario-battery state (or (:batteries scenario) {})))
+
+(defn- apply-scenario-cities
+  [state scenario]
+  (reduce core/destroy-city state
+          (or (get-in scenario [:cities :destroyed]) [])))
+
+(defn- apply-scenario-targets
+  [state scenario]
+  (reduce (fn [s t] (core/add-destroyable-target s (:x t) (:y t)))
+          state
+          (or (:targets scenario) [])))
+
+(def ^:private scenario-enemy-spawners
+  {:city {:default core/spawn-enemy-targeting-city
+          :from core/spawn-enemy-targeting-city-from}
+   :battery {:default core/spawn-enemy-targeting-battery
+             :from core/spawn-enemy-targeting-battery-from}})
+
+(defn- spawn-scenario-enemy
+  "Spawn one scenario enemy, honoring optional angled :origin [x y]."
+  [state e]
+  (let [[kind id] (:target e)
+        origin (:origin e)
+        spawners (get scenario-enemy-spawners kind)]
+    (cond
+      (nil? spawners) state
+      origin ((:from spawners) state (first origin) (second origin) id)
+      :else ((:default spawners) state id))))
+
+(defn- apply-scenario-enemies
+  [state scenario]
+  (let [enemies (or (:enemies scenario) [])]
+    (if (seq enemies)
+      (reduce spawn-scenario-enemy state enemies)
+      state)))
 (defn apply-scenario
   "Apply documented scenario keys onto a new-game state."
   [state scenario]
-  (let [state (if-let [w (:wave scenario)]
-                (core/set-wave state w)
-                state)
-        state (if-let [w (:width scenario)]
-                (core/resize state w (or (:height scenario) (core/playfield-height state)))
-                state)
-        state (reduce (fn [s [id opts]]
-                        (let [s (if (:destroyed opts)
-                                  (core/destroy-battery s id)
-                                  s)]
-                          (if (contains? opts :ammo)
-                            (core/set-battery-ammo s id (:ammo opts))
-                            s)))
-                      state
-                      (or (:batteries scenario) {}))
-        state (reduce core/destroy-city state
-                      (or (get-in scenario [:cities :destroyed]) []))
-        state (reduce (fn [s t]
-                        (core/add-destroyable-target s (:x t) (:y t)))
-                      state
-                      (or (:targets scenario) []))
-        enemies (or (:enemies scenario) [])
-        state (if (seq enemies)
-                (assoc state :wave-had-enemies? true :wave-complete? false)
-                state)
-        state (reduce (fn [s e]
-                        (let [[kind id] (:target e)]
-                          (case kind
-                            :city (core/spawn-enemy-targeting-city s id)
-                            :battery (core/spawn-enemy-targeting-battery s id)
-                            s)))
-                      state
-                      enemies)]
-    state))
+  (-> state
+      (apply-scenario-wave scenario)
+      (apply-scenario-size scenario)
+      (apply-scenario-batteries scenario)
+      (apply-scenario-cities scenario)
+      (apply-scenario-targets scenario)
+      (apply-scenario-enemies scenario)))
 
 (defn format-fireball-phase-line
   "Phase timing line for one fireball."
@@ -391,3 +434,7 @@
        (map parse-qa-event-line)
        (remove nil?)
        vec))
+
+;; clj-mutate-manifest-begin
+;; {:version 1, :tested-at "2026-07-24T14:18:37.895697-05:00", :module-hash "-1974393804", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 4, :hash "-216504222"} {:id "def/default-fire-keys", :kind "def", :line 6, :end-line 9, :hash "534045824"} {:id "defn/key-char->battery", :kind "defn", :line 11, :end-line 14, :hash "-1717611502"} {:id "defn/fire-command", :kind "defn", :line 16, :end-line 18, :hash "1270260925"} {:id "defn/aim-command", :kind "defn", :line 20, :end-line 22, :hash "93232397"} {:id "defn/click-command", :kind "defn", :line 24, :end-line 26, :hash "427388192"} {:id "defn/key-char->command", :kind "defn", :line 28, :end-line 32, :hash "-766332071"} {:id "defn/escape-key?", :kind "defn", :line 34, :end-line 36, :hash "1460313293"} {:id "defn/parse-destroy-list", :kind "defn", :line 38, :end-line 45, :hash "700474553"} {:id "defn/parse-xy-pair", :kind "defn", :line 47, :end-line 52, :hash "-1833854870"} {:id "defn/parse-enemy-spec", :kind "defn", :line 54, :end-line 63, :hash "1564602249"} {:id "defn/parse-fireball-spec", :kind "defn", :line 65, :end-line 71, :hash "188453021"} {:id "defn-/int-token?", :kind "defn-", :line 73, :end-line 75, :hash "-1353543315"} {:id "defn-/parse-int-token", :kind "defn-", :line 77, :end-line 79, :hash "-512914460"} {:id "defn-/parse-float-token", :kind "defn-", :line 81, :end-line 83, :hash "322473366"} {:id "defn-/parse-qa-speed", :kind "defn-", :line 85, :end-line 92, :hash "-672414233"} {:id "def/switch-handlers", :kind "def", :line 94, :end-line 122, :hash "-1506412388"} {:id "defn-/apply-switch", :kind "defn-", :line 124, :end-line 128, :hash "821595473"} {:id "defn-/apply-size-token", :kind "defn-", :line 130, :end-line 138, :hash "-1102995660"} {:id "defn/parse-cli-args", :kind "defn", :line 140, :end-line 164, :hash "1057416244"} {:id "defn/parse-window-size", :kind "defn", :line 166, :end-line 169, :hash "1406683016"} {:id "defn/resize-if-needed", :kind "defn", :line 171, :end-line 176, :hash "-1111450443"} {:id "defn/battery-from-events", :kind "defn", :line 178, :end-line 184, :hash "-1027790243"} {:id "defn-/missile-vector-fields", :kind "defn-", :line 186, :end-line 191, :hash "-360289837"} {:id "defn/format-telemetry-line", :kind "defn", :line 193, :end-line 204, :hash "-324640397"} {:id "defn-/enemy-target-label", :kind "defn-", :line 206, :end-line 208, :hash "-1853462768"} {:id "defn-/fireball-sim-fields", :kind "defn-", :line 210, :end-line 216, :hash "-665089407"} {:id "defn-/enemy-sim-fields", :kind "defn-", :line 218, :end-line 229, :hash "1504663343"} {:id "defn-/battery-ammo", :kind "defn-", :line 231, :end-line 234, :hash "-465332238"} {:id "defn-/battery-sim-fields", :kind "defn-", :line 236, :end-line 242, :hash "2005192070"} {:id "defn-/target-sim-fields", :kind "defn-", :line 244, :end-line 251, :hash "-1515145261"} {:id "defn-/last-enemy-fate-fields", :kind "defn-", :line 253, :end-line 256, :hash "74226316"} {:id "defn/format-sim-telemetry-line", :kind "defn", :line 258, :end-line 281, :hash "372644834"} {:id "defn/load-scenario-edn", :kind "defn", :line 283, :end-line 287, :hash "702073124"} {:id "defn-/apply-scenario-wave", :kind "defn-", :line 289, :end-line 293, :hash "-443119528"} {:id "defn-/apply-scenario-size", :kind "defn-", :line 295, :end-line 299, :hash "-409420687"} {:id "defn-/apply-scenario-battery", :kind "defn-", :line 301, :end-line 305, :hash "-987212579"} {:id "defn-/apply-scenario-batteries", :kind "defn-", :line 307, :end-line 309, :hash "-1182610143"} {:id "defn-/apply-scenario-cities", :kind "defn-", :line 311, :end-line 314, :hash "-1688876883"} {:id "defn-/apply-scenario-targets", :kind "defn-", :line 316, :end-line 320, :hash "1503255751"} {:id "def/scenario-enemy-spawners", :kind "def", :line 322, :end-line 326, :hash "1937978909"} {:id "defn-/spawn-scenario-enemy", :kind "defn-", :line 328, :end-line 337, :hash "-184727973"} {:id "defn-/apply-scenario-enemies", :kind "defn-", :line 339, :end-line 344, :hash "287745192"} {:id "defn/apply-scenario", :kind "defn", :line 345, :end-line 354, :hash "648862949"} {:id "defn/format-fireball-phase-line", :kind "defn", :line 356, :end-line 366, :hash "-1337292110"} {:id "defn/fireball-report-phase", :kind "defn", :line 368, :end-line 377, :hash "-303396465"} {:id "defn-/live-phase-events", :kind "defn-", :line 379, :end-line 390, :hash "437115347"} {:id "defn/detect-fireball-phase-events", :kind "defn", :line 392, :end-line 408, :hash "-1706900064"} {:id "def/qa-event-parsers", :kind "def", :line 410, :end-line 417, :hash "-1694788825"} {:id "defn/parse-qa-event-line", :kind "defn", :line 419, :end-line 428, :hash "273909649"} {:id "defn/load-qa-events", :kind "defn", :line 430, :end-line 436, :hash "361312324"}]}
+;; clj-mutate-manifest-end
