@@ -290,6 +290,23 @@
                                      :y (support/example-int example y-param "y")})]
             (assoc world :state (:state result))))}
 
+   {:pattern #"^the crosshair is at (-?\d+) (-?\d+)$"
+    :fn (fn [world [_ x y] _]
+          (let [expected {:x (support/parse-int x "x")
+                          :y (support/parse-int y "y")}
+                actual (core/crosshair (:state world))]
+            (assert-condition (= expected actual)
+                              (str "crosshair " actual " expected " expected)))
+          world)}
+
+   {:pattern #"^the player clicks at (-?\d+) (-?\d+)$"
+    :fn (fn [world [_ x y] _]
+          (let [result (core/handle (:state world)
+                                    {:type :click
+                                     :x (support/parse-int x "x")
+                                     :y (support/parse-int y "y")})]
+            (assoc world :state (:state result))))}
+
    {:pattern #"^the player clicks at <([A-Za-z0-9_]+)> <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ x-param y-param] example]
           (let [result (core/handle (:state world)
@@ -322,16 +339,6 @@
                  (reduce (fn [s id] (core/set-battery-ammo s id 0))
                          (:state world)
                          [:left :center :right])))}
-
-   {:pattern #"^the crosshair is at (-?\d+) (-?\d+)$"
-    :fn (fn [world [_ x y] _]
-          (let [expected {:x (support/parse-int x "x")
-                          :y (support/parse-int y "y")}
-                actual (core/crosshair (:state world))]
-            (assert-condition (= expected actual)
-                              (str "crosshair " actual " expected " expected)))
-          world)}
-
    {:pattern #"^the crosshair is at <([A-Za-z0-9_]+)> <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ x-param y-param] example]
           (let [expected {:x (support/example-int example x-param "x")
@@ -349,6 +356,13 @@
                               (str "score " actual " expected " expected)))
           world)}
 
+   {:pattern #"^the player fires the (left|center|right) battery$"
+    :fn (fn [world [_ battery-name] _]
+          (let [battery-id (support/parse-battery-id battery-name)
+                result (core/handle (:state world)
+                                    {:type :fire :battery battery-id})]
+            (assoc world :state (:state result))))}
+
    {:pattern #"^the player fires the <([A-Za-z0-9_]+)> battery$"
     :fn (fn [world [_ battery-param] example]
           (let [battery-id (support/example-battery example battery-param)
@@ -363,6 +377,16 @@
                               (:state world)
                               [:left :center :right])]
             (assoc world :state state)))}
+
+   {:pattern #"^the (left|center|right) battery has (\d+) missiles$"
+    :fn (fn [world [_ battery-name ammo] _]
+          (let [battery-id (support/parse-battery-id battery-name)
+                expected (support/parse-int ammo "ammo")
+                actual (:missiles (battery world battery-id))]
+            (assert-condition (= expected actual)
+                              (str "battery " battery-id " missiles "
+                                   actual " expected " expected)))
+          world)}
 
    {:pattern #"^the <([A-Za-z0-9_]+)> battery has <([A-Za-z0-9_]+)> missiles$"
     :fn (fn [world [_ battery-param ammo-param] example]
@@ -385,11 +409,32 @@
                                      (:missiles b) " expected " expected))))
           world)}
 
+   {:pattern #"^there are (\d+) defensive missiles in flight$"
+    :fn (fn [world [_ count-text] _]
+          (assert-count (count (core/defensive-missiles (:state world)))
+                        (support/parse-int count-text "missile count")
+                        "defensive missiles")
+          world)}
+
    {:pattern #"^there are <([A-Za-z0-9_]+)> defensive missiles in flight$"
     :fn (fn [world [_ count-param] example]
           (assert-count (count (core/defensive-missiles (:state world)))
                         (support/example-int example count-param "missile count")
                         "defensive missiles")
+          world)}
+
+   {:pattern #"^a defensive missile from the (left|center|right) battery targets (-?\d+) (-?\d+)$"
+    :fn (fn [world [_ battery-name x y] _]
+          (let [battery-id (support/parse-battery-id battery-name)
+                target-x (support/parse-int x "x")
+                target-y (support/parse-int y "y")
+                match (first (filter #(and (= battery-id (:battery %))
+                                           (= target-x (:x1 %))
+                                           (= target-y (:y1 %)))
+                                     (core/defensive-missiles (:state world))))]
+            (assert-condition match
+                              (str "no defensive missile from " battery-id
+                                   " targeting " target-x "," target-y)))
           world)}
 
    {:pattern #"^a defensive missile from the <([A-Za-z0-9_]+)> battery targets <([A-Za-z0-9_]+)> <([A-Za-z0-9_]+)>$"

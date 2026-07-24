@@ -9,40 +9,106 @@
 (def default-width 800)
 (def default-height 600)
 
-(defn- apply-command
+(defonce launch-options
+  (atom {:qa-telemetry? false
+         :destroy-batteries []
+         :qa-events nil}))
+
+(defonce pending-qa-events
+  (atom []))
+
+(defn configure!
+  [opts]
+  (reset! launch-options (select-keys opts [:qa-telemetry?
+                                            :destroy-batteries
+                                            :qa-events]))
+  (reset! pending-qa-events
+          (if-let [path (:qa-events opts)]
+            (input/load-qa-events path)
+            [])))
+
+(defn- emit-telemetry!
+  [result]
+  (when (:qa-telemetry? @launch-options)
+    (println (input/format-telemetry-line result))
+    (flush)))
+
+(defn- apply-handle
   [state command]
-  (:state (core/handle state command)))
+  (let [result (core/handle state command)]
+    (when (#{:fire :click} (:type command))
+      (emit-telemetry! result))
+    (:state result)))
+
+(defn- apply-destroy-options
+  [state]
+  (reduce (fn [s id]
+            (core/destroy-battery s id))
+          state
+          (:destroy-batteries @launch-options)))
 
 (defn setup
   []
   (q/frame-rate 120)
-  ;; Hide OS pointer so only the game crosshair is visible (locked to mouse).
   (q/no-cursor)
-  (core/new-game {:width (q/width) :height (q/height)}))
+  (-> (core/new-game {:width (q/width) :height (q/height)})
+      apply-destroy-options))
+
+(defn- drain-one-qa-event
+  [state]
+  (let [events @pending-qa-events]
+    (if (empty? events)
+      state
+      (let [ev (first events)]
+        (reset! pending-qa-events (vec (rest events)))
+        (case (:type ev)
+          :click (apply-handle state (input/click-command (:x ev) (:y ev)))
+          :aim (apply-handle state (input/aim-command (:x ev) (:y ev)))
+          :key (if-let [cmd (input/key-char->command (:ch ev))]
+                 (apply-handle state cmd)
+                 state)
+          :quit (do (q/exit) state)
+          state)))))
 
 (defn update-state
   [state]
-  ;; Keep core aim synced every frame; visual reticle uses live mouse in draw.
-  (-> state
-      (input/resize-if-needed (q/width) (q/height)
-                              core/resize core/playfield-width core/playfield-height)
-      (as-> s (apply-command s (input/aim-command (q/mouse-x) (q/mouse-y))))))
+  ;; While scripted QA events remain, do not overwrite aim from the OS mouse
+  ;; (often 0,0 before the pointer enters the window).
+  (let [scripted? (seq @pending-qa-events)
+        state (-> state
+                  (input/resize-if-needed (q/width) (q/height)
+                                          core/resize core/playfield-width core/playfield-height))]
+    (if scripted?
+      (drain-one-qa-event state)
+      (-> state
+          (as-> s (apply-handle s (input/aim-command (q/mouse-x) (q/mouse-y))))
+          drain-one-qa-event))))
 
 (defn draw
   [state]
-  ;; Crosshair is drawn last at raw mouse-x/mouse-y so it stays locked
-  ;; to the pointer; the OS cursor is hidden in setup.
   (render/draw-world! state)
   (render/crosshair-at! (q/mouse-x) (q/mouse-y)))
 
 (defn mouse-moved
   [state _event]
-  ;; Still route aim on move events for responsiveness between update ticks.
-  (apply-command state (input/aim-command (q/mouse-x) (q/mouse-y))))
+  (apply-handle state (input/aim-command (q/mouse-x) (q/mouse-y))))
 
 (defn mouse-dragged
   [state event]
   (mouse-moved state event))
+
+(defn- left-button?
+  "True for primary button across quil/Processing event shapes."
+  [event]
+  (let [b (or (:button event) (q/mouse-button))]
+    (or (nil? b) (= b :left) (= b 37) (= (str b) "left"))))
+
+(defn mouse-pressed
+  "Fire on button press (more reliable than mouse-clicked when the pointer moves)."
+  [state event]
+  (if (left-button? event)
+    (apply-handle state (input/click-command (q/mouse-x) (q/mouse-y)))
+    state))
 
 (defn key-pressed
   [state _event]
@@ -52,7 +118,7 @@
       (do (q/exit) state)
 
       (input/key-char->command ch)
-      (apply-command state (input/key-char->command ch))
+      (apply-handle state (input/key-char->command ch))
 
       :else state)))
 
@@ -69,6 +135,7 @@
     :draw draw
     :mouse-moved mouse-moved
     :mouse-dragged mouse-dragged
+    :mouse-pressed mouse-pressed
     :key-pressed key-pressed
     :middleware [m/fun-mode]
     :features [:resizable]
