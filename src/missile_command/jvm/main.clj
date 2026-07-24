@@ -6,7 +6,8 @@
 
 (defn -main
   [& args]
-  (let [[w h] (input/parse-window-size args
-                                       sketch/default-width
-                                       sketch/default-height)]
-    (sketch/run-sketch! w h)))
+  (let [opts (input/parse-cli-args args
+                                   sketch/default-width
+                                   sketch/default-height)]
+    (sketch/configure! opts)
+    (sketch/run-sketch! (:width opts) (:height opts))))
