@@ -107,7 +107,7 @@
           (fireballs! state)
           (hud! state)))))
 
-(defn draw-state!(defn draw-state!
+(defn draw-state!
   ([state]
    (let [ch (core/crosshair state)]
      (draw-state! state (:x ch) (:y ch))))

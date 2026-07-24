@@ -198,6 +198,8 @@ quit
 | `click <x> <y>` | Click-zone fire at point |
 | `key <name>` | Key fire / UI key (`z`, `1`, `x`, `2`, `c`, `3`, …) |
 | `wait <n>` | Wait `n` **wall-clock** seconds (sim advances `n * qa-speed`) |
+| `start` | Leave title and begin a fresh playing run |
+| `confirm` | Confirm THE END and return to title (when no high-score entry) |
 | `quit` | Exit cleanly |
 
 #### Telemetry (stdout when `--qa`)
@@ -235,6 +237,8 @@ qa-sim t=1.5 missiles_in_flight=0 fireballs=1 enemy_missiles=1 center_x=200 cent
 | `final_score=` | Score frozen at THE END (else current score) |
 | `multiplier=` | Score multiplier for the current wave (1–6) |
 | `bonus_cities=` | Usable bonus-city reserve |
+| `screen=` | `title`, `playing`, or `the-end` |
+| `title_game_name=` | Title copy token (e.g. `Missile_Command`) |
 | `the_end=` | `true` when THE END sequence is active |
 | `end_message=` | End copy as one token (`THE_END` or `none`); never `Game_Over` |
 | `end_fireball_radius=` | Screen-fill end blast radius (0 when not in THE END) |

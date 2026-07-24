@@ -205,7 +205,9 @@
 
 (defn- enemy-target-label
   [e]
-  (str (name (:target-kind e)) ":" (:target-id e)))
+  (let [id (:target-id e)]
+    (str (name (:target-kind e)) ":"
+         (if (keyword? id) (name id) (str id)))))
 
 (defn- fireball-sim-fields
   [fireballs]
