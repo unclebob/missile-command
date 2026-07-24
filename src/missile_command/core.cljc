@@ -336,43 +336,40 @@
   [enemy]
   (select-keys enemy [:enemy-kind :child-count :split-progress]))
 
+(defn- retarget-enemy-from
+  "Rebuild an enemy path starting at x,y while preserving MIRV attrs."
+  [enemy x y]
+  (merge (missiles/make-enemy (:id enemy)
+                              {:x x :y y}
+                              {:x (:x1 enemy) :y (:y1 enemy)}
+                              (:speed enemy)
+                              (:target-kind enemy)
+                              (:target-id enemy))
+         (enemy-attrs-to-preserve enemy)))
+
 (defn route-enemy-through-point
   "Retarget the first enemy so its path starts at the given point (e.g. fireball)."
   [state x y]
   (update state :enemy-missiles
           (fn [ms]
             (if (seq ms)
-              (let [m (first ms)
-                    retargeted (merge (missiles/make-enemy (:id m)
-                                                           {:x x :y y}
-                                                           {:x (:x1 m) :y (:y1 m)}
-                                                           (:speed m)
-                                                           (:target-kind m)
-                                                           (:target-id m))
-                                      (enemy-attrs-to-preserve m))]
-                (into [retargeted] (rest ms)))
+              (into [(retarget-enemy-from (first ms) x y)] (rest ms))
               ms))))
+
+(defn- first-mirv-child-index
+  [enemies]
+  (first (keep-indexed (fn [i e] (when (mirv-child? e) i)) enemies)))
 
 (defn route-first-mirv-child-through-point
   "Retarget the first MIRV child so its path starts at the given point."
   [state x y]
   (update state :enemy-missiles
           (fn [ms]
-            (let [idx (first (keep-indexed (fn [i e]
-                                             (when (mirv-child? e) i))
-                                           ms))]
+            (let [ms (vec ms)
+                  idx (first-mirv-child-index ms)]
               (if idx
-                (let [m (nth ms idx)
-                      retargeted (merge (missiles/make-enemy (:id m)
-                                                             {:x x :y y}
-                                                             {:x (:x1 m) :y (:y1 m)}
-                                                             (:speed m)
-                                                             (:target-kind m)
-                                                             (:target-id m))
-                                        (enemy-attrs-to-preserve m))]
-                  (assoc (vec ms) idx retargeted))
-                (vec ms))))))
-
+                (assoc ms idx (retarget-enemy-from (nth ms idx) x y))
+                ms)))))
 (defn- impact-target
   [state enemy]
   (case (:target-kind enemy)
@@ -619,27 +616,29 @@
        (>= (progress-of result)
            (double (:split-progress enemy 1.0)))))
 
-(defn- tick-one-enemy
-  [state enemy dt fireballs]
+(defn- resolve-advanced-enemy
+  "Apply MIRV split, impact, fireball kill, or continued flight for an advanced enemy."
+  [state enemy result fireballs]
   (cond
-    (enemy-hit-by-fireball? enemy fireballs)
+    (should-split-mirv? enemy result)
+    (split-mirv-parent state enemy)
+
+    (missiles/arrived? result)
+    (resolve-enemy-impact state enemy)
+
+    (enemy-hit-by-fireball? result fireballs)
     (destroy-enemy-by-fireball state)
 
     :else
-    (let [result (missiles/advance-enemy enemy dt)]
-      (cond
-        (should-split-mirv? enemy result)
-        (split-mirv-parent state enemy)
+    (keep-flying-enemy state result)))
 
-        (missiles/arrived? result)
-        (resolve-enemy-impact state enemy)
-
-        (enemy-hit-by-fireball? result fireballs)
-        (destroy-enemy-by-fireball state)
-
-        :else
-        (keep-flying-enemy state result)))))
-
+(defn- tick-one-enemy
+  [state enemy dt fireballs]
+  (if (enemy-hit-by-fireball? enemy fireballs)
+    (destroy-enemy-by-fireball state)
+    (resolve-advanced-enemy state enemy
+                            (missiles/advance-enemy enemy dt)
+                            fireballs)))
 (defn- tick-enemy-missiles
   [state dt]
   (let [fbs (fireballs state)]

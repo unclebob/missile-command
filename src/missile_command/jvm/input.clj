@@ -341,24 +341,30 @@
    :battery {:default core/spawn-enemy-targeting-battery
              :from core/spawn-enemy-targeting-battery-from}})
 
-(defn- spawn-scenario-enemy
-  "Spawn one scenario enemy, honoring MIRV kind and optional angled :origin [x y]."
+(defn- spawn-scenario-mirv
+  [state e]
+  (let [[_ id] (:target e)]
+    (core/spawn-mirv-targeting-city
+     state id
+     (or (:child-count e) 3)
+     (or (:split-progress e) 0.5))))
+
+(defn- spawn-scenario-ballistic
   [state e]
   (let [[kind id] (:target e)
         origin (:origin e)
-        enemy-kind (:kind e)
         spawners (get scenario-enemy-spawners kind)]
     (cond
-      (= :mirv enemy-kind)
-      (core/spawn-mirv-targeting-city
-       state id
-       (or (:child-count e) 3)
-       (or (:split-progress e) 0.5))
-
       (nil? spawners) state
       origin ((:from spawners) state (first origin) (second origin) id)
       :else ((:default spawners) state id))))
-(defn- apply-scenario-enemies
+
+(defn- spawn-scenario-enemy
+  "Spawn one scenario enemy, honoring MIRV kind and optional angled :origin [x y]."
+  [state e]
+  (if (= :mirv (:kind e))
+    (spawn-scenario-mirv state e)
+    (spawn-scenario-ballistic state e)))(defn- apply-scenario-enemies
   [state scenario]
   (let [enemies (or (:enemies scenario) [])]
     (if (seq enemies)
