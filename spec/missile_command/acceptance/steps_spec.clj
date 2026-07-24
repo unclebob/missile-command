@@ -318,4 +318,67 @@
       (should= world
                (dispatch world
                          "the first enemy missile origin x differs from its target x"
-                         {})))))
+                         {}))))
+
+
+  (it "detects points strictly between origin and target on both axes"
+    (should (enemy-steps/between-endpoints? 0.0 0.0 10.0 10.0 5.0 5.0))
+    (should (enemy-steps/between-endpoints? 10.0 0.0 0.0 10.0 5.0 5.0))
+    (should-not (enemy-steps/between-endpoints? 0.0 0.0 10.0 10.0 0.0 5.0))
+    (should-not (enemy-steps/between-endpoints? 0.0 0.0 10.0 10.0 5.0 0.0))
+    (should-not (enemy-steps/between-endpoints? 0.0 0.0 10.0 10.0 15.0 5.0))
+    (should-not (enemy-steps/between-endpoints? 10.0 0.0 0.0 10.0 10.0 5.0))
+    (should-not (enemy-steps/between-endpoints? 0.0 10.0 10.0 0.0 5.0 10.0)))
+
+  (it "asserts angled enemy motion toward its target on both axes"
+    (let [world (-> (fresh-world)
+                    (dispatch "an enemy missile from <ox> 0 targeting city <city>"
+                              {"ox" "50" "city" "0"})
+                    (dispatch "time advances by <dt> seconds" {"dt" "0.2"}))]
+      (should= world
+               (dispatch world
+                         "the first enemy missile has moved toward its target on both axes"
+                         {}))
+      (should= world
+               (dispatch world
+                         "the first enemy missile origin x differs from its target x"
+                         {}))))
+
+  (it "asserts non-zero enemy progress and multi-origin wave bounds"
+    (let [world (-> (fresh-world)
+                    (dispatch "an enemy missile targeting city <city>" {"city" "0"})
+                    (dispatch "time advances by <dt> seconds" {"dt" "0.5"}))
+          progress (:progress (first (core/enemy-missiles (:state world))))]
+      (should (< 0.0 progress))
+      (should= world
+               (dispatch world "the first enemy missile progress equals <p>"
+                         {"p" (str progress)}))
+      (should-throw Exception #"enemy progress"
+        (dispatch world "the first enemy missile progress equals <p>" {"p" "0.0"})))
+    (let [wave (dispatch (fresh-world)
+                         "the current wave has <remaining> scheduled enemies still active"
+                         {"remaining" "3"})]
+      (should= wave (dispatch wave "every enemy missile origin y is 0" {}))
+      (should= wave (dispatch wave "every enemy missile origin x is within the playfield" {}))
+      (should= wave
+               (dispatch wave "the enemy missiles use more than one distinct origin x" {}))))
+
+  (it "classifies fireball peak shrink and radius thresholds on synthetic state"
+    (let [cap (core/max-fireball-radius (core/new-game {:width 800 :height 600}))
+          below (assoc-in (fresh-world) [:state :fireballs]
+                          [{:id 1 :x 0 :y 0 :radius (* 0.5 cap)}])
+          at-peak (assoc-in (fresh-world) [:state :fireballs]
+                            [{:id 1 :x 0 :y 0 :radius (* 0.999 cap)}])
+          shrinking (assoc-in (fresh-world) [:state :fireballs]
+                              [{:id 1 :x 0 :y 0 :radius (* 0.5 cap)}])]
+      (should-not (@#'steps/fireball-reached-peak? (:state below)))
+      (should (@#'steps/fireball-reached-peak? (:state at-peak)))
+      (should (@#'steps/fireball-in-shrink-phase? (:state shrinking)))
+      (should (@#'steps/fireball-radius-at-least? (:state at-peak) (* 0.999 cap)))
+      (should= 0.0 (@#'steps/max-fireball-radius (:state (fresh-world))))))
+
+  (it "empties all batteries so no battery can fire"
+    (let [world (dispatch (fresh-world) "no battery can fire" {})]
+      (doseq [id [:left :center :right]]
+        (should= 0 (:missiles (core/battery (:state world) id))))))
+)
