@@ -223,6 +223,14 @@
       (swap! launch-options assoc :last-emitted-fate (core/last-enemy-fate state')))
     state'))
 
+(defn- toggle-pause
+  "Pause while playing, resume while paused; otherwise leave state alone."
+  [state]
+  (cond
+    (core/playing? state) (apply-handle state {:type :pause})
+    (core/paused? state) (apply-handle state {:type :resume})
+    :else state))
+
 (defn- drain-one-qa-event
   [state]
   (let [events @pending-qa-events]
@@ -331,14 +339,6 @@
   [event]
   (let [b (or (:button event) (q/mouse-button))]
     (or (nil? b) (= b :left) (= b 37) (= (str b) "left"))))
-
-(defn- toggle-pause
-  "Pause while playing, resume while paused; otherwise leave state alone."
-  [state]
-  (cond
-    (core/playing? state) (apply-handle state {:type :pause})
-    (core/paused? state) (apply-handle state {:type :resume})
-    :else state))
 
 (defn mouse-pressed
   [state event]
