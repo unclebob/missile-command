@@ -1,11 +1,31 @@
 (ns missile-command.core
   (:require [missile-command.world :as world]))
 
+(defn- clamp
+  [n lo hi]
+  (max lo (min hi n)))
+
+(defn- clamp-point
+  [width height x y]
+  {:x (clamp x 0 (dec width))
+   :y (clamp y 0 (dec height))})
+
+(defn- center-crosshair
+  [width height]
+  (clamp-point width height (quot width 2) (quot height 2)))
+
+(defn- reclamp-crosshair
+  [state width height]
+  (let [crosshair (or (:crosshair state) {:x 0 :y 0})]
+    (clamp-point width height (:x crosshair) (:y crosshair))))
+
 (defn new-game
   "Create a new game state for the given playfield size."
   [{:keys [width height]}]
   (merge {:width width
-          :height height}
+          :height height
+          :score 0
+          :crosshair (center-crosshair width height)}
          (world/apply-layout width height)))
 
 (defn resize
@@ -13,7 +33,8 @@
   [state width height]
   (merge state
          {:width width
-          :height height}
+          :height height
+          :crosshair (reclamp-crosshair state width height)}
          (world/apply-layout width height state)))
 
 (defn playfield-width
@@ -49,6 +70,28 @@
   [state city]
   (on-ground? state city))
 
-;; clj-mutate-manifest-begin
-;; {:version 1, :tested-at "2026-07-24T11:39:00.229927-05:00", :module-hash "228081829", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 2, :hash "59968614"} {:id "defn/new-game", :kind "defn", :line 4, :end-line 9, :hash "392600071"} {:id "defn/resize", :kind "defn", :line 11, :end-line 17, :hash "1370634908"} {:id "defn/playfield-width", :kind "defn", :line 19, :end-line 21, :hash "-1043537513"} {:id "defn/playfield-height", :kind "defn", :line 23, :end-line 25, :hash "344252362"} {:id "defn/cities", :kind "defn", :line 27, :end-line 29, :hash "1240083502"} {:id "defn/living-cities", :kind "defn", :line 31, :end-line 33, :hash "-1556555524"} {:id "defn/batteries", :kind "defn", :line 35, :end-line 37, :hash "206298614"} {:id "defn/battery", :kind "defn", :line 39, :end-line 41, :hash "1338932847"} {:id "defn/on-ground?", :kind "defn", :line 43, :end-line 46, :hash "1609612027"} {:id "defn/city-on-ground?", :kind "defn", :line 48, :end-line 50, :hash "-1878088970"}]}
-;; clj-mutate-manifest-end
+(defn crosshair
+  [state]
+  (:crosshair state))
+
+(defn score
+  [state]
+  (:score state))
+
+(defn- aim
+  [state x y]
+  (assoc state :crosshair
+         (clamp-point (playfield-width state)
+                      (playfield-height state)
+                      x y)))
+
+(defn handle
+  "Apply a player command. Returns {:state s :events [...]}."
+  [state command]
+  (case (:type command)
+    :aim
+    {:state (aim state (:x command) (:y command))
+     :events []}
+
+    (throw (ex-info (str "unsupported command: " (:type command))
+                    {:command command}))))
