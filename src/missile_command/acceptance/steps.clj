@@ -1,7 +1,6 @@
 (ns missile-command.acceptance.steps
   (:require [missile-command.acceptance.step-support :as support]
-            [missile-command.core :as core]
-            [missile-command.world :as world]))
+            [missile-command.core :as core]))
 
 (defn- assert-playfield-dimension
   [world example param-name label reader]
@@ -33,20 +32,80 @@
   [world]
   (mapv :x (sort-by :id (core/cities (:state world)))))
 
+(defn- city-span
+  [world]
+  (let [xs (city-xs world)]
+    (- (apply max xs) (apply min xs))))
+
+(defn- example-width
+  [example param-name]
+  (support/example-int example param-name "width"))
+
+(defn- example-height
+  [example param-name]
+  (support/example-int example param-name "height"))
+
+(defn- one-third
+  [width]
+  (/ width 3.0))
+
+(defn- two-thirds
+  [width]
+  (* width (/ 2.0 3)))
+
+(defn- assert-condition
+  [ok? message]
+  (when-not ok?
+    (support/fail! message)))
+
+(defn- assert-entities-in-ground-band
+  [state entities height entity-label]
+  (doseq [entity entities]
+    (when-not (and (= height (core/playfield-height state))
+                   (core/on-ground? state entity))
+      (support/fail! (str entity-label " " (:id entity) " y " (:y entity)
+                          " not in ground band for height " height)))))
+
+(defn- assert-xs-in-playfield
+  [entities width entity-label]
+  (doseq [entity entities]
+    (when-not (and (<= 0 (:x entity)) (< (:x entity) width))
+      (support/fail! (str entity-label " " (:id entity) " x " (:x entity)
+                          " not in [0," width ")")))))
+
+(defn- assert-lt
+  [actual bound message]
+  (assert-condition (< actual bound) message))
+
+(defn- assert-gt
+  [actual bound message]
+  (assert-condition (> actual bound) message))
+
+(defn- assert-between-open
+  [actual lo hi message]
+  (assert-condition (and (< lo actual) (< actual hi)) message))
+
 (def step-handlers
   [{:pattern #"^a new game with width <([A-Za-z0-9_]+)> and height <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ width-param height-param] example]
           (assoc world :state
                  (core/new-game
-                  {:width (support/example-int example width-param "width")
-                   :height (support/example-int example height-param "height")})))}
+                  {:width (example-width example width-param)
+                   :height (example-height example height-param)})))}
+
+   {:pattern #"^a new game with width (\d+) and height (\d+)$"
+    :fn (fn [world [_ width height] _]
+          (assoc world :state
+                 (core/new-game
+                  {:width (support/parse-int width "width")
+                   :height (support/parse-int height "height")})))}
 
    {:pattern #"^the playfield is resized to width <([A-Za-z0-9_]+)> and height <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ width-param height-param] example]
           (assoc world :state
                  (core/resize (:state world)
-                              (support/example-int example width-param "width")
-                              (support/example-int example height-param "height"))))}
+                              (example-width example width-param)
+                              (example-height example height-param))))}
 
    {:pattern #"^the playfield width is <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ width-param] example]
@@ -88,123 +147,119 @@
    {:pattern #"^city x positions increase with city index$"
     :fn (fn [world _ _]
           (let [xs (city-xs world)]
-            (when-not (apply < xs)
-              (support/fail! (str "city x positions not increasing: " xs))))
+            (assert-condition (apply < xs)
+                              (str "city x positions not increasing: " xs)))
           world)}
 
    {:pattern #"^every city x is between 0 inclusive and <([A-Za-z0-9_]+)> exclusive$"
     :fn (fn [world [_ width-param] example]
-          (let [width (support/example-int example width-param "width")]
-            (doseq [city (core/cities (:state world))]
-              (when-not (and (<= 0 (:x city)) (< (:x city) width))
-                (support/fail! (str "city " (:id city) " x " (:x city)
-                                    " not in [0," width ")")))))
+          (assert-xs-in-playfield (core/cities (:state world))
+                                  (example-width example width-param)
+                                  "city")
           world)}
 
    {:pattern #"^every city y is in the ground band for height <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ height-param] example]
-          (let [height (support/example-int example height-param "height")]
-            (doseq [city (core/cities (:state world))]
-              (when-not (world/in-ground-band? (:y city) height)
-                (support/fail! (str "city " (:id city) " y " (:y city)
-                                    " not in ground band for height " height)))))
+          (assert-entities-in-ground-band (:state world)
+                                          (core/cities (:state world))
+                                          (example-height example height-param)
+                                          "city")
           world)}
 
    {:pattern #"^the leftmost city x is less than one third of width <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ width-param] example]
-          (let [width (support/example-int example width-param "width")
+          (let [width (example-width example width-param)
                 leftmost (apply min (city-xs world))]
-            (when-not (< leftmost (/ width 3.0))
-              (support/fail! (str "leftmost city x " leftmost
-                                  " not < one third of " width))))
+            (assert-lt leftmost (one-third width)
+                       (str "leftmost city x " leftmost
+                            " not < one third of " width)))
           world)}
 
    {:pattern #"^the rightmost city x is greater than two thirds of width <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ width-param] example]
-          (let [width (support/example-int example width-param "width")
+          (let [width (example-width example width-param)
                 rightmost (apply max (city-xs world))]
-            (when-not (> rightmost (* width (/ 2.0 3)))
-              (support/fail! (str "rightmost city x " rightmost
-                                  " not > two thirds of " width))))
+            (assert-gt rightmost (two-thirds width)
+                       (str "rightmost city x " rightmost
+                            " not > two thirds of " width)))
           world)}
 
    {:pattern #"^the left battery x is less than the center battery x$"
     :fn (fn [world _ _]
-          (when-not (< (:x (battery world :left)) (:x (battery world :center)))
-            (support/fail! "left battery x not less than center"))
+          (assert-lt (:x (battery world :left))
+                     (:x (battery world :center))
+                     "left battery x not less than center")
           world)}
 
    {:pattern #"^the center battery x is less than the right battery x$"
     :fn (fn [world _ _]
-          (when-not (< (:x (battery world :center)) (:x (battery world :right)))
-            (support/fail! "center battery x not less than right"))
+          (assert-lt (:x (battery world :center))
+                     (:x (battery world :right))
+                     "center battery x not less than right")
           world)}
 
    {:pattern #"^the left battery x is less than one third of width <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ width-param] example]
-          (let [width (support/example-int example width-param "width")
+          (let [width (example-width example width-param)
                 x (:x (battery world :left))]
-            (when-not (< x (/ width 3.0))
-              (support/fail! (str "left battery x " x " not < one third of " width))))
+            (assert-lt x (one-third width)
+                       (str "left battery x " x " not < one third of " width)))
           world)}
 
    {:pattern #"^the center battery x is between one third and two thirds of width <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ width-param] example]
-          (let [width (support/example-int example width-param "width")
+          (let [width (example-width example width-param)
                 x (:x (battery world :center))
-                lo (/ width 3.0)
-                hi (* width (/ 2.0 3))]
-            (when-not (and (< lo x) (< x hi))
-              (support/fail! (str "center battery x " x " not between " lo " and " hi))))
+                lo (one-third width)
+                hi (two-thirds width)]
+            (assert-between-open x lo hi
+                                 (str "center battery x " x " not between " lo " and " hi)))
           world)}
 
    {:pattern #"^the right battery x is greater than two thirds of width <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ width-param] example]
-          (let [width (support/example-int example width-param "width")
+          (let [width (example-width example width-param)
                 x (:x (battery world :right))]
-            (when-not (> x (* width (/ 2.0 3)))
-              (support/fail! (str "right battery x " x " not > two thirds of " width))))
+            (assert-gt x (two-thirds width)
+                       (str "right battery x " x " not > two thirds of " width)))
           world)}
 
    {:pattern #"^every battery y is in the ground band for height <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ height-param] example]
-          (let [height (support/example-int example height-param "height")]
-            (doseq [b (batteries world)]
-              (when-not (world/in-ground-band? (:y b) height)
-                (support/fail! (str "battery " (:id b) " y " (:y b)
-                                    " not in ground band for height " height)))))
+          (assert-entities-in-ground-band (:state world)
+                                          (batteries world)
+                                          (example-height example height-param)
+                                          "battery")
           world)}
 
    {:pattern #"^the center battery missile speed is greater than the left battery missile speed$"
     :fn (fn [world _ _]
-          (when-not (> (:missile-speed (battery world :center))
-                       (:missile-speed (battery world :left)))
-            (support/fail! "center missile speed not greater than left"))
+          (assert-gt (:missile-speed (battery world :center))
+                     (:missile-speed (battery world :left))
+                     "center missile speed not greater than left")
           world)}
 
    {:pattern #"^the center battery missile speed is greater than the right battery missile speed$"
     :fn (fn [world _ _]
-          (when-not (> (:missile-speed (battery world :center))
-                       (:missile-speed (battery world :right)))
-            (support/fail! "center missile speed not greater than right"))
+          (assert-gt (:missile-speed (battery world :center))
+                     (:missile-speed (battery world :right))
+                     "center missile speed not greater than right")
           world)}
 
    {:pattern #"^the horizontal span of the cities is greater than half of width <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ width-param] example]
-          (let [width (support/example-int example width-param "width")
-                xs (city-xs world)
-                span (- (apply max xs) (apply min xs))]
-            (when-not (> span (/ width 2.0))
-              (support/fail! (str "city span " span " not > half of " width))))
+          (let [width (example-width example width-param)
+                span (city-span world)]
+            (assert-gt span (/ width 2.0)
+                       (str "city span " span " not > half of " width)))
           world)}
 
    {:pattern #"^the horizontal span of the cities is less than width <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ width-param] example]
-          (let [width (support/example-int example width-param "width")
-                xs (city-xs world)
-                span (- (apply max xs) (apply min xs))]
-            (when-not (< span width)
-              (support/fail! (str "city span " span " not < " width))))
+          (let [width (example-width example width-param)
+                span (city-span world)]
+            (assert-lt span width
+                       (str "city span " span " not < " width)))
           world)}
 
    {:pattern #"^the player aims at <([A-Za-z0-9_]+)> <([A-Za-z0-9_]+)>$"

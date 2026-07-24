@@ -21,7 +21,11 @@
                (set (map :id (core/batteries state))))
       (doseq [b (core/batteries state)]
         (should-not (:destroyed? b))
-        (should= 10 (:missiles b)))))
+        (should= 10 (:missiles b)))
+      (doseq [c (core/cities state)]
+        (should (core/on-ground? state c)))
+      (doseq [b (core/batteries state)]
+        (should (core/on-ground? state b)))))
 
   (it "starts with score zero and a crosshair on the playfield"
     (let [state (core/new-game {:width 800 :height 600})
@@ -139,4 +143,24 @@
     (let [before (core/new-game {:width 800 :height 600})
           after (core/resize before 1600 600)]
       (should-not= (mapv :x (core/cities before))
-                   (mapv :x (core/cities after))))))
+                   (mapv :x (core/cities after)))))
+
+  (it "preserves city alive flags and battery ammo across resize"
+    (let [before (-> (core/new-game {:width 800 :height 600})
+                     (update :cities (fn [cs]
+                                       (mapv #(if (zero? (:id %))
+                                                (assoc % :alive? false)
+                                                %)
+                                             cs)))
+                     (update :batteries (fn [bs]
+                                          (mapv #(if (= :left (:id %))
+                                                   (assoc % :missiles 4 :destroyed? true)
+                                                   %)
+                                                bs))))
+          after (core/resize before 1920 1080)
+          left (core/battery after :left)]
+      (should= 5 (count (core/living-cities after)))
+      (should-not (:alive? (first (filter #(zero? (:id %)) (core/cities after)))))
+      (should (:destroyed? left))
+      (should= 4 (:missiles left))
+      (should (every? #(core/city-on-ground? after %) (core/cities after))))))

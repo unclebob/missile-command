@@ -36,5 +36,5 @@
   (parse-battery-id (require-value example param-name)))
 
 ;; clj-mutate-manifest-begin
-;; {:version 1, :tested-at "2026-07-24T09:44:28.026783-05:00", :module-hash "-1019504644", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 1, :hash "-1891434015"} {:id "defn/fail!", :kind "defn", :line 3, :end-line 5, :hash "-526803145"} {:id "defn/require-value", :kind "defn", :line 7, :end-line 11, :hash "-545191389"} {:id "defn/parse-int", :kind "defn", :line 13, :end-line 18, :hash "-520638366"} {:id "defn/example-int", :kind "defn", :line 20, :end-line 23, :hash "-33918046"}]}
+;; {:version 1, :tested-at "2026-07-24T11:39:02.028884-05:00", :module-hash "-1019504644", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 1, :hash "-1891434015"} {:id "defn/fail!", :kind "defn", :line 3, :end-line 5, :hash "-526803145"} {:id "defn/require-value", :kind "defn", :line 7, :end-line 11, :hash "-545191389"} {:id "defn/parse-int", :kind "defn", :line 13, :end-line 18, :hash "-520638366"} {:id "defn/example-int", :kind "defn", :line 20, :end-line 23, :hash "-33918046"}]}
 ;; clj-mutate-manifest-end
