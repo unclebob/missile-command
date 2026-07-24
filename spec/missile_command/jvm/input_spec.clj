@@ -161,3 +161,16 @@
       (should= :start (:phase (first e0)))
       (should (empty? e1)) ; still expanding -> still start
       (should= [:max :shrink] (mapv :phase e2)))))
+
+(describe "apply-scenario"
+  (it "honors angled enemy origin in scenario enemies"
+    (let [base (core/new-game {:width 800 :height 600})
+          state (input/apply-scenario
+                 base
+                 {:enemies [{:origin [50 0] :target [:city 0]}]})
+          m (first (core/enemy-missiles state))]
+      (should= 50.0 (double (:x0 m)))
+      (should= 0.0 (double (:y0 m)))
+      (should-not= (double (:x0 m)) (double (:x1 m)))
+      (should= :city (:target-kind m))
+      (should= 0 (:target-id m)))))

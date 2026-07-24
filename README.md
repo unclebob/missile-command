@@ -79,7 +79,7 @@ click the game window when you want to type into it. Mouse moves the crosshair
 (clamped to the playfield). **Click** fires by horizontal third (with empty/destroyed
 fallback). Default fire keys: left `Z`/`1`, center `X`/`2`, right `C`/`3`. Esc quits.
 OS cursor is hidden; only the game crosshair is shown. Host only draws and routes
-input; rules stay in the pure core.
+input; rules stay in the pure core. The HUD includes ammo, score, and **wave**.
 
 ### QA mode (CLI affordances)
 

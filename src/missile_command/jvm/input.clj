@@ -301,10 +301,16 @@
                 (assoc state :wave-had-enemies? true :wave-complete? false)
                 state)
         state (reduce (fn [s e]
-                        (let [[kind id] (:target e)]
+                        (let [[kind id] (:target e)
+                              origin (:origin e)
+                              [ox oy] (when origin [(first origin) (second origin)])]
                           (case kind
-                            :city (core/spawn-enemy-targeting-city s id)
-                            :battery (core/spawn-enemy-targeting-battery s id)
+                            :city (if origin
+                                    (core/spawn-enemy-targeting-city-from s ox oy id)
+                                    (core/spawn-enemy-targeting-city s id))
+                            :battery (if origin
+                                       (core/spawn-enemy-targeting-battery-from s ox oy id)
+                                       (core/spawn-enemy-targeting-battery s id))
                             s)))
                       state
                       enemies)]

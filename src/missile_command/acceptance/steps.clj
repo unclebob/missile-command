@@ -772,6 +772,24 @@
                   (:state world)
                   (support/example-int example city-param "city"))))}
 
+   {:pattern #"^an enemy missile from <([A-Za-z0-9_]+)> (\d+) targeting city <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ ox-param oy-text city-param] example]
+          (assoc world :state
+                 (core/spawn-enemy-targeting-city-from
+                  (:state world)
+                  (support/example-int example ox-param "origin x")
+                  (support/parse-int oy-text "origin y")
+                  (support/example-int example city-param "city"))))}
+
+   {:pattern #"^an enemy missile from <([A-Za-z0-9_]+)> (\d+) targeting battery <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ ox-param oy-text battery-param] example]
+          (assoc world :state
+                 (core/spawn-enemy-targeting-battery-from
+                  (:state world)
+                  (support/example-int example ox-param "origin x")
+                  (support/parse-int oy-text "origin y")
+                  (support/example-battery example battery-param))))}
+
    {:pattern #"^an enemy missile targeting battery (left|center|right)$"
     :fn (fn [world [_ battery-name] _]
           (assoc world :state
@@ -825,6 +843,84 @@
                                  (core/enemy-missiles (:state world))))]
             (assert-condition m "missing enemy missile")
             (assert-gt (:progress m) 0.0 "enemy has not progressed"))
+          world)}
+
+   {:pattern #"^the first enemy missile origin is <([A-Za-z0-9_]+)> (\d+)$"
+    :fn (fn [world [_ ox-param oy-text] example]
+          (let [m (first (core/enemy-missiles (:state world)))
+                ox (support/example-int example ox-param "origin x")
+                oy (support/parse-int oy-text "origin y")]
+            (assert-condition m "missing enemy missile")
+            (assert-condition (= (double ox) (double (:x0 m)))
+                              (str "enemy origin x " (:x0 m) " expected " ox))
+            (assert-condition (= (double oy) (double (:y0 m)))
+                              (str "enemy origin y " (:y0 m) " expected " oy)))
+          world)}
+
+   {:pattern #"^the first enemy missile origin x differs from its target x$"
+    :fn (fn [world _ _]
+          (let [m (first (core/enemy-missiles (:state world)))]
+            (assert-condition m "missing enemy missile")
+            (assert-condition (not= (double (:x0 m)) (double (:x1 m)))
+                              (str "enemy origin x equals target x " (:x0 m))))
+          world)}
+
+   {:pattern #"^the first enemy missile has moved toward its target on both axes$"
+    :fn (fn [world _ _]
+          (let [m (first (core/enemy-missiles (:state world)))]
+            (assert-condition m "missing enemy missile")
+            (let [x0 (double (:x0 m))
+                  y0 (double (:y0 m))
+                  x1 (double (:x1 m))
+                  y1 (double (:y1 m))
+                  x (double (:x m))
+                  y (double (:y m))]
+              (assert-condition (or (and (< x0 x x1) (< y0 y y1))
+                                    (and (> x0 x x1) (< y0 y y1))
+                                    (and (< x0 x x1) (> y0 y y1))
+                                    (and (> x0 x x1) (> y0 y y1)))
+                                (str "enemy not between origin and target: "
+                                     x "," y " from " x0 "," y0 " to " x1 "," y1))))
+          world)}
+
+   {:pattern #"^every enemy missile origin y is (\d+)$"
+    :fn (fn [world [_ y-text] _]
+          (let [y (support/parse-int y-text "origin y")
+                enemies (core/enemy-missiles (:state world))]
+            (assert-condition (seq enemies) "no enemy missiles")
+            (doseq [m enemies]
+              (assert-condition (= (double y) (double (:y0 m)))
+                                (str "enemy " (:id m) " origin y " (:y0 m)
+                                     " expected " y))))
+          world)}
+
+   {:pattern #"^every enemy missile origin x is within the playfield$"
+    :fn (fn [world _ _]
+          (let [w (core/playfield-width (:state world))
+                enemies (core/enemy-missiles (:state world))]
+            (assert-condition (seq enemies) "no enemy missiles")
+            (doseq [m enemies]
+              (assert-condition (and (<= 0 (double (:x0 m)))
+                                     (< (double (:x0 m)) w))
+                                (str "enemy " (:id m) " origin x " (:x0 m)
+                                     " not in [0," w ")"))))
+          world)}
+
+   {:pattern #"^the enemy missiles use more than one distinct origin x$"
+    :fn (fn [world _ _]
+          (let [xs (set (map #(double (:x0 %))
+                             (core/enemy-missiles (:state world))))]
+            (assert-condition (< 1 (count xs))
+                              (str "expected multiple origin x, got " xs)))
+          world)}
+
+   {:pattern #"^at least one enemy missile origin x differs from its target x$"
+    :fn (fn [world _ _]
+          (let [enemies (core/enemy-missiles (:state world))]
+            (assert-condition (seq enemies) "no enemy missiles")
+            (assert-condition (some #(not= (double (:x0 %)) (double (:x1 %)))
+                                    enemies)
+                              "all enemy origins share target x (all vertical)"))
           world)}
 
    {:pattern #"^time advances until enemy missiles impact or are destroyed$"
