@@ -19,4 +19,7 @@
     (q/fill 220)
     (q/text-size 18)
     (q/text prompt (/ w 2.0) (+ (/ h 2.0) 60))
+    (q/fill 180)
+    (q/text-size 16)
+    (q/text "H for high scores" (/ w 2.0) (+ (/ h 2.0) 95))
     (q/text-align :left :baseline)))

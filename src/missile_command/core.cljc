@@ -760,6 +760,8 @@
     (title? state) (no-events (start-game state))
     (the-end? state) (no-events (confirm-end-screen state))
     (paused? state) (no-events state)
+    (high-score-entry? state) (no-events state)
+    (high-scores-view? state) (no-events state)
     :else (click-fire state x y)))
 
 (defn- unsupported-command
@@ -1310,7 +1312,8 @@
 
 (defn tick
   "Advance simulation by dt seconds (clamped). Returns {:state s :events [...]}.
-  Title advances clock only; paused freezes sim; THE END expands end fireball."
+  Playing runs combat; THE END expands the end fireball; paused freezes;
+  wave banner animates; other shell screens advance the clock only."
   [state dt]
   (let [applied (missiles/clamp-dt dt)]
     (cond
@@ -1318,21 +1321,19 @@
       {:state (assoc state :last-applied-dt 0.0)
        :events []}
 
-      (title? state)
-      {:state (advance-clock state applied) :events []}
-
       (wave-banner? state)
       {:state (-> state
                   (advance-clock applied)
                   (wave-banner/tick applied start-next-wave))
        :events []}
+
       (the-end? state)
       {:state (-> state
                   (advance-clock applied)
                   (tick-end-fireball applied))
        :events []}
 
-      :else
+      (playing? state)
       (let [state (-> state
                       (advance-clock applied)
                       (tick-defensive-missiles applied)
@@ -1342,5 +1343,9 @@
                       (tick-flyers applied)
                       (maybe-complete-wave)
                       (evaluate-game-over))]
-        {:state state :events []}))))
+        {:state state :events []})
+
+      :else
+      ;; title, high-score-entry, high-scores view, options
+      {:state (advance-clock state applied) :events []})))
 

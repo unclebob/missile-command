@@ -17,7 +17,11 @@
             [missile-command.acceptance.browser-host-steps :as browser-host-steps]
             [missile-command.acceptance.wave-banner-steps :as wave-banner-steps]
             [missile-command.core :as core]
-            [missile-command.waves :as waves]))(defn- assert-playfield-dimension  [world example param-name label reader]  (let [expected (support/example-int example param-name label)
+            [missile-command.waves :as waves]))
+
+(defn- assert-playfield-dimension
+  [world example param-name label reader]
+  (let [expected (support/example-int example param-name label)
         actual (reader (:state world))]
     (when-not (= expected actual)
       (support/fail! (str "playfield " label " " actual " expected " expected)))
@@ -419,6 +423,13 @@
                  (core/set-score
                   (:state world)
                   (support/example-int example score-param "score"))))}
+
+   {:pattern #"^the score becomes (\d+)$"
+    :fn (fn [world [_ score-text] _]
+          (assoc world :state
+                 (core/set-score
+                  (:state world)
+                  (support/parse-int score-text "score"))))}
 
    {:pattern #"^the bonus city reserve is <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ reserve-param] example]
@@ -1401,7 +1412,9 @@
         sfx-steps/handlers
         desktop-host-steps/handlers
         browser-host-steps/handlers
-        wave-banner-steps/handlers)))(defn- match-handler
+        wave-banner-steps/handlers)))
+
+(defn- match-handler
   [text]
   (some (fn [handler]
           (when-let [matches (re-matches (:pattern handler) text)]

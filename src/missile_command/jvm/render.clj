@@ -3,6 +3,7 @@
   (:require [quil.core :as q]
             [missile-command.core :as core]
             [missile-command.jvm.render-end :as render-end]
+            [missile-command.jvm.render-high-scores :as render-hs]
             [missile-command.jvm.render-pause :as render-pause]
             [missile-command.jvm.render-title :as render-title]
             [missile-command.jvm.render-scenery :as scenery]
@@ -86,35 +87,48 @@
       (q/text line 12 24))))
 
 (defn draw-world!
-  [state]
-  (let [w (core/playfield-width state)
-        h (core/playfield-height state)]
-    (scenery/sky! w h)
-    (cond
-      (core/title? state)
-      (do (scenery/ground! state)
-          (render-title/overlay! state))
-      (core/the-end? state)
-      (do (scenery/ground! state)
-          (render-end/overlay! state)
-          (hud! state))
+  ([state]
+   (draw-world! state ""))
+  ([state initials-draft]
+   (let [w (core/playfield-width state)
+         h (core/playfield-height state)]
+     (scenery/sky! w h)
+     (cond
+       (core/title? state)
+       (do (scenery/ground! state)
+           (render-title/overlay! state))
 
-      :else
-      (do (enemies! state)
-          (missiles! state)
-          (targets! state)
-          (scenery/ground! state)
-          (scenery/cities! state)
-          (scenery/batteries! state)
-          (fireballs! state)
-          (hud! state)
-          (when (core/paused? state)
-            (render-pause/overlay! state))))))
+       (core/high-score-entry? state)
+       (do (scenery/ground! state)
+           (render-hs/entry-overlay! state initials-draft))
+
+       (core/high-scores-view? state)
+       (do (scenery/ground! state)
+           (render-hs/table-overlay! state))
+
+       (core/the-end? state)
+       (do (scenery/ground! state)
+           (render-end/overlay! state)
+           (hud! state))
+
+       :else
+       (do (enemies! state)
+           (missiles! state)
+           (targets! state)
+           (scenery/ground! state)
+           (scenery/cities! state)
+           (scenery/batteries! state)
+           (fireballs! state)
+           (hud! state)
+           (when (core/paused? state)
+             (render-pause/overlay! state)))))))
 
 (defn draw-state!
   ([state]
    (let [ch (core/crosshair state)]
-     (draw-state! state (:x ch) (:y ch))))
+     (draw-state! state (:x ch) (:y ch) "")))
   ([state crosshair-x crosshair-y]
-   (draw-world! state)
+   (draw-state! state crosshair-x crosshair-y ""))
+  ([state crosshair-x crosshair-y initials-draft]
+   (draw-world! state initials-draft)
    (crosshair-at! crosshair-x crosshair-y)))

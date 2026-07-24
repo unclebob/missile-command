@@ -86,11 +86,13 @@
 
   (it "accepts --qa as telemetry alias and --qa-scenario"
     (let [opts (input/parse-cli-args
-                ["--qa" "--qa-scenario" "tmp/s.edn" "--qa-speed" "10.5"]
+                ["--qa" "--qa-scenario" "tmp/s.edn" "--qa-speed" "10.5"
+                 "--scores-file" "tmp/scores.edn"]
                 800 600)]
       (should (:qa-telemetry? opts))
       (should= "tmp/s.edn" (:qa-scenario opts))
-      (should= 10.5 (:qa-speed opts))))
+      (should= 10.5 (:qa-speed opts))
+      (should= "tmp/scores.edn" (:scores-file opts))))
 
   (it "rejects non-positive qa-speed"
     (should-throw Exception
@@ -163,6 +165,16 @@
              (input/parse-qa-event-line "fireball 1,2,3"))
     (should= {:type :quit} (input/parse-qa-event-line "quit")))
 
+  (it "parses high-score events"
+    (should= {:type :open-high-scores}
+             (input/parse-qa-event-line "open-high-scores"))
+    (should= {:type :close-high-scores}
+             (input/parse-qa-event-line "close-high-scores"))
+    (should= {:type :submit-high-score :initials "BOB"}
+             (input/parse-qa-event-line "initials BOB"))
+    (should= {:type :confirm} (input/parse-qa-event-line "confirm"))
+    (should= {:type :start} (input/parse-qa-event-line "start")))
+
   (it "ignores blank lines"
     (should-be-nil (input/parse-qa-event-line "   ")))
 
@@ -223,6 +235,21 @@
           line (input/format-sim-telemetry-line state)]
       (should (str/includes? line "battery_left_ammo=0"))
       (should-not (str/includes? line "battery_left_ammo=1"))))
+
+  (it "includes high-score telemetry fields"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (core/set-high-score-capacity 3)
+                    (core/add-high-score-entry "AAA" 1000)
+                    (core/add-high-score-entry "BOB" 500)
+                    (assoc :initials-draft "AB"))
+          line (input/format-sim-telemetry-line state)]
+      (should (str/includes? line "high_score_count=2"))
+      (should (str/includes? line "high_score_capacity=3"))
+      (should (str/includes? line "hs_rank1_initials=AAA"))
+      (should (str/includes? line "hs_rank1_score=1000"))
+      (should (str/includes? line "hs_rank2_initials=BOB"))
+      (should (str/includes? line "pending_high_score=none"))
+      (should (str/includes? line "initials_draft=AB"))))
 
   (it "includes fireball geometry and last-enemy-fate when present"
     (let [base (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
@@ -314,6 +341,16 @@
           state (input/apply-scenario base {:enemies []})]
       (should-not (:wave-had-enemies? state))
       (should= 0 (count (core/enemy-missiles state)))))
+
+  (it "seeds high-score table and capacity from scenario"
+    (let [state (input/apply-scenario
+                 (core/new-game {:width 800 :height 600})
+                 {:high-score-capacity 3
+                  :high-scores [{:initials "AAA" :score 1000}
+                                {:initials "BBB" :score 900}]})]
+      (should= 3 (core/high-score-capacity state))
+      (should= 2 (count (core/high-score-table state)))
+      (should= "AAA" (:initials (first (core/high-score-table state))))))
 
   (it "applies wave, size, batteries, cities, targets, and default enemy origins"
     (let [state (input/apply-scenario
