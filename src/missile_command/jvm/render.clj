@@ -110,6 +110,7 @@
           (hud! state)
           (when (core/paused? state)
             (render-pause/overlay! state))))))
+
 (defn draw-state!
   ([state]
    (let [ch (core/crosshair state)]

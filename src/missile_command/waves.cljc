@@ -74,6 +74,12 @@
   (or (> (:enemy-count high-metrics) (:enemy-count low-metrics))
       (> (:enemy-speed high-metrics) (:enemy-speed low-metrics))))
 
+(defn schedule-metrics-for-state
+  "Wave schedule metrics using the state's difficulty options."
+  [state wave-number]
+  (schedule-metrics wave-number
+                    (options/difficulty (options/of state))))
+
 (defn sky-origin-x
   "Deterministic sky entry x for the i-th of n wave enemies across playfield width."
   [width i n]
