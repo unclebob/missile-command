@@ -31,6 +31,8 @@
     (let [state (core/new-game {:width 800 :height 600})
           crosshair (core/crosshair state)]
       (should= 0 (core/score state))
+      (should= 0 (:next-entity-id state))
+      (should= [] (core/defensive-missiles state))
       (should (<= 0 (:x crosshair)))
       (should (< (:x crosshair) 800))
       (should (<= 0 (:y crosshair)))
@@ -62,7 +64,12 @@
       (should= (core/cities before) (core/cities after))
       (should= (core/batteries before) (core/batteries after))
       (should= (core/score before) (core/score after))
-      (should= {:x 250 :y 150} (core/crosshair after)))))
+      (should= {:x 250 :y 150} (core/crosshair after))))
+
+  (it "rejects unsupported commands"
+    (let [state (core/new-game {:width 800 :height 600})]
+      (should-throw Exception #"unsupported command: :dance"
+        (core/handle state {:type :dance})))))
 
 (describe "fire battery"
   (it "launches a defensive missile toward the crosshair and spends ammo"
@@ -75,12 +82,36 @@
           missile (first missiles)]
       (should= 9 (:missiles (core/battery after :left)))
       (should= 1 (count missiles))
+      (should= 0 (:id missile))
+      (should= 1 (:next-entity-id after))
       (should= :left (:battery missile))
       (should= 400 (:x1 missile))
       (should= 200 (:y1 missile))
       (should= (:x (core/battery state :left)) (:x0 missile))
       (should= (:y (core/battery state :left)) (:y0 missile))
       (should= (:missile-speed (core/battery state :left)) (:speed missile))))
+
+  (it "assigns increasing entity ids to successive launches"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (core/handle {:type :aim :x 400 :y 200})
+                    :state)
+          after (->> [:left :center :right]
+                     (reduce (fn [s id]
+                               (:state (core/handle s {:type :fire :battery id})))
+                             state))
+          ids (mapv :id (core/defensive-missiles after))]
+      (should= [0 1 2] ids)
+      (should= 3 (:next-entity-id after))))
+
+  (it "starts entity ids from zero when next-entity-id is missing"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (dissoc :next-entity-id)
+                    (core/handle {:type :aim :x 10 :y 20})
+                    :state)
+          after (:state (core/handle state {:type :fire :battery :left}))
+          missile (first (core/defensive-missiles after))]
+      (should= 0 (:id missile))
+      (should= 1 (:next-entity-id after))))
 
   (it "does not spend ammo on other batteries"
     (let [state (-> (core/new-game {:width 800 :height 600})
@@ -204,4 +235,16 @@
       (should-not (:alive? (first (filter #(zero? (:id %)) (core/cities after)))))
       (should (:destroyed? left))
       (should= 4 (:missiles left))
-      (should (every? #(core/city-on-ground? after %) (core/cities after))))))
+      (should (every? #(core/city-on-ground? after %) (core/cities after)))))
+
+  (it "reclamps the crosshair into the new playfield"
+    (let [before (:state (core/handle (core/new-game {:width 800 :height 600})
+                                      {:type :aim :x 790 :y 590}))
+          after (core/resize before 400 300)
+          crosshair (core/crosshair after)]
+      (should= {:x 399 :y 299} crosshair)))
+
+  (it "uses a zero origin when reclamp finds no crosshair"
+    (let [before (dissoc (core/new-game {:width 800 :height 600}) :crosshair)
+          after (core/resize before 800 600)]
+      (should= {:x 0 :y 0} (core/crosshair after)))))
