@@ -126,4 +126,86 @@
                                       (str "wave " wave " enemy speed "
                                            (:enemy-speed metrics) " expected " expected-speed)))
           world)}
+
+   {:pattern #"^a wave enemy missile targeting battery <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ battery-param] example]
+          (assoc world :state
+                 (core/spawn-wave-enemy-targeting-battery
+                  (:state world)
+                  (support/example-battery example battery-param))))}
+
+   {:pattern #"^at least one enemy missile targets a city$"
+    :fn (fn [world _ _]
+          (let [enemies (core/enemy-missiles (:state world))]
+            (support/assert-condition
+             (some #(= :city (:target-kind %)) enemies)
+             "no enemy targets a city"))
+          world)}
+
+   {:pattern #"^at least one enemy missile targets a battery$"
+    :fn (fn [world _ _]
+          (let [enemies (core/enemy-missiles (:state world))]
+            (support/assert-condition
+             (some #(= :battery (:target-kind %)) enemies)
+             "no enemy targets a battery"))
+          world)}
+
+   {:pattern #"^enemy missile targets include every living city$"
+    :fn (fn [world _ _]
+          (let [city-ids (set (map :id (core/living-cities (:state world))))
+                targeted (->> (core/enemy-missiles (:state world))
+                              (filter #(= :city (:target-kind %)))
+                              (map :target-id)
+                              set)]
+            (support/assert-condition (= city-ids targeted)
+                                      (str "city targets " targeted
+                                           " expected " city-ids)))
+          world)}
+
+   {:pattern #"^enemy missile targets include every non-destroyed battery$"
+    :fn (fn [world _ _]
+          (let [bat-ids (->> (core/batteries (:state world))
+                             (remove :destroyed?)
+                             (map :id)
+                             set)
+                targeted (->> (core/enemy-missiles (:state world))
+                              (filter #(= :battery (:target-kind %)))
+                              (map :target-id)
+                              set)]
+            (support/assert-condition (= bat-ids targeted)
+                                      (str "battery targets " targeted
+                                           " expected " bat-ids)))
+          world)}
+
+   {:pattern #"^no enemy missile targets battery <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ battery-param] example]
+          (let [battery-id (support/example-battery example battery-param)
+                hit (some #(and (= :battery (:target-kind %))
+                                (= battery-id (:target-id %)))
+                          (core/enemy-missiles (:state world)))]
+            (support/assert-condition (not hit)
+                                      (str "enemy targets destroyed battery "
+                                           battery-id)))
+          world)}
+
+   {:pattern #"^every enemy missile targets a living city or a non-destroyed battery$"
+    :fn (fn [world _ _]
+          (let [s (:state world)
+                living (set (map :id (core/living-cities s)))
+                bats (->> (core/batteries s)
+                          (remove :destroyed?)
+                          (map :id)
+                          set)]
+            (doseq [e (core/enemy-missiles s)]
+              (case (:target-kind e)
+                :city
+                (support/assert-condition (contains? living (:target-id e))
+                                          (str "enemy targets non-living city "
+                                               (:target-id e)))
+                :battery
+                (support/assert-condition (contains? bats (:target-id e))
+                                          (str "enemy targets destroyed battery "
+                                               (:target-id e)))
+                (support/fail! (str "unknown target kind " (:target-kind e))))))
+          world)}
 ])
