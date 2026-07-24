@@ -29,8 +29,8 @@ Command-line flags that are published as part of the documented developer interf
 
 Executable QA must:
 
-- Start the app using the documented launch command (user-facing CLI or equivalent UI affordance).
-- Interact with the running app at the user interface (pointer/mouse aim on the visible playfield).
+- Start the app with documented launch (`bb play`, optionally `bb play --qa --qa-events …` for scripted aim).
+- Interact at the user interface (pointer/mouse or `--qa-events` aim lines).
 - Not drive look-and-feel judgment solely through core APIs or acceptance step handlers.
 - **Stop and request explicit approval from the human user** for look and feel before marking this suite passed.
 
