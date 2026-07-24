@@ -1,0 +1,11 @@
+.superpowers/
+.cpcache/
+.nrepl-port
+.shadow-cljs/
+node_modules/
+target/
+.DS_Store
+*.class
+.calva/
+.lsp/
+.clj-kondo/
