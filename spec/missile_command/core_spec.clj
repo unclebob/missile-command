@@ -194,6 +194,67 @@
           after (:state (core/handle state {:type :click :x 500 :y 100}))]
       (should= :left (:battery (first (core/defensive-missiles after)))))))
 
+(describe "tick defensive missiles and fireballs"
+  (it "advances defensive missiles toward the aim point"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (core/handle {:type :aim :x 400 :y 100})
+                    :state
+                    (#(:state (core/handle % {:type :fire :battery :center})))
+                    (#(:state (core/tick % 0.05))))
+          m (first (core/defensive-missiles state))]
+      (should (seq (core/defensive-missiles state)))
+      (should (< 0 (:progress m)))
+      (should= 0.05 (core/last-applied-dt state))))
+
+  (it "clamps large time steps so a missile does not instantly arrive"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (core/handle {:type :aim :x 400 :y 100})
+                    :state
+                    (#(:state (core/handle % {:type :fire :battery :center})))
+                    (#(:state (core/tick % 5.0))))
+          m (first (core/defensive-missiles state))]
+      (should= 0.05 (core/last-applied-dt state))
+      (should (seq (core/defensive-missiles state)))
+      (should (< (:progress m) 1.0))))
+
+  (it "turns arrived missiles into fireballs at the aim point"
+    (let [state (loop [s (-> (core/new-game {:width 800 :height 600})
+                             (core/handle {:type :aim :x 400 :y 100})
+                             :state
+                             (#(:state (core/handle % {:type :fire :battery :center}))))
+                       n 0]
+                  (if (or (empty? (core/defensive-missiles s)) (> n 1000))
+                    s
+                    (recur (:state (core/tick s 0.05)) (inc n))))
+          fb (first (core/fireballs state))]
+      (should= 0 (count (core/defensive-missiles state)))
+      (should= 1 (count (core/fireballs state)))
+      (should= 400 (:x fb))
+      (should= 100 (:y fb))))
+
+  (it "destroys targets inside a fireball and leaves distant targets alone"
+    (let [base (-> (core/new-game {:width 800 :height 600})
+                   (core/handle {:type :aim :x 400 :y 200})
+                   :state
+                   (#(:state (core/handle % {:type :fire :battery :center})))
+                   (core/add-destroyable-target 400 200)
+                   (core/add-destroyable-target 50 50))
+          arrived (loop [s base n 0]
+                    (if (or (empty? (core/defensive-missiles s)) (> n 1000))
+                      s
+                      (recur (:state (core/tick s 0.05)) (inc n))))
+          peaked (loop [s arrived n 0]
+                   (let [r (if (seq (core/fireballs s))
+                             (apply max (map :radius (core/fireballs s)))
+                             0.0)]
+                     (if (or (>= r (core/max-fireball-radius s)) (> n 1000))
+                       s
+                       (recur (:state (core/tick s 0.05)) (inc n)))))
+          targets (core/destroyable-targets peaked)
+          by-pos (group-by (juxt :x :y) targets)]
+      (should (:destroyed? (first (by-pos [400 200]))))
+      (should-not (:destroyed? (first (by-pos [50 50])))))))
+
 (describe "resize"
   (it "updates playfield size and reflows cities and batteries"
     (let [state (-> (core/new-game {:width 800 :height 600})

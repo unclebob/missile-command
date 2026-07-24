@@ -1,6 +1,6 @@
 # US-03 — Aim the crosshair
 
-**Status:** in-implementation  
+**Status:** done  
 **Depends on:** US-02  
 **Design:** §5.2, §5.3
 
