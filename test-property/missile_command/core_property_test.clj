@@ -675,6 +675,51 @@
            (empty? (core/mirv-children after))
            (core/living-city? after city-id)))))
 
+(defspec centered-fireball-destroys-smart-bomb-for-higher-points
+  20
+  (for-all [city-id city-index-gen]
+    (let [before (-> (core/new-game {:width 800 :height 600})
+                     (core/spawn-smart-bomb-targeting-city city-id)
+                     (core/add-static-fireball 400 250 40.0)
+                     (core/route-smart-bomb-centered-in-fireball 400 250 15))
+          score0 (core/score before)
+          after (advance-enemies-until-gone before)
+          expected (+ (scoring/enemy-kill-points :smart 1)
+                      (scoring/wave-end-points 30 6 1))]
+      (and (= :fireball (core/last-enemy-fate after))
+           (empty? (core/smart-bombs after))
+           (= (+ score0 expected) (core/score after))
+           (core/living-city? after city-id)))))
+
+(defspec smart-bomb-evades-edge-band-once
+  15
+  (for-all [city-id (gen/elements [1 2])]
+    (let [before (-> (core/new-game {:width 800 :height 600})
+                     (core/spawn-smart-bomb-targeting-city city-id)
+                     (core/add-static-fireball 400 250 40.0)
+                     (core/route-smart-bomb-edge-band-in-fireball 400 250 25 40))
+          after (loop [s before n 0]
+                  (cond
+                    (> n 500) s
+                    (let [b (first (core/smart-bombs s))]
+                      (and b (:smart-evaded? b))) s
+                    (empty? (core/smart-bombs s)) s
+                    :else (recur (:state (core/tick s 0.05)) (inc n))))
+          bomb (first (core/smart-bombs after))]
+      (and bomb
+           (:smart-evaded? bomb)
+           (= 1 (count (core/smart-bombs after)))))))
+
+(defspec unintercepted-smart-bomb-destroys-city
+  15
+  (for-all [city-id city-index-gen]
+    (let [before (core/spawn-smart-bomb-targeting-city
+                  (core/new-game {:width 800 :height 600}) city-id)
+          after (advance-enemies-until-gone before)]
+      (and (not (core/living-city? after city-id))
+           (empty? (core/smart-bombs after))
+           (= :impact (core/last-enemy-fate after))))))
+
 (defspec unintercepted-mirv-children-destroy-cities
   15
   (for-all [city-id city-index-gen
@@ -746,8 +791,10 @@
   (is (fn? core/spawn-enemy-targeting-city))
   (is (fn? core/spawn-enemy-targeting-city-from))
   (is (fn? core/spawn-mirv-targeting-city))
+  (is (fn? core/spawn-smart-bomb-targeting-city))
   (is (fn? core/multiplier))
   (is (fn? core/wave-mirv-count))
+  (is (fn? core/wave-smart-bomb-count))
   (is (fn? core/rearm-surviving-batteries))
   (is (fn? core/on-ground?))
   (is (fn? input/click-zone))

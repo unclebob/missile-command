@@ -3,6 +3,7 @@
   Multiplier schedule lives in waves.")
 
 (def points-enemy-missile 25)
+(def points-smart-bomb 125)
 (def points-unused-missile 5)
 (def points-surviving-city 100)
 (def default-bonus-city-threshold 10000)
@@ -12,10 +13,20 @@
   [base-points multiplier]
   (* (long base-points) (long multiplier)))
 
+(defn base-kill-points
+  "Base score for destroying an enemy of the given kind (:smart or ballistic)."
+  [enemy-kind]
+  (if (= enemy-kind :smart)
+    points-smart-bomb
+    points-enemy-missile))
+
 (defn enemy-kill-points
-  "Points for destroying one enemy missile at the given multiplier."
-  [multiplier]
-  (with-multiplier points-enemy-missile multiplier))
+  "Points for destroying one enemy at the given multiplier.
+  Arity-1 defaults to a normal ballistic missile; arity-2 takes enemy kind."
+  ([multiplier]
+   (enemy-kill-points :ballistic multiplier))
+  ([enemy-kind multiplier]
+   (with-multiplier (base-kill-points enemy-kind) multiplier)))
 
 (defn wave-end-points
   "Unused ammo and surviving cities scaled by the completing wave's multiplier."

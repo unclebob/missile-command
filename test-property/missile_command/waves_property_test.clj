@@ -22,7 +22,17 @@
            (= (waves/enemy-count w) (:enemy-count m))
            (= (waves/enemy-speed w) (:enemy-speed m))
            (= (waves/multiplier w) (:multiplier m))
-           (= (waves/mirv-count w) (:mirv-count m))))))
+           (= (waves/mirv-count w) (:mirv-count m))
+           (= (waves/smart-bomb-count w) (:smart-bomb-count m))))))
+
+(defspec smart-bomb-count-zero-early-then-nondecreasing
+  40
+  (for-all [w (gen/large-integer* {:min 1 :max 25})]
+    (let [m (waves/smart-bomb-count w)]
+      (and (>= m 0)
+           (= m (max 0 (quot (- w 5) 2)))
+           (if (<= w 6) (zero? m) (pos? m))
+           (<= m (waves/smart-bomb-count (inc w)))))))
 
 (defspec mirv-count-zero-early-then-nondecreasing
   40

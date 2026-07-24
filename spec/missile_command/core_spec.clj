@@ -503,6 +503,60 @@
       (should= 25 (core/score after-kill))
       (should= 25 (core/score after-aim)))))
 
+(describe "smart bombs"
+  (it "advances toward its city target"
+    (let [state (core/spawn-smart-bomb-targeting-city
+                 (core/new-game {:width 800 :height 600}) 0)
+          after (:state (core/tick state 0.1))
+          b (first (core/smart-bombs after))]
+      (should= 1 (count (core/smart-bombs after)))
+      (should (pos? (double (:progress b))))
+      (should= core/enemy-kind-smart (:enemy-kind b))))
+
+  (it "is destroyed by a well-centered fireball for smart-bomb points"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (core/spawn-smart-bomb-targeting-city 1)
+                    (core/add-static-fireball 400 250 40)
+                    (core/route-smart-bomb-centered-in-fireball 400 250 15))
+          after (loop [s state n 0]
+                  (if (or (= :fireball (core/last-enemy-fate s))
+                          (empty? (core/smart-bombs s))
+                          (> n 5000))
+                    s
+                    (recur (:state (core/tick s 0.01)) (inc n))))]
+      (should= :fireball (core/last-enemy-fate after))
+      (should (empty? (core/enemy-missiles after)))
+      ;; Last threat: smart-bomb kill points plus wave-end bonuses.
+      (should= (+ 125 (* 30 5) (* 6 100)) (core/score after))
+      (should= 6 (count (core/living-cities after)))))
+
+  (it "evades an edge-of-blast fireball once and stays a threat"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (core/spawn-smart-bomb-targeting-city 1)
+                    (core/add-static-fireball 400 250 40)
+                    (core/route-smart-bomb-edge-band-in-fireball 400 250 25 40))
+          after (loop [s state n 0]
+                  (let [b (first (core/smart-bombs s))]
+                    (if (or (and b (:smart-evaded? b))
+                            (> n 5000))
+                      s
+                      (recur (:state (core/tick s 0.01)) (inc n)))))
+          b (first (core/smart-bombs after))]
+      (should b)
+      (should (:smart-evaded? b))
+      (should-not= :fireball (core/last-enemy-fate after))
+      (should= 6 (count (core/living-cities after)))))
+
+  (it "destroys its city when unintercepted"
+    (let [state (core/spawn-smart-bomb-targeting-city
+                 (core/new-game {:width 800 :height 600}) 0)
+          after (loop [s state n 0]
+                  (if (or (empty? (core/enemy-missiles s)) (> n 10000))
+                    s
+                    (recur (:state (core/tick s 0.05)) (inc n))))]
+      (should-not (core/living-city? after 0))
+      (should= 5 (count (core/living-cities after))))))
+
 (describe "MIRV warheads"
   (it "flies as a single parent before the split progress"
     (let [state (core/spawn-mirv-targeting-city

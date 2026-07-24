@@ -10,8 +10,10 @@
 (defspec enemy-kill-points-scale-linearly
   40
   (for-all [mult multiplier-gen]
-    (= (* scoring/points-enemy-missile mult)
-       (scoring/enemy-kill-points mult))))
+    (and (= (* scoring/points-enemy-missile mult)
+            (scoring/enemy-kill-points mult))
+         (= (* scoring/points-smart-bomb mult)
+            (scoring/enemy-kill-points :smart mult)))))
 
 (defspec wave-end-points-are-non-negative-and-scale
   50
