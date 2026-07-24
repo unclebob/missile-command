@@ -47,9 +47,11 @@
           :crosshair (center-crosshair width height)
           :defensive-missiles []
           :fireballs []
+          :enemy-missiles []
           :destroyable-targets []
           :sim-time 0.0
           :last-applied-dt 0.0
+          :last-enemy-fate nil
           :next-entity-id initial-entity-id}
          (world/apply-layout width height)))
 
@@ -111,9 +113,25 @@
   [state]
   (or (:fireballs state) []))
 
+(defn enemy-missiles
+  [state]
+  (or (:enemy-missiles state) []))
+
 (defn destroyable-targets
   [state]
   (or (:destroyable-targets state) []))
+
+(defn last-enemy-fate
+  [state]
+  (:last-enemy-fate state))
+
+(defn city
+  [state city-id]
+  (first (filter #(= city-id (:id %)) (cities state))))
+
+(defn living-city?
+  [state city-id]
+  (boolean (:alive? (city state city-id))))
 
 (defn sim-time
   [state]
@@ -143,6 +161,91 @@
   (let [[id state] (next-entity-id state)
         target {:id id :x x :y y :destroyed? false}]
     (update state :destroyable-targets (fnil conj []) target)))
+
+(defn- update-city
+  [state city-id f]
+  (update state :cities
+          (fn [cs]
+            (mapv (fn [c]
+                    (if (= city-id (:id c))
+                      (f c)
+                      c))
+                  cs))))
+
+(defn destroy-city
+  [state city-id]
+  (update-city state city-id #(assoc % :alive? false)))
+
+(defn spawn-enemy-at
+  "Spawn an enemy missile from origin toward a target point."
+  [state origin target target-kind target-id]
+  (let [[mid state] (next-entity-id state)
+        missile (missiles/make-enemy mid origin target
+                                     missiles/default-enemy-speed
+                                     target-kind target-id)]
+    (update state :enemy-missiles (fnil conj []) missile)))
+
+(defn spawn-enemy-targeting-city
+  "Spawn an enemy missile from the top of the sky toward a living city."
+  [state city-id]
+  (let [c (city state city-id)]
+    (when-not c
+      (throw (ex-info (str "unknown city " city-id) {:city-id city-id})))
+    (spawn-enemy-at state
+                    {:x (:x c) :y 0}
+                    {:x (:x c) :y (:y c)}
+                    :city city-id)))
+
+(defn spawn-enemy-targeting-battery
+  "Spawn an enemy missile from the top of the sky toward a battery."
+  [state battery-id]
+  (let [b (battery state battery-id)]
+    (when-not b
+      (throw (ex-info (str "unknown battery " battery-id) {:battery-id battery-id})))
+    (spawn-enemy-at state
+                    {:x (:x b) :y 0}
+                    {:x (:x b) :y (:y b)}
+                    :battery battery-id)))
+
+(defn spawn-enemies-targeting-distinct-cities
+  "Spawn n enemy missiles each aimed at a different living city."
+  [state n]
+  (let [ids (mapv :id (take n (living-cities state)))]
+    (reduce spawn-enemy-targeting-city state ids)))
+
+(defn add-static-fireball
+  "Test/setup helper: place a fixed-radius fireball."
+  [state x y radius]
+  (let [[fid state] (next-entity-id state)
+        fb (missiles/make-static-fireball fid x y radius)]
+    (update state :fireballs (fnil conj []) fb)))
+
+(defn route-enemy-through-point
+  "Retarget the first enemy so its path starts at the given point (e.g. fireball)."
+  [state x y]
+  (update state :enemy-missiles
+          (fn [ms]
+            (if (seq ms)
+              (let [m (first ms)
+                    retargeted (missiles/make-enemy (:id m)
+                                                    {:x x :y y}
+                                                    {:x (:x1 m) :y (:y1 m)}
+                                                    (:speed m)
+                                                    (:target-kind m)
+                                                    (:target-id m))]
+                (into [retargeted] (rest ms)))
+              ms))))
+
+(defn- impact-target
+  [state enemy]
+  (case (:target-kind enemy)
+    :city (destroy-city state (:target-id enemy))
+    :battery (destroy-battery state (:target-id enemy))
+    state))
+
+(defn- enemy-hit-by-fireball?
+  [enemy fireballs]
+  (some #(missiles/point-in-fireball? % (:x enemy) (:y enemy)) fireballs))
 
 (defn- fire-battery
   [state battery-id]
@@ -239,6 +342,46 @@
                         target))
                     (or targets []))))))
 
+(defn- destroy-enemy-by-fireball
+  [state]
+  (assoc state :last-enemy-fate :fireball))
+
+(defn- resolve-enemy-impact
+  [state enemy]
+  (-> state
+      (impact-target enemy)
+      (assoc :last-enemy-fate :impact)))
+
+(defn- keep-flying-enemy
+  [state enemy]
+  (update state :enemy-missiles (fnil conj []) enemy))
+
+(defn- tick-one-enemy
+  [state enemy dt fireballs]
+  (cond
+    (enemy-hit-by-fireball? enemy fireballs)
+    (destroy-enemy-by-fireball state)
+
+    :else
+    (let [result (missiles/advance-enemy enemy dt)]
+      (cond
+        (= missiles/arrived result)
+        (resolve-enemy-impact state enemy)
+
+        (enemy-hit-by-fireball? result fireballs)
+        (destroy-enemy-by-fireball state)
+
+        :else
+        (keep-flying-enemy state result)))))
+
+(defn- tick-enemy-missiles
+  [state dt]
+  (let [fbs (fireballs state)]
+    (reduce (fn [s enemy]
+              (tick-one-enemy s enemy dt fbs))
+            (assoc state :enemy-missiles [])
+            (enemy-missiles state))))
+
 (defn tick
   "Advance simulation by dt seconds (clamped). Returns {:state s :events [...]}."
   [state dt]
@@ -248,6 +391,7 @@
                   (update :sim-time (fnil + 0.0) applied)
                   (tick-defensive-missiles applied)
                   (tick-fireballs applied)
-                  (destroy-targets-in-fireballs))]
+                  (destroy-targets-in-fireballs)
+                  (tick-enemy-missiles applied))]
     {:state state :events []}))
 

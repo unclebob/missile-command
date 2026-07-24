@@ -84,24 +84,46 @@ These flags are **user-facing CLI affordances** on the normal launch command
 
 #### `--qa-telemetry`
 
-Prints a line after each fire attempt (click or key) on stdout:
+Prints lines after fire attempts and simulation updates (stdout):
 
 ```text
 qa-fire battery=left missiles_in_flight=1 origin_x=40 origin_y=540 target_x=200 target_y=120
+qa-fireball phase=start t=1.20 center_x=200 center_y=120 radius=1
+qa-fireball phase=max t=1.45 center_x=200 center_y=120 radius=40
+qa-fireball phase=shrink t=1.55 center_x=200 center_y=120 radius=28
+qa-fireball phase=end t=1.80
 ```
 
 | Field | Meaning |
 |-------|---------|
-| `battery=` | `left`, `center`, `right`, or `none` |
+| `battery=` | `left`, `center`, `right`, or `none` (on fire attempts) |
 | `missiles_in_flight=` | Defensive missiles currently in flight |
 | `origin_x=` / `origin_y=` | Launch point of each in-flight missile |
 | `target_x=` / `target_y=` | Aim/detonation point of each in-flight missile |
+| `fireballs=` | Count of active fireballs (when reported) |
+| **Each fireball** | **Required on every live-fireball line:** `center_x`, `center_y`, `radius` |
+| `enemy_missiles=` | Enemy ballistic missiles in flight |
+| Per enemy missile | origin, current position or progress, target (city index or battery id) |
+| Cities / batteries | living vs destroyed state as needed for QA |
+| Destroyable targets (if any) | position and `destroyed=true\|false` |
 
-When several missiles are in flight, origin/target pairs repeat on the same line.
+When several missiles are in flight, origin/target pairs repeat on the same line
+(or one line per missile). Multiple fireballs each report their own center and radius.
+
+##### Fireball phase timing
+
+| Phase | Meaning |
+|-------|---------|
+| `start` | Fireball created; expand begins (`t`, `center_x`, `center_y`, `radius`) |
+| `max` | Peak radius (`t`, center, radius) |
+| `shrink` | Contracting samples after max (`t`, center, radius) |
+| `end` | Fireball gone (`t`; center/radius optional) |
+
+Ordering: `start.t` ≤ `max.t` ≤ `shrink.t` ≤ `end.t`. Radius at max > start;
+shrink radius < max. Center stays at the detonation point while live.
 
 ```sh
 bb play --qa-telemetry
-# or: bb play -- --qa-telemetry
 ```
 
 #### `--destroy-batteries <list>`
@@ -133,6 +155,32 @@ quit
 ```sh
 bb play --qa-telemetry --qa-events tmp/qa-events.txt
 ```
+
+#### `--qa-target <x>,<y>`
+
+Places a single destroyable test target at playfield coordinates `(x, y)` for
+fireball hit/miss checks (see `features/defensive-missiles-fireballs.feature`
+and `qa/procedures/defensive-missiles-fireballs.qa.md`).
+
+```sh
+bb play --qa-telemetry --qa-target 400,200
+```
+
+#### `--qa-enemy <spec>`
+
+Spawns a scripted enemy ballistic missile for tests (wave system may still be
+minimal). `<spec>` forms:
+
+- `city:<index>` — target living city index `0`–`5`
+- `battery:left` | `battery:center` | `battery:right` — target that battery
+
+```sh
+bb play --qa-telemetry --qa-enemy city:0
+bb play --qa-telemetry --qa-enemy battery:left
+```
+
+Equivalent lines may also appear in `--qa-events` files, e.g. `enemy city 0` or
+`enemy battery left` (exact spelling documented here if it differs).
 
 ### Hardening (mutation / CRAP / DRY)
 
