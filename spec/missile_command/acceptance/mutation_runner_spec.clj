@@ -72,3 +72,20 @@
       (should-not= "" (:error body))
       (should (<= 0 (:duration body)))
       (should (< (:duration body) one-second-ns)))))
+
+(describe "process-jobs"
+  (it "prints one JSON response per input line and stops at EOF"
+    (let [path "tmp/mutation-runner-jobs.json"]
+      (io/make-parents path)
+      (spit path (json/write-str sample-ir))
+      (let [job (json/write-str {:id "j1" :feature_json path})
+            reader (java.io.BufferedReader. (java.io.StringReader. (str job "\n")))
+            out (with-out-str (@#'runner/process-jobs reader))
+            body (json/read-str (str/trim out) :key-fn keyword)]
+        (should= "j1" (:id body))
+        (should= "test_success" (:outcome body)))))
+
+  (it "returns immediately when the reader has no lines"
+    (let [reader (java.io.BufferedReader. (java.io.StringReader. ""))
+          out (with-out-str (@#'runner/process-jobs reader))]
+      (should= "" out))))

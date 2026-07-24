@@ -33,15 +33,19 @@
       (catch Exception e
         (response id started "infrastructure_error" "" (.getMessage e))))))
 
+(defn- process-jobs
+  "Read NDJSON jobs from reader and print one response line per job."
+  [reader]
+  (loop []
+    (when-let [line (.readLine reader)]
+      (let [job (json/read-str line :key-fn keyword)]
+        (println (run-job job))
+        (flush)
+        (recur)))))
+
 (defn -main
   [& _]
-  (let [reader (BufferedReader. (InputStreamReader. System/in))]
-    (loop []
-      (when-let [line (.readLine reader)]
-        (let [job (json/read-str line :key-fn keyword)]
-          (println (run-job job))
-          (flush)
-          (recur))))))
+  (process-jobs (BufferedReader. (InputStreamReader. System/in))))
 
 ;; clj-mutate-manifest-begin
 ;; {:version 1, :tested-at "2026-07-24T09:45:22.094006-05:00", :module-hash "1867235607", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 5, :hash "-1190649835"} {:id "defn-/response", :kind "defn-", :line 7, :end-line 13, :hash "-19529655"} {:id "defn-/bounded-output", :kind "defn-", :line 15, :end-line 21, :hash "-1820890353"} {:id "defn-/run-job", :kind "defn-", :line 23, :end-line 34, :hash "-211201517"} {:id "defn/-main", :kind "defn", :line 36, :end-line 44, :hash "-247474085"}]}
