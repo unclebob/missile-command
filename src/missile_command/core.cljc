@@ -8,6 +8,7 @@
             [missile-command.missiles :as missiles]
             [missile-command.scoring :as scoring]
             [missile-command.screens :as screens]
+            [missile-command.high-scores :as high-scores]
             [missile-command.waves :as waves]
             [missile-command.world :as world]))
 (def initial-score 0)
@@ -79,6 +80,10 @@
           :end-fireball nil
           :final-score nil
           :end-message-reveal 0.0
+          :high-scores []
+          :high-score-capacity high-scores/default-capacity
+          :pending-high-score nil
+          :submitted-high-score-initials nil
           :crosshair (center-crosshair width height)
           :defensive-missiles []
           :fireballs []
@@ -176,26 +181,24 @@
   [state]
   (boolean (:wave-complete? state)))
 
-(defn screen
-  [state]
-  (screens/of state))
+(def screen screens/of)
+(def title? screens/title?)
+(def playing? screens/playing?)
+(def paused? screens/paused?)
+(def the-end? screens/the-end?)
+(def title-game-name-of screens/title-game-name-of)
+(def title-shows-start-affordance? screens/title-shows-start-affordance?)
 
-(defn title?
-  [state]
-  (screens/title? state))
-
-(defn playing?
-  [state]
-  (screens/playing? state))
-
-(defn paused?
-  [state]
-  (screens/paused? state))
-
-(defn the-end?
-  "True when the run has entered THE END."
-  [state]
-  (screens/the-end? state))
+(def high-score-table high-scores/table)
+(def high-score-capacity high-scores/capacity)
+(def pending-high-score high-scores/pending)
+(def submitted-high-score-initials high-scores/submitted-initials)
+(def high-score-entry? high-scores/entry-screen?)
+(def high-scores-view? high-scores/view-screen?)
+(def set-high-score-capacity high-scores/set-capacity)
+(def add-high-score-entry high-scores/add-entry)
+(def open-high-scores high-scores/open-view)
+(def close-high-scores high-scores/close-view)
 
 (defn pause-game
   "Enter paused from playing only; ignore on title/end/already paused."
@@ -211,39 +214,42 @@
     (assoc state :screen screen-playing)
     state))
 
-(defn title-game-name-of
-  [state]
-  (screens/title-game-name-of state))
-
-(defn title-shows-start-affordance?
-  [state]
-  (screens/title-shows-start-affordance? state))
+(defn- blank-shell
+  "New game shell at the same playfield size as source."
+  [source]
+  (new-game {:width (playfield-width source)
+             :height (playfield-height source)}))
 
 (defn start-game
   "Leave title (or any shell) and begin a fresh playing run at current size."
   [state]
-  (let [w (playfield-width state)
-        h (playfield-height state)]
-    (-> (new-game {:width w :height h})
-        (assoc :screen screen-playing))))
-
-(defn confirm-end-screen
-  "Confirm THE END when no high-score entry is required; return to title."
-  [state]
-  (if (the-end? state)
-    (let [w (playfield-width state)
-          h (playfield-height state)]
-      (new-game {:width w :height h}))
-    state))
-
-(defn end-message
-  [state]
-  (:end-message state))
+  (high-scores/start-playing (blank-shell state) state))
 
 (defn final-score
   "Score frozen at THE END, else current score."
   [state]
   (long (or (:final-score state) (score state))))
+
+(defn confirm-end-screen
+  "After THE END: open initials entry if score qualifies, else return to title."
+  [state]
+  (high-scores/confirm-end state
+                           (the-end? state)
+                           (final-score state)
+                           (blank-shell state)))
+
+(defn submit-high-score-initials
+  "Insert pending score with initials, then return to title."
+  [state initials]
+  (high-scores/submit-entry state
+                            (high-score-entry? state)
+                            (long (or (pending-high-score state) (final-score state)))
+                            initials
+                            (blank-shell state)))
+
+(defn end-message
+  [state]
+  (:end-message state))
 
 (defn end-fireball
   [state]
@@ -704,7 +710,11 @@
    :start (fn [state _] (no-events (start-game state)))
    :confirm (fn [state _] (no-events (confirm-end-screen state)))
    :pause (fn [state _] (no-events (pause-game state)))
-   :resume (fn [state _] (no-events (resume-game state)))})
+   :resume (fn [state _] (no-events (resume-game state)))
+   :open-high-scores (fn [state _] (no-events (open-high-scores state)))
+   :close-high-scores (fn [state _] (no-events (close-high-scores state)))
+   :submit-high-score
+   (fn [state cmd] (no-events (submit-high-score-initials state (:initials cmd))))})
 
 (defn handle
   "Apply a player command. Returns {:state s :events [...]}."

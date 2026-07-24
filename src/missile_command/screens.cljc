@@ -4,6 +4,8 @@
 (def playing :playing)
 (def paused :paused)
 (def the-end :the-end)
+(def high-score-entry :high-score-entry)
+(def high-scores :high-scores)
 
 (def title-game-name "Missile Command")
 (def title-start-affordance "Press Enter or click to start")
@@ -27,6 +29,14 @@
 (defn the-end?
   [state]
   (= the-end (of state)))
+
+(defn high-score-entry?
+  [state]
+  (= high-score-entry (of state)))
+
+(defn high-scores-view?
+  [state]
+  (= high-scores (of state)))
 
 (defn title-game-name-of
   [state]

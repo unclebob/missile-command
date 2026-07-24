@@ -10,8 +10,10 @@
             [missile-command.acceptance.title-steps :as title-steps]
             [missile-command.acceptance.pause-steps :as pause-steps]
             [missile-command.acceptance.hud-steps :as hud-steps]
+            [missile-command.acceptance.high-score-steps :as high-score-steps]
             [missile-command.core :as core]
             [missile-command.waves :as waves]))
+
 (defn- assert-playfield-dimension
   [world example param-name label reader]
   (let [expected (support/example-int example param-name label)
@@ -1045,7 +1047,8 @@
         defensive-steps/handlers
         title-steps/handlers
         pause-steps/handlers
-        hud-steps/handlers)))
+        hud-steps/handlers
+        high-score-steps/handlers)))
 
 (defn- match-handler
   [text]
