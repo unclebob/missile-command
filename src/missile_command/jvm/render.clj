@@ -35,17 +35,38 @@
       (when (> bh 14)
         (q/rect left (+ top 8) (- right left) 2)))))
 
+(defn- city-rubble!
+  "Destroyed city: plaza + broken building stubs (rubble), not empty ground."
+  [x y]
+  (q/no-stroke)
+  ;; scorched pad
+  (q/fill 55 45 40)
+  (q/rect (- x 18) (- y 4) 36 6)
+  ;; rubble piles
+  (q/fill 90 80 70)
+  (q/triangle (- x 14) y (- x 8) (- y 10) (- x 2) y)
+  (q/triangle (- x 4) y (+ x 2) (- y 14) (+ x 8) y)
+  (q/triangle (+ x 4) y (+ x 12) (- y 8) (+ x 16) y)
+  ;; charred stubs
+  (q/fill 70 60 55)
+  (q/rect (- x 12) (- y 8) 5 6)
+  (q/rect (+ x 4) (- y 6) 4 4)
+  (q/fill 40 30 28)
+  (q/ellipse x (- y 2) 10 4))
+
 (defn- cities!
   [state]
   (doseq [city (core/cities state)]
-    (when (:alive? city)
-      (let [x (:x city)
-            y (:y city)]
-        (city-building! (- x 10) y 8 22)
-        (city-building! x y 10 30)
-        (city-building! (+ x 11) y 7 18)
-        (q/fill 90 100 110)
-        (q/rect (- x 16) (- y 3) 32 4)))))
+    (let [x (:x city)
+          y (:y city)]
+      (if (:alive? city)
+        (do
+          (city-building! (- x 10) y 8 22)
+          (city-building! x y 10 30)
+          (city-building! (+ x 11) y 7 18)
+          (q/fill 90 100 110)
+          (q/rect (- x 16) (- y 3) 32 4))
+        (city-rubble! x y)))))
 
 (defn- launcher!
   [x y destroyed?]
