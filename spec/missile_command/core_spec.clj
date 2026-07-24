@@ -503,6 +503,51 @@
       (should= 25 (core/score after-kill))
       (should= 25 (core/score after-aim)))))
 
+(describe "bonus cities"
+  (it "starts with empty reserve and default threshold"
+    (let [state (core/new-game {:width 800 :height 600})]
+      (should= 0 (core/bonus-cities state))
+      (should= 10000 (core/bonus-city-threshold state))
+      (should= 0 (core/bonus-city-earned-events state))
+      (should= 0 (:bonus-cities (core/hud state)))))
+
+  (it "awards reserve when score crosses the threshold and keeps six living cities"
+    (let [under (core/set-score (core/new-game {:width 800 :height 600}) 9999)
+          at (core/set-score (core/new-game {:width 800 :height 600}) 10000)
+          multi (core/set-score (core/new-game {:width 800 :height 600}) 30000)]
+      (should= 0 (core/bonus-cities under))
+      (should= 0 (core/bonus-city-earned-events under))
+      (should= 1 (core/bonus-cities at))
+      (should= 1 (core/bonus-city-earned-events at))
+      (should= 6 (count (core/living-cities at)))
+      (should= 3 (core/bonus-cities multi))
+      (should= 3 (core/bonus-city-earned-events multi))))
+
+  (it "restores the lowest destroyed city when a bonus is earned"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (core/destroy-city 0)
+                    (core/set-score 10000))]
+      (should (core/living-city? state 0))
+      (should= 6 (count (core/living-cities state)))
+      (should= 0 (core/bonus-cities state))))
+
+  (it "never places more than six living cities"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (core/destroy-city 0)
+                    (core/destroy-city 1)
+                    (core/set-score 30000))]
+      (should= 6 (count (core/living-cities state)))
+      (should= 1 (core/bonus-cities state))))
+
+  (it "applies remaining reserve after wave resolution"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (core/destroy-city 0)
+                    (core/destroy-city 1)
+                    (core/set-bonus-city-reserve 3)
+                    (core/apply-bonus-cities-from-reserve))]
+      (should= 6 (count (core/living-cities state)))
+      (should= 1 (core/bonus-cities state)))))
+
 (describe "tick defensive missiles and fireballs"
   (it "advances defensive missiles toward the aim point"
     (let [state (-> (core/new-game {:width 800 :height 600})

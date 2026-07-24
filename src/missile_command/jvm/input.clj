@@ -258,6 +258,8 @@
               (str "wave_enemy_speed=" (:enemy-speed metrics))
               (str "score=" (core/score state))
               (str "multiplier=" (core/multiplier state))
+              (str "bonus_cities=" (core/bonus-cities state))
+              (str "bonus_city_earned_events=" (core/bonus-city-earned-events state))
               (str "missiles_in_flight=" (count missiles))
               (str "fireballs=" (count fireballs))
               (str "enemy_missiles=" (count enemies))
@@ -279,6 +281,9 @@
   [state scenario]
   (let [state (if-let [w (:wave scenario)]
                 (core/set-wave state w)
+                state)
+        state (if-let [t (:bonus-city-threshold scenario)]
+                (core/set-bonus-city-threshold state t)
                 state)
         state (if-let [w (:width scenario)]
                 (core/resize state w (or (:height scenario) (core/playfield-height state)))
@@ -315,7 +320,13 @@
                                        (core/spawn-enemy-targeting-battery s id))
                             s)))
                       state
-                      enemies)]
+                      enemies)
+        state (if (contains? scenario :bonus-cities)
+                (core/set-bonus-city-reserve state (:bonus-cities scenario))
+                state)
+        state (if (contains? scenario :score)
+                (core/set-score state (:score scenario))
+                state)]
     state))
 
 (defn format-fireball-phase-line
