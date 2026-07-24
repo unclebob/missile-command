@@ -35,17 +35,25 @@
    :task (apply shell "clojure" "-M:mutate" *command-line-args*)}
 
   accept-mutate
-  {:doc "Soft Gherkin acceptance mutation via APS gherkin-mutator"
+  {:doc "Soft Gherkin acceptance mutation for every feature file"
    :depends [generate-acceptance]
-   :task (apply shell "gherkin-mutator"
-                "--runner-worker" "clojure -M:acceptance-mutation-runner"
-                "--feature" "features/project-foundation.feature"
-                "--work-dir" "build/acceptance-mutation"
-                "--generated-dir" "acceptance/generated"
-                "--level" "soft"
-                "--status-interval" "15s"
-                "--workers" "4"
-                *command-line-args*)}
+   :task (shell "bash" "-c"
+                (str "set -euo pipefail; "
+                     "shopt -s nullglob; "
+                     "features=(features/*.feature features/*/*.feature); "
+                     "if [ ${#features[@]} -eq 0 ]; then echo 'no feature files'; exit 1; fi; "
+                     "for f in \"${features[@]}\"; do "
+                     "  echo \"===== soft gherkin-mutate $f =====\"; "
+                     "  work=\"build/acceptance-mutation/$(basename \"$f\" .feature)\"; "
+                     "  gherkin-mutator "
+                     "    --runner-worker 'clojure -M:acceptance-mutation-runner' "
+                     "    --feature \"$f\" "
+                     "    --work-dir \"$work\" "
+                     "    --generated-dir acceptance/generated "
+                     "    --level soft "
+                     "    --status-interval 15s "
+                     "    --workers 4; "
+                     "done"))}
 
   crap
   {:doc "CRAP analysis (coverage + complexity)"
