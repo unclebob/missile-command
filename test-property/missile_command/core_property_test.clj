@@ -670,6 +670,12 @@
   [state]
   (reduce core/destroy-city state (map :id (core/cities state))))
 
+(defn- playing-state
+  ([]
+   (playing-state 800 600))
+  ([w h]
+   (core/start-game (core/new-game {:width w :height h}))))
+
 (defspec confirm-end-returns-to-title
   15
   (for-all [width (gen/elements [800 1024])]
@@ -680,9 +686,55 @@
                     core/evaluate-game-over)
           title (core/confirm-end-screen ended)]
       (and (core/the-end? ended)
+           ;; zero final score does not qualify for initials entry
            (core/title? title)
            (= width (core/playfield-width title))
            (zero? (core/score title))))))
+
+(defspec qualifying-score-opens-high-score-entry
+  20
+  (for-all [score (gen/elements [1 500 2500])]
+    (let [playing (playing-state)
+          ended (-> playing
+                    (core/set-score score)
+                    destroy-all-cities
+                    (core/set-bonus-city-reserve 0)
+                    core/evaluate-game-over)
+          entry (core/confirm-end-screen ended)]
+      (and (core/the-end? ended)
+           (core/high-score-entry? entry)
+           (= (long score) (long (core/pending-high-score entry)))))))
+
+(defspec submit-initials-inserts-ranked-entry-and-returns-to-title
+  20
+  (for-all [score (gen/elements [750 1200 600])
+            initials (gen/elements ["bob" "ACE" "z9x"])]
+    (let [state (-> (playing-state)
+                    (core/add-high-score-entry "AAA" 1000)
+                    (core/add-high-score-entry "CCC" 500)
+                    (core/set-score score)
+                    destroy-all-cities
+                    (core/set-bonus-city-reserve 0)
+                    core/evaluate-game-over
+                    core/confirm-end-screen)
+          after (core/submit-high-score-initials state initials)
+          table (core/high-score-table after)
+          scores (mapv :score table)]
+      (and (core/high-score-entry? state)
+           (core/title? after)
+           (some #(= (long score) (long (:score %))) table)
+           (= scores (vec (sort (comp - compare) scores)))
+           (<= (count table) (core/high-score-capacity after))))))
+
+(defspec open-and-close-high-scores-from-title
+  15
+  (for-all []
+    (let [title (core/new-game {:width 800 :height 600})
+          view (core/open-high-scores title)
+          back (core/close-high-scores view)]
+      (and (core/title? title)
+           (core/high-scores-view? view)
+           (core/title? back)))))
 
 (defspec new-session-starts-on-title-screen
   30
@@ -721,12 +773,6 @@
           after (:state (core/handle state {:type :fire :battery battery-id}))]
       (and (core/title? after)
            (empty? (core/defensive-missiles after))))))
-
-(defn- playing-state
-  ([]
-   (playing-state 800 600))
-  ([w h]
-   (core/start-game (core/new-game {:width w :height h}))))
 
 (defspec hud-matches-core-fields-while-playing
   25
@@ -1114,6 +1160,8 @@
   (is (fn? core/resume-game))
   (is (fn? core/paused?))
   (is (fn? core/hud))
+  (is (fn? core/high-score-entry?))
+  (is (fn? core/submit-high-score-initials))
   (is (fn? core/multiplier))
   (is (fn? core/wave-mirv-count))
   (is (fn? core/wave-smart-bomb-count))
