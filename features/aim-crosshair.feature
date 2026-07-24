@@ -10,6 +10,7 @@ Feature: Aim crosshair
 
 Scenario: Aim crosshair 01 aim inside the playfield
   Given a new game with width <width> and height <height>
+  And the player starts the game
   When the player aims at <x> <y>
   Then the playfield width is <expected_width>
   And the playfield height is <expected_height>
@@ -24,6 +25,7 @@ Examples:
 
 Scenario: Aim crosshair 02 clamps left and right edges
   Given a new game with width 800 and height 600
+  And the player starts the game
   When the player aims at -1 100
   Then the crosshair is at 0 100
   When the player aims at 800 100
@@ -31,6 +33,7 @@ Scenario: Aim crosshair 02 clamps left and right edges
 
 Scenario: Aim crosshair 03 clamps top and bottom edges
   Given a new game with width 800 and height 600
+  And the player starts the game
   When the player aims at 100 -1
   Then the crosshair is at 100 0
   When the player aims at 100 600
@@ -38,6 +41,7 @@ Scenario: Aim crosshair 03 clamps top and bottom edges
 
 Scenario: Aim crosshair 04 clamps far outside a larger playfield
   Given a new game with width 1920 and height 1080
+  And the player starts the game
   When the player aims at 1920 500
   Then the crosshair is at 1919 500
   When the player aims at 100 1080
@@ -45,6 +49,7 @@ Scenario: Aim crosshair 04 clamps far outside a larger playfield
 
 Scenario: Aim crosshair 05 aim does not change forces or score
   Given a new game with width <width> and height <height>
+  And the player starts the game
   When the player aims at <x> <y>
   Then the playfield width is <expected_width>
   And the playfield height is <expected_height>

@@ -9,6 +9,7 @@ Feature: MIRV warheads
 
 Background:
   Given a new game with width <width> and height <height>
+  And the player starts the game
 
 Scenario: MIRV warheads 01 a MIRV is a single enemy before it splits
   And a MIRV enemy missile targeting city <city_index> that splits into <child_count> warheads at progress <split_progress>

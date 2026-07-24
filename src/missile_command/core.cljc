@@ -19,10 +19,13 @@
 (def clamp-lo 0)
 (def default-crosshair {:x clamp-lo :y clamp-lo})
 (def target-starts-destroyed? wave-flag-off)
+(def screen-title :title)
 (def screen-playing :playing)
 (def screen-the-end :the-end)
 (def end-message-text "THE END")
 (def wrong-end-message-text "Game Over")
+(def title-game-name "Missile Command")
+(def title-start-affordance "Press Enter or click to start")
 (def end-fireball-expand-seconds missiles/fireball-expand-seconds)
 (def end-fireball-contract-seconds missiles/fireball-contract-seconds)
 
@@ -66,7 +69,9 @@
           :wave waves/initial-wave
           :wave-complete? wave-starts-complete?
           :wave-had-enemies? wave-starts-with-enemies?
-          :screen screen-playing
+          :screen screen-title
+          :title-game-name title-game-name
+          :title-start-affordance title-start-affordance
           :end-message nil
           :end-fireball nil
           :final-score nil
@@ -168,10 +173,47 @@
   [state]
   (boolean (:wave-complete? state)))
 
+(defn screen
+  [state]
+  (or (:screen state) screen-title))
+
+(defn title?
+  [state]
+  (= screen-title (screen state)))
+
+(defn playing?
+  [state]
+  (= screen-playing (screen state)))
+
 (defn the-end?
   "True when the run has entered THE END."
   [state]
-  (= screen-the-end (:screen state)))
+  (= screen-the-end (screen state)))
+
+(defn title-game-name-of
+  [state]
+  (or (:title-game-name state) title-game-name))
+
+(defn title-shows-start-affordance?
+  [state]
+  (boolean (and (title? state) (:title-start-affordance state))))
+
+(defn start-game
+  "Leave title (or any shell) and begin a fresh playing run at current size."
+  [state]
+  (let [w (playfield-width state)
+        h (playfield-height state)]
+    (-> (new-game {:width w :height h})
+        (assoc :screen screen-playing))))
+
+(defn confirm-end-screen
+  "Confirm THE END when no high-score entry is required; return to title."
+  [state]
+  (if (the-end? state)
+    (let [w (playfield-width state)
+          h (playfield-height state)]
+      (new-game {:width w :height h}))
+    state))
 
 (defn end-message
   [state]
@@ -193,8 +235,10 @@
    :score (score state)
    :multiplier (multiplier state)
    :bonus-cities (bonus-cities state)
+   :screen (screen state)
    :the-end? (the-end? state)
-   :end-message (end-message state)})
+   :end-message (end-message state)
+   :title-game-name (title-game-name-of state)})
 
 (defn defensive-missiles
   [state]
@@ -582,7 +626,7 @@
 
 (defn- fire-battery
   [state battery-id]
-  (if (the-end? state)
+  (if-not (playing? state)
     (no-events state)
     (let [bat (battery state battery-id)]
       (if-not (batteries/can-fire? bat)
@@ -631,7 +675,13 @@
   (case (:type command)
     :aim (aim state (:x command) (:y command))
     :fire (fire-battery state (:battery command))
-    :click (click-fire state (:x command) (:y command))
+    :click (if (title? state)
+             (no-events (start-game state))
+             (if (the-end? state)
+               (no-events (confirm-end-screen state))
+               (click-fire state (:x command) (:y command))))
+    :start (no-events (start-game state))
+    :confirm (no-events (confirm-end-screen state))
     (throw (ex-info (str "unsupported command: " (:type command))
                     {:command command}))))
 

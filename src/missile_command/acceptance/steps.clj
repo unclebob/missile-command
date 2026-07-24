@@ -455,6 +455,45 @@
                          (:state world)
                          (map :id (core/cities (:state world))))))}
 
+   {:pattern #"^the player starts the game$"
+    :fn (fn [world _ _]
+          (assoc world :state (core/start-game (:state world))))}
+
+   {:pattern #"^the player confirms the end screen$"
+    :fn (fn [world _ _]
+          (assoc world :state (core/confirm-end-screen (:state world))))}
+
+   {:pattern #"^the screen is title$"
+    :fn (fn [world _ _]
+          (support/assert-condition (core/title? (:state world))
+                                    (str "screen is " (core/screen (:state world))
+                                         " expected title"))
+          world)}
+
+   {:pattern #"^the screen is playing$"
+    :fn (fn [world _ _]
+          (support/assert-condition (core/playing? (:state world))
+                                    (str "screen is " (core/screen (:state world))
+                                         " expected playing"))
+          world)}
+
+   {:pattern #"^the title game name is <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ name-param] example]
+          (let [expected (str/replace (str (support/require-value example name-param))
+                                      #"_" " ")
+                actual (core/title-game-name-of (:state world))]
+            (support/assert-condition (= expected actual)
+                                      (str "title name " actual
+                                           " expected " expected)))
+          world)}
+
+   {:pattern #"^the title shows a start affordance$"
+    :fn (fn [world _ _]
+          (support/assert-condition
+           (core/title-shows-start-affordance? (:state world))
+           "title missing start affordance")
+          world)}
+
    {:pattern #"^game over conditions are evaluated$"
     :fn (fn [world _ _]
           (assoc world :state (core/evaluate-game-over (:state world))))}
