@@ -89,16 +89,29 @@ QA uses a small, stable launch surface—not a private core API:
 |------|------|
 | `--qa` | Enable QA mode: **telemetry on**, accept scenario/events |
 | `--qa-scenario <file>` | Initial world state (EDN) |
-| `--qa-events <file>` | Timed input script (text) |
+| `--qa-events <file>` | Timed input script (text); `wait` is wall-clock seconds |
+| `--qa-speed <n>` | Multiply sim-time advance vs wall clock (default `1`) |
 
 ```sh
 bb play --qa
-bb play --qa --qa-scenario tmp/wave-rearm.edn
+bb play --qa --qa-speed 10 --qa-scenario tmp/wave-rearm.edn
 bb play --qa --qa-scenario tmp/setup.edn --qa-events tmp/clicks.txt
 bb play 1280 720 --qa --qa-scenario tmp/setup.edn
 ```
 
 Optional: `--qa-events` alone with `--qa` (default new-game state, scripted input only).
+
+#### `--qa-speed <n>`
+
+Multiply simulation time advance relative to wall clock (default `1`). Host
+substeps at the normal physics max-dt so large factors stay stable. `wait` in
+event scripts remains **wall-clock seconds** (sim advances roughly
+`wait * qa-speed`).
+
+```sh
+# ~10× faster sim: a multi-second enemy flight finishes in a fraction of wall clock
+bb play --qa --qa-speed 10 --qa-scenario tmp/wave-rearm-depleted.edn --qa-events tmp/events.txt
+```
 
 #### Scenario file (EDN)
 
@@ -144,8 +157,8 @@ Examples for common setups:
 
 #### Events file (text)
 
-**Actions over time** only (not initial state). Host applies one line per frame
-(or documented pacing) through the same input path as mouse/keyboard:
+**Actions over time** only (not initial state). Host applies events through the
+same input path as mouse/keyboard:
 
 ```text
 aim 400 200
@@ -162,7 +175,7 @@ quit
 | `aim <x> <y>` | Move crosshair (clamped) |
 | `click <x> <y>` | Click-zone fire at point |
 | `key <name>` | Key fire / UI key (`z`, `1`, `x`, `2`, `c`, `3`, …) |
-| `wait <seconds>` | Pause scripted events for wall-clock seconds while simulation ticks |
+| `wait <n>` | Wait `n` **wall-clock** seconds (sim advances roughly `n * qa-speed`) |
 | `quit` | Exit cleanly |
 
 ```sh
@@ -181,6 +194,7 @@ qa-fireball id=3 phase=shrink t=1.55 center_x=200 center_y=120 radius=28
 qa-fireball id=3 phase=end t=1.80
 qa-sim t=1.5 missiles_in_flight=0 fireballs=1 enemy_missiles=1 wave=2 wave_complete=false
   center_x=200 center_y=120 radius=20.0 enemy_x=... enemy_y=... enemy_target=city:0 cities_alive=6
+  battery_left_ammo=10 wave_enemy_count=4 wave_enemy_speed=...
 ```
 
 | Field | Meaning |
@@ -194,7 +208,9 @@ qa-sim t=1.5 missiles_in_flight=0 fireballs=1 enemy_missiles=1 wave=2 wave_compl
 | `enemy_missiles=` | Enemy missiles in flight |
 | `enemy_x` / `enemy_y` / `enemy_target=` | Per-enemy position and target (`city:N` or `battery:id`) |
 | `cities_alive=` / battery destroyed flags | Living cities / battery state |
+| `battery_*_ammo=` | Remaining missiles per battery |
 | `wave=` / `wave_complete=` | Wave lifecycle |
+| `wave_enemy_count=` / `wave_enemy_speed=` | Scheduled hardness metrics for current wave |
 | Destroyable targets | position and `destroyed=true\|false` |
 
 Fireball phase order for one blast: `start.t` ≤ `max.t` ≤ `shrink.t` ≤ `end.t`.

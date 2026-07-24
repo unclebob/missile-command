@@ -12,7 +12,8 @@ Verify waves start at 1, do not complete while enemies remain, complete when the
 - Documented QA launch (README):
   - `bb play --qa` — telemetry on
   - `--qa-scenario <file.edn>` — initial state (ammo, cities, batteries destroyed, enemies, wave)
-  - `--qa-events <file>` — optional timed input
+  - `--qa-events <file>` — optional timed input (wall-clock `wait` seconds)
+  - `--qa-speed <n>` — sim-time multiplier (e.g. `10`) so host waits stay short
 
 ## UI Event Boundary
 
@@ -63,9 +64,9 @@ Under `--qa`, expect at least `wave=`, `wave_complete=`, per-battery ammo/destro
 4. `bb play --qa --qa-scenario tmp/wave-rearm-depleted.edn` (ammo 2/2/2, ≥1 enemy). Assert `wave=1` and configured ammo in telemetry.
 5. Assert the **HUD text includes the current wave** (e.g. `Wave: 1` or equivalent documented label) and that it matches telemetry `wave=1`.
 6. While enemies remain, assert wave not complete; HUD still shows wave 1.
-7. Clear wave enemies (events and/or let impact). Assert wave completes and advances (e.g. `wave=2`).
+7. Clear wave enemies (events and/or let impact). Assert wave completes and advances (e.g. `wave=2`). Host continuous play then launches the next wave’s scheduled enemies.
 8. Assert **HUD updates to the new wave number** (matches telemetry).
-9. Assert each non-destroyed battery has **10** missiles (rearm from depleted scenario).
+9. Assert each non-destroyed battery has **10** missiles (rearm from depleted scenario) on a telemetry line at/after the advance.
 10. Relaunch with destroyed-left scenario; complete a wave; assert left stays destroyed and cannot fire; others rearm to 10.
 11. Compare wave 1 vs higher wave hardness (count and/or speed via telemetry).
 12. Quit cleanly (`quit` in events or UI).

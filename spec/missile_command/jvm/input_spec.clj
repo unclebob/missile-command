@@ -52,16 +52,36 @@
     (let [opts (input/parse-cli-args
                 ["1280" "720" "--qa-telemetry" "--destroy-batteries" "left,center"
                  "--qa-events" "tmp/events.txt" "--qa-target" "400,200"
-                 "--qa-enemy" "city:0" "--qa-fireball" "10,20,30"]
+                 "--qa-enemy" "city:0" "--qa-fireball" "10,20,30"
+                 "--qa-speed" "8"]
                 800 600)]
       (should= 1280 (:width opts))
       (should= 720 (:height opts))
       (should (:qa-telemetry? opts))
+      (should= 8.0 (:qa-speed opts))
       (should= [:left :center] (:destroy-batteries opts))
       (should= "tmp/events.txt" (:qa-events opts))
       (should= [{:x 400 :y 200}] (:qa-targets opts))
       (should= [{:kind :city :id 0}] (:qa-enemies opts))
       (should= [{:x 10 :y 20 :radius 30.0}] (:qa-fireballs opts))))
+
+  (it "defaults qa-speed to 1.0"
+    (let [opts (input/parse-cli-args [] 800 600)]
+      (should= 1.0 (:qa-speed opts))))
+
+  (it "accepts --qa as telemetry alias and --qa-scenario"
+    (let [opts (input/parse-cli-args
+                ["--qa" "--qa-scenario" "tmp/s.edn" "--qa-speed" "10.5"]
+                800 600)]
+      (should (:qa-telemetry? opts))
+      (should= "tmp/s.edn" (:qa-scenario opts))
+      (should= 10.5 (:qa-speed opts))))
+
+  (it "rejects non-positive qa-speed"
+    (should-throw Exception
+      (input/parse-cli-args ["--qa-speed" "0"] 800 600))
+    (should-throw Exception
+      (input/parse-cli-args ["--qa-speed" "-2"] 800 600)))
 
   (it "ignores a bare -- separator"
     (let [opts (input/parse-cli-args ["--" "--qa-telemetry"] 800 600)]
