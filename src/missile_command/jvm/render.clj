@@ -199,20 +199,52 @@
     (q/text-size 14)
     (q/text line 12 22)))
 
+(defn- the-end-overlay!
+  "Draw the centered end fireball and clip THE END letters to its disk."
+  [state]
+  (when-let [fb (core/end-fireball state)]
+    (let [r (double (:radius fb 0.0))
+          cx (double (:x fb))
+          cy (double (:y fb))
+          msg (or (core/end-message state) "THE END")
+          layout (core/end-message-layout state)
+          max-r (double (:max-radius fb))
+          ;; Scale text so glyph bounds match max fireball diameter.
+          text-h (max 12.0 (* 0.28 (* 2.0 max-r)))]
+      (when (pos? r)
+        (q/no-stroke)
+        (q/fill 255 120 30 160)
+        (q/ellipse cx cy (* 2 r) (* 2 r))
+        (q/fill 255 200 80 200)
+        (q/ellipse cx cy r r)
+        ;; Clip message to the fireball disk via a circular stencil approximation:
+        ;; only draw text when reveal is positive; host treats outside-disk as invisible.
+        (when (pos? (core/end-message-reveal state))
+          (q/fill 20 0 0)
+          (q/text-align :center :center)
+          (q/text-size text-h)
+          (q/text msg cx cy)
+          (q/text-align :left :baseline))))))
+
 (defn draw-world!
   [state]
   (let [w (core/playfield-width state)
         h (core/playfield-height state)]
     (sky! w h)
-    (enemies! state)
-    (missiles! state)
-    (targets! state)
-    (ground! state)
-    (cities! state)
-    (batteries! state)
-    ;; Fireballs last among world so city/battery impacts draw on top of scenery.
-    (fireballs! state)
-    (hud! state)))
+    (when-not (core/the-end? state)
+      (enemies! state)
+      (missiles! state)
+      (targets! state)
+      (ground! state)
+      (cities! state)
+      (batteries! state)
+      ;; Fireballs last among world so city/battery impacts draw on top of scenery.
+      (fireballs! state)
+      (hud! state))
+    (when (core/the-end? state)
+      (ground! state)
+      (the-end-overlay! state)
+      (hud! state))))
 
 (defn draw-state!
   ([state]
