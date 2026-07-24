@@ -6,6 +6,7 @@
 (def the-end :the-end)
 (def high-score-entry :high-score-entry)
 (def high-scores :high-scores)
+(def options :options)
 
 (def title-game-name "Missile Command")
 (def title-start-affordance "Press Enter or click to start")
@@ -37,6 +38,10 @@
 (defn high-scores-view?
   [state]
   (= high-scores (of state)))
+
+(defn options?
+  [state]
+  (= options (of state)))
 
 (defn title-game-name-of
   [state]
