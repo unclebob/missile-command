@@ -121,6 +121,11 @@
   [state]
   (or (:wave state) waves/initial-wave))
 
+(defn multiplier
+  "Current score multiplier derived from the active wave."
+  [state]
+  (waves/multiplier (wave state)))
+
 (defn wave-complete?
   [state]
   (boolean (:wave-complete? state)))
@@ -129,7 +134,8 @@
   "Minimal HUD projection for hosts and tests."
   [state]
   {:wave (wave state)
-   :score (score state)})
+   :score (score state)
+   :multiplier (multiplier state)})
 
 (defn defensive-missiles
   [state]
@@ -387,21 +393,32 @@
                         target))
                     (or targets []))))))
 
+(defn- add-score
+  [state points]
+  (update state :score (fnil + initial-score) (long points)))
+
+(defn- award-points
+  "Add base points times the current multiplier."
+  [state base-points]
+  (add-score state (* (long base-points) (multiplier state))))
+
 (defn- destroy-enemy-by-fireball
   [state]
-  (assoc state :last-enemy-fate :fireball))
+  (-> state
+      (award-points waves/points-enemy-missile)
+      (assoc :last-enemy-fate :fireball)))
 
 (defn- spawn-impact-fireball
   "Visual/game blast at the impact point (ground strike)."
   [state enemy]
   (spawn-fireball-at state (:x1 enemy) (:y1 enemy)))
+
 (defn- resolve-enemy-impact
   [state enemy]
   (-> state
       (impact-target enemy)
       (spawn-impact-fireball enemy)
       (assoc :last-enemy-fate :impact)))
-
 (defn- keep-flying-enemy
   [state enemy]
   (update state :enemy-missiles (fnil conj []) enemy))
@@ -439,9 +456,29 @@
         (not (:wave-complete? state))
         (empty? (enemy-missiles state)))))
 
+(defn- unused-defensive-missiles
+  "Sum of remaining ammo on non-destroyed batteries (before rearm)."
+  [state]
+  (->> (batteries state)
+       (remove :destroyed?)
+       (map #(long (or (:missiles %) 0)))
+       (reduce + 0)))
+
+(defn- award-wave-end-bonuses
+  "Unused missiles and surviving cities × multiplier for the completing wave."
+  [state]
+  (let [mult (multiplier state)
+        ammo-points (* (unused-defensive-missiles state)
+                       waves/points-unused-missile
+                       mult)
+        city-points (* (count (living-cities state))
+                       waves/points-surviving-city
+                       mult)]
+    (add-score state (+ ammo-points city-points))))
 (defn- mark-wave-complete
   [state]
   (-> state
+      award-wave-end-bonuses
       (assoc :wave-complete? wave-flag-on
              :wave-had-enemies? wave-starts-with-enemies?)
       (update :wave (fnil inc waves/initial-wave))))

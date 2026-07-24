@@ -35,4 +35,16 @@
       (should= (* width (/ 2.5 3.0)) (nth xs 2))
       (should (every? #(and (<= 0.0 %) (< % width)) xs))
       (should= 3 (count (set xs)))
-      (should= 0.0 (waves/sky-origin-x width 0 0)))))
+      (should= 0.0 (waves/sky-origin-x width 0 0))))
+
+  (it "raises multiplier every two waves up to six"
+    (should= 1 (waves/multiplier 1))
+    (should= 1 (waves/multiplier 2))
+    (should= 2 (waves/multiplier 3))
+    (should= 2 (waves/multiplier 4))
+    (should= 3 (waves/multiplier 5))
+    (should= 3 (waves/multiplier 6))
+    (should= 6 (waves/multiplier 11))
+    (should= 6 (waves/multiplier 12))
+    (should= 6 (waves/multiplier 13))
+    (should= 6 (waves/multiplier 20))))

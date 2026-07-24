@@ -2,6 +2,10 @@
 
 (def initial-wave 1)
 (def full-ammo 10)
+(def max-multiplier 6)
+(def points-enemy-missile 25)
+(def points-unused-missile 5)
+(def points-surviving-city 100)
 
 ;; Wave-1 base speed (px/s). Kept moderate so early play is defendable on
 ;; a ~600px playfield (~11s sky→ground at 50 px/s). Higher waves ramp 25%/step.
@@ -18,12 +22,18 @@
   [wave]
   (* base-enemy-speed (+ 1.0 (* enemy-speed-wave-factor (dec wave)))))
 
+(defn multiplier
+  "Score multiplier for a wave: +1× every two waves, capped at max-multiplier."
+  [wave]
+  (min max-multiplier (+ 1 (quot (dec (long wave)) 2))))
+
 (defn schedule-metrics
   "Observable difficulty metrics for a wave."
   [wave]
   {:wave wave
    :enemy-count (enemy-count wave)
-   :enemy-speed (enemy-speed wave)})
+   :enemy-speed (enemy-speed wave)
+   :multiplier (multiplier wave)})
 
 (defn harder?
   "True when high-wave metrics exceed low-wave by count or speed."
