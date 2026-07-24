@@ -44,7 +44,7 @@
              :alive? true})
           (range city-count))))
 
-(defn- battery
+(defn- make-battery
   [id x y missile-speed]
   {:id id
    :x x
@@ -56,9 +56,19 @@
 (defn layout-batteries
   [width height]
   (let [y (ground-y height)]
-    [(battery :left (long (* width left-battery-x-fraction)) y wing-missile-speed)
-     (battery :center (long (* width center-battery-x-fraction)) y center-missile-speed)
-     (battery :right (long (* width right-battery-x-fraction)) y wing-missile-speed)]))
+    [(make-battery :left (long (* width left-battery-x-fraction)) y wing-missile-speed)
+     (make-battery :center (long (* width center-battery-x-fraction)) y center-missile-speed)
+     (make-battery :right (long (* width right-battery-x-fraction)) y wing-missile-speed)]))
+
+(defn- reflow-entities
+  "Keep prior entity fields, overlaying only the given layout keys from fresh entities."
+  [fresh prior layout-keys]
+  (let [prior-by-id (into {} (map (juxt :id identity) prior))]
+    (mapv (fn [entity]
+            (if-let [old (get prior-by-id (:id entity))]
+              (merge old (select-keys entity layout-keys))
+              entity))
+          fresh)))
 
 (defn apply-layout
   "Reflow fixed scenery from playfield size. Preserves city/battery identity
@@ -67,16 +77,7 @@
    {:cities (layout-cities width height)
     :batteries (layout-batteries width height)})
   ([width height prior]
-   (let [fresh (apply-layout width height)
-         prior-cities (into {} (map (juxt :id identity) (:cities prior)))
-         prior-batteries (into {} (map (juxt :id identity) (:batteries prior)))]
-     {:cities (mapv (fn [city]
-                      (if-let [old (get prior-cities (:id city))]
-                        (merge old (select-keys city [:x :y]))
-                        city))
-                    (:cities fresh))
-      :batteries (mapv (fn [bat]
-                         (if-let [old (get prior-batteries (:id bat))]
-                           (merge old (select-keys bat [:x :y :missile-speed]))
-                           bat))
-                       (:batteries fresh))})))
+   (let [fresh (apply-layout width height)]
+     {:cities (reflow-entities (:cities fresh) (:cities prior) [:x :y])
+      :batteries (reflow-entities (:batteries fresh) (:batteries prior)
+                                  [:x :y :missile-speed])})))

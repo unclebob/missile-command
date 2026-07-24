@@ -61,3 +61,26 @@
                  (get-in by-id [:left :missile-speed])))
       (should (> (get-in by-id [:center :missile-speed])
                  (get-in by-id [:right :missile-speed]))))))
+
+(describe "apply-layout"
+  (it "preserves entity progress when reflowing positions"
+    (let [prior {:cities [{:id 0 :x 1 :y 2 :alive? false}
+                          {:id 1 :x 3 :y 4 :alive? true}]
+                 :batteries [{:id :left :x 1 :y 2 :missiles 3 :destroyed? true
+                              :missile-speed 1.0}
+                             {:id :center :x 5 :y 6 :missiles 7 :destroyed? false
+                              :missile-speed 2.0}
+                             {:id :right :x 8 :y 9 :missiles 4 :destroyed? false
+                              :missile-speed 1.0}]}
+          layout (world/apply-layout 800 600 prior)
+          cities-by-id (into {} (map (juxt :id identity) (:cities layout)))
+          bats-by-id (into {} (map (juxt :id identity) (:batteries layout)))]
+      (should-not (:alive? (cities-by-id 0)))
+      (should (:alive? (cities-by-id 1)))
+      (should-not= 1 (:x (cities-by-id 0)))
+      (should (world/in-ground-band? (:y (cities-by-id 0)) 600))
+      (should (:destroyed? (bats-by-id :left)))
+      (should= 3 (:missiles (bats-by-id :left)))
+      (should= 7 (:missiles (bats-by-id :center)))
+      (should (> (:missile-speed (bats-by-id :center))
+                 (:missile-speed (bats-by-id :left)))))))
