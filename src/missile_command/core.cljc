@@ -3,6 +3,7 @@
             [missile-command.cities :as cities]
             [missile-command.flyers :as flyers]
             [missile-command.game-end :as game-end]
+            [missile-command.hud :as hud]
             [missile-command.input :as input]
             [missile-command.missiles :as missiles]
             [missile-command.scoring :as scoring]
@@ -249,16 +250,10 @@
   (:end-fireball state))
 
 (defn hud
-  "Minimal HUD projection for hosts and tests."
+  "In-game HUD projection: score, wave, multiplier, ammo, cities, reserve.
+  Present during playing and paused; not required on title."
   [state]
-  {:wave (wave state)
-   :score (score state)
-   :multiplier (multiplier state)
-   :bonus-cities (bonus-cities state)
-   :screen (screen state)
-   :the-end? (the-end? state)
-   :end-message (end-message state)
-   :title-game-name (title-game-name-of state)})
+  (hud/projection state))
 
 (defn defensive-missiles
   [state]
