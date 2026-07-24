@@ -77,6 +77,59 @@ Language mutation uses differential manifests embedded in source files.
 Gherkin acceptance mutation uses `gherkin-mutator` with the project runner
 adapter (`clojure -M:acceptance-mutation-runner`).
 
+## Run the app
+
+Desktop host launch (added with the aim/fire host slice; exact alias may match
+`bb run` or `clojure -M:run` as implemented):
+
+```sh
+bb run
+```
+
+### QA telemetry and setup switches
+
+These flags are **user-facing CLI affordances** for QA (not a private API).
+They must be available on the normal launch command once the host exists.
+
+#### `--qa-telemetry`
+
+Prints a line after each fire attempt (stdout), including at least:
+
+| Field | Meaning |
+|-------|---------|
+| `battery=` | `left`, `center`, `right`, or `none` |
+| `missiles_in_flight=` | Count of defensive missiles currently in flight |
+| Per missile in flight | Flight vector: origin and target in playfield coordinates |
+
+Example shape (exact spacing may vary; fields must be parseable):
+
+```text
+qa-fire battery=left missiles_in_flight=1 origin_x=40 origin_y=540 target_x=200 target_y=120
+```
+
+When several missiles are in flight, each missile’s vector is included (one line
+with repeated origin/target groups, or one line per missile—document the chosen
+form in this section if it differs).
+
+```sh
+bb run -- --qa-telemetry
+```
+
+#### `--destroy-batteries <list>`
+
+Starts the game with the named batteries already destroyed. `<list>` is a
+comma-separated set of `left`, `center`, and/or `right`.
+
+```sh
+bb run -- --qa-telemetry --destroy-batteries left
+bb run -- --qa-telemetry --destroy-batteries left,center
+bb run -- --qa-telemetry --destroy-batteries left,center,right
+```
+
+Destroyed batteries cannot fire on key press. Click-zone fire skips them in the
+zone fallback order (see `features/fire-click-zone.feature` and
+`qa/procedures/fire-click-zone.qa.md`).
+
 ## Core smoke API
 
 ```clojure
