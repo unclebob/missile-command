@@ -345,35 +345,41 @@
     (contains? scenario :score)
     (core/set-score (:score scenario))))
 
+(defn- spawn-scenario-mirv
+  [state e]
+  (let [[_ id] (:target e)]
+    (core/spawn-mirv-targeting-city
+     state id
+     (or (:child-count e) 3)
+     (or (:split-progress e) 0.5))))
+
+(defn- spawn-with-optional-origin
+  [state origin id spawn-from spawn-default]
+  (if origin
+    (spawn-from state (first origin) (second origin) id)
+    (spawn-default state id)))
+
+(defn- spawn-scenario-ballistic
+  [state e]
+  (let [[kind id] (:target e)
+        origin (:origin e)]
+    (case kind
+      :city (spawn-with-optional-origin
+             state origin id
+             core/spawn-enemy-targeting-city-from
+             core/spawn-enemy-targeting-city)
+      :battery (spawn-with-optional-origin
+                state origin id
+                core/spawn-enemy-targeting-battery-from
+                core/spawn-enemy-targeting-battery)
+      state)))
 (defn- spawn-scenario-enemy
   "Spawn one scenario enemy, honoring MIRV/smart kinds and optional angled origin."
   [state e]
-  (let [[kind id] (:target e)
-        origin (:origin e)
-        enemy-kind (:kind e)
-        [ox oy] (when origin [(first origin) (second origin)])]
-    (cond
-      (= :mirv enemy-kind)
-      (core/spawn-mirv-targeting-city
-       state id
-       (or (:child-count e) 3)
-       (or (:split-progress e) 0.5))
-
-      (= :smart enemy-kind)
-      (core/spawn-smart-bomb-targeting-city state id)
-
-      (= kind :city)
-      (if origin
-        (core/spawn-enemy-targeting-city-from state ox oy id)
-        (core/spawn-enemy-targeting-city state id))
-
-      (= kind :battery)
-      (if origin
-        (core/spawn-enemy-targeting-battery-from state ox oy id)
-        (core/spawn-enemy-targeting-battery state id))
-
-      :else state)))
-
+  (case (:kind e)
+    :mirv (spawn-scenario-mirv state e)
+    :smart (core/spawn-smart-bomb-targeting-city state (second (:target e)))
+    (spawn-scenario-ballistic state e)))
 (defn- apply-scenario-enemies
   [state scenario]
   (let [enemies (or (:enemies scenario) [])]

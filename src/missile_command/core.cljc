@@ -2,6 +2,7 @@
   (:require [missile-command.batteries :as batteries]
             [missile-command.cities :as cities]
             [missile-command.flyers :as flyers]
+            [missile-command.game-end :as game-end]
             [missile-command.input :as input]
             [missile-command.missiles :as missiles]
             [missile-command.scoring :as scoring]
@@ -21,8 +22,8 @@
 (def target-starts-destroyed? wave-flag-off)
 (def screen-playing :playing)
 (def screen-the-end :the-end)
-(def end-message-text "THE END")
-(def wrong-end-message-text "Game Over")
+(def end-message-text game-end/message-text)
+(def wrong-end-message-text game-end/wrong-message-text)
 (def end-fireball-expand-seconds missiles/fireball-expand-seconds)
 (def end-fireball-contract-seconds missiles/fireball-contract-seconds)
 
@@ -716,36 +717,18 @@
                    (update :bonus-cities dec)))
         s))))
 
-(defn- playfield-fill-radius
-  "Radius from center that covers the playfield corners."
-  [state]
-  (let [w (double (playfield-width state))
-        h (double (playfield-height state))]
-    (Math/ceil (Math/sqrt (+ (* (/ w 2.0) (/ w 2.0))
-                             (* (/ h 2.0) (/ h 2.0)))))))
-
 (defn- make-end-fireball
   [state fireball-id]
-  (let [w (playfield-width state)
-        h (playfield-height state)
-        cx (quot w 2)
-        cy (quot h 2)]
-    {:id fireball-id
-     :x cx
-     :y cy
-     :age 0.0
-     :radius 0.0
-     :max-radius (playfield-fill-radius state)
-     :expand-seconds end-fireball-expand-seconds
-     :contract-seconds end-fireball-contract-seconds
-     :end-fireball? true}))
+  (game-end/make-fireball fireball-id
+                          (playfield-width state)
+                          (playfield-height state)
+                          end-fireball-expand-seconds
+                          end-fireball-contract-seconds))
 
 (defn- update-end-message-reveal
   [state]
-  (let [fb (end-fireball state)
-        max-r (double (or (:max-radius fb) 1.0))
-        r (double (or (:radius fb) 0.0))]
-    (assoc state :end-message-reveal (min 1.0 (/ r max-r)))))
+  (assoc state :end-message-reveal
+         (game-end/reveal-fraction (end-fireball state))))
 
 (defn- enter-the-end
   [state]
@@ -774,48 +757,28 @@
 
 (defn end-fireball-centered?
   [state]
-  (let [fb (end-fireball state)
-        w (playfield-width state)
-        h (playfield-height state)]
-    (and fb
-         (= (long (:x fb)) (quot w 2))
-         (= (long (:y fb)) (quot h 2)))))
+  (game-end/fireball-centered? (end-fireball state)
+                               (playfield-width state)
+                               (playfield-height state)))
 
 (defn end-fireball-fills-playfield?
   [state]
-  (let [fb (end-fireball state)]
-    (and fb
-         (>= (double (:radius fb))
-             (* 0.99 (double (:max-radius fb)))))))
+  (game-end/fireball-fills-playfield? (end-fireball state)))
 
 (defn end-message-layout
   "Glyph bounds for THE END: a square matching the max end-fireball diameter."
   [state]
-  (let [fb (end-fireball state)
-        r (double (or (:max-radius fb) 0.0))
-        d (* 2.0 r)]
-    {:center-x (double (or (:x fb) 0.0))
-     :center-y (double (or (:y fb) 0.0))
-     :width d
-     :height d
-     :radius r}))
+  (game-end/message-layout (end-fireball state)))
 
 (defn end-message-fills-max-expanse?
   [state]
-  (let [layout (end-message-layout state)
-        fb (end-fireball state)
-        d (* 2.0 (double (:max-radius fb 0.0)))]
-    (and fb
-         (= (:width layout) d)
-         (= (:height layout) d))))
+  (game-end/message-fills-max-expanse? (end-fireball state)))
 
 (defn end-message-centered?
   [state]
-  (let [layout (end-message-layout state)
-        w (playfield-width state)
-        h (playfield-height state)]
-    (and (= (long (:center-x layout)) (quot w 2))
-         (= (long (:center-y layout)) (quot h 2)))))
+  (game-end/message-centered? (end-message-layout state)
+                              (playfield-width state)
+                              (playfield-height state)))
 
 (defn end-message-visibility-clipped?
   "Letters are only drawn inside the end fireball disk."
@@ -825,9 +788,7 @@
 (defn end-message-point-visible?
   "A glyph point is visible only when inside the current end fireball disk."
   [state x y]
-  (boolean
-   (when-let [fb (end-fireball state)]
-     (missiles/point-in-fireball? fb x y))))
+  (game-end/point-visible? (end-fireball state) x y))
 
 (defn end-message-reveal
   "0..1 fraction of the message revealed as the end fireball expands."
