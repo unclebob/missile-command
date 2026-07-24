@@ -633,7 +633,62 @@
       (and (<= living 6)
            (= living (min 6 (+ 4 n)))
            (= reserve (max 0 (- (+ 4 n) 6)))
-           (= n (core/bonus-city-earned-events state))))))(defspec wave-stays-incomplete-while-enemies-remain
+           (= n (core/bonus-city-earned-events state))))))
+
+(defn- advance-until-no-mirv-parents
+  [state]
+  (loop [s state n 0]
+    (cond
+      (> n 10000) s
+      (empty? (core/mirv-parents s)) s
+      :else (recur (:state (core/tick s 0.05)) (inc n)))))
+
+(defspec mirv-splits-into-child-warheads
+  25
+  (for-all [city-id city-index-gen
+            child-count (gen/elements [2 3 4])
+            split-p (gen/elements [0.3 0.5 0.7])]
+    (let [before (core/spawn-mirv-targeting-city
+                  (core/new-game {:width 800 :height 600})
+                  city-id child-count split-p)
+          after (advance-until-no-mirv-parents before)
+          children (core/mirv-children after)
+          targets (set (map :target-id children))]
+      (and (empty? (core/mirv-parents after))
+           (= child-count (count children))
+           (every? #(= core/enemy-kind-mirv-child (:enemy-kind %)) children)
+           (or (= 1 child-count) (< 1 (count targets)))))))
+
+(defspec destroying-mirv-parent-prevents-children
+  20
+  (for-all [city-id city-index-gen]
+    (let [state (core/spawn-mirv-targeting-city
+                 (core/new-game {:width 800 :height 600}) city-id 3 0.5)
+          city (core/city state city-id)
+          mid-y (long (/ (:y city) 2.0))
+          before (-> state
+                     (core/add-static-fireball (:x city) mid-y 80.0)
+                     (core/route-enemy-through-point (:x city) mid-y))
+          after (advance-enemies-until-gone before)]
+      (and (= :fireball (core/last-enemy-fate after))
+           (empty? (core/enemy-missiles after))
+           (empty? (core/mirv-children after))
+           (core/living-city? after city-id)))))
+
+(defspec unintercepted-mirv-children-destroy-cities
+  15
+  (for-all [city-id city-index-gen
+            child-count (gen/elements [2 3])]
+    (let [before (core/spawn-mirv-targeting-city
+                  (core/new-game {:width 800 :height 600})
+                  city-id child-count 0.4)
+          after (advance-enemies-until-gone before)
+          destroyed (- 6 (count (core/living-cities after)))]
+      (and (empty? (core/enemy-missiles after))
+           (= destroyed (min child-count 6))
+           (pos? destroyed)))))
+
+(defspec wave-stays-incomplete-while-enemies-remain
   25
   (for-all [n (gen/elements [1 2 3])]
     (let [before (core/set-wave-enemies-active
@@ -690,7 +745,9 @@
   (is (fn? core/tick))
   (is (fn? core/spawn-enemy-targeting-city))
   (is (fn? core/spawn-enemy-targeting-city-from))
+  (is (fn? core/spawn-mirv-targeting-city))
   (is (fn? core/multiplier))
+  (is (fn? core/wave-mirv-count))
   (is (fn? core/rearm-surviving-batteries))
   (is (fn? core/on-ground?))
   (is (fn? input/click-zone))

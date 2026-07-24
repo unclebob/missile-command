@@ -503,6 +503,87 @@
       (should= 25 (core/score after-kill))
       (should= 25 (core/score after-aim)))))
 
+(describe "MIRV warheads"
+  (it "flies as a single parent before the split progress"
+    (let [state (core/spawn-mirv-targeting-city
+                 (core/new-game {:width 800 :height 600}) 0 3 0.5)
+          after (:state (core/tick state 0.05))
+          m (first (core/enemy-missiles after))]
+      (should= 1 (count (core/enemy-missiles after)))
+      (should= 1 (count (core/mirv-parents after)))
+      (should= core/enemy-kind-mirv (:enemy-kind m))
+      (should (< (double (:progress m)) 0.5))))
+
+  (it "splits into child warheads with independent city targets"
+    (let [state (core/spawn-mirv-targeting-city
+                 (core/new-game {:width 800 :height 600}) 0 3 0.5)
+          after (loop [s state n 0]
+                  (if (or (and (empty? (core/mirv-parents s))
+                               (seq (core/mirv-children s)))
+                          (> n 5000))
+                    s
+                    (recur (:state (core/tick s 0.05)) (inc n))))
+          children (core/mirv-children after)
+          targets (set (map :target-id children))]
+      (should= 3 (count children))
+      (should (empty? (core/mirv-parents after)))
+      (should (< 1 (count targets)))
+      (should (every? #(= core/enemy-kind-mirv-child (:enemy-kind %)) children))))
+
+  (it "destroys a MIRV parent with a fireball before children appear"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (core/spawn-mirv-targeting-city 1 3 0.5)
+                    (core/add-static-fireball 400 100 40)
+                    (core/route-enemy-through-point 400 100))
+          after (loop [s state n 0]
+                  (if (or (= :fireball (core/last-enemy-fate s))
+                          (> n 5000))
+                    s
+                    (recur (:state (core/tick s 0.01)) (inc n))))]
+      (should= :fireball (core/last-enemy-fate after))
+      (should (empty? (core/enemy-missiles after)))
+      (should= 6 (count (core/living-cities after)))))
+
+  (it "lets unintercepted children destroy their target cities"
+    (let [state (core/spawn-mirv-targeting-city
+                 (core/new-game {:width 800 :height 600}) 0 2 0.5)
+          after (loop [s state n 0]
+                  (if (or (and (empty? (core/enemy-missiles s))
+                               (core/wave-complete? s))
+                          (and (empty? (core/enemy-missiles s)) (> n 100))
+                          (> n 10000))
+                    s
+                    (recur (:state (core/tick s 0.05)) (inc n))))]
+      (should (empty? (core/enemy-missiles after)))
+      (should= 4 (count (core/living-cities after)))))
+
+  (it "route-first-mirv-child-through-point retargets only the first child"
+    (let [state (core/spawn-mirv-targeting-city
+                 (core/new-game {:width 800 :height 600}) 0 3 0.4)
+          after-split (loop [s state n 0]
+                        (if (or (and (empty? (core/mirv-parents s))
+                                     (seq (core/mirv-children s)))
+                                (> n 5000))
+                          s
+                          (recur (:state (core/tick s 0.05)) (inc n))))
+          children (core/mirv-children after-split)
+          routed (core/route-first-mirv-child-through-point after-split 111 222)
+          first-child (first (core/mirv-children routed))
+          others (rest (core/mirv-children routed))]
+      (should= 3 (count children))
+      (should= 111.0 (double (:x0 first-child)))
+      (should= 222.0 (double (:y0 first-child)))
+      (should= core/enemy-kind-mirv-child (:enemy-kind first-child))
+      (should (every? #(not= 111.0 (double (:x0 %))) others))))
+
+  (it "route-first-mirv-child-through-point is a no-op without MIRV children"
+    (let [state (core/spawn-enemy-targeting-city
+                 (core/new-game {:width 800 :height 600}) 0)
+          after (core/route-first-mirv-child-through-point state 10 20)
+          m (first (core/enemy-missiles after))]
+      (should= 1 (count (core/enemy-missiles after)))
+      (should-not= 10.0 (double (:x0 m))))))
+
 (describe "bonus cities"
   (it "starts with empty reserve and default threshold"
     (let [state (core/new-game {:width 800 :height 600})]

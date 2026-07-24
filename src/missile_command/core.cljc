@@ -233,17 +233,42 @@
   [state]
   (waves/enemy-speed (wave state)))
 
+(def enemy-kind-ballistic :ballistic)
+(def enemy-kind-mirv :mirv)
+(def enemy-kind-mirv-child :mirv-child)
+
+(defn- mirv-parent?
+  [enemy]
+  (= enemy-kind-mirv (:enemy-kind enemy)))
+
+(defn- mirv-child?
+  [enemy]
+  (= enemy-kind-mirv-child (:enemy-kind enemy)))
+
+(defn mirv-parents
+  [state]
+  (filterv mirv-parent? (enemy-missiles state)))
+
+(defn mirv-children
+  [state]
+  (filterv mirv-child? (enemy-missiles state)))
+
 (defn spawn-enemy-at
-  "Spawn an enemy missile from origin toward a target point."
-  [state origin target target-kind target-id]
-  (let [[mid state] (next-entity-id state)
-        missile (missiles/make-enemy mid origin target
-                                     (enemy-speed-for-state state)
-                                     target-kind target-id)]
-    (-> state
-        (update :enemy-missiles (fnil conj []) missile)
-        (assoc :wave-had-enemies? wave-flag-on
-               :wave-complete? wave-starts-complete?))))
+  "Spawn an enemy missile from origin toward a target point.
+  Optional attrs merge onto the missile (e.g. MIRV fields)."
+  ([state origin target target-kind target-id]
+   (spawn-enemy-at state origin target target-kind target-id nil))
+  ([state origin target target-kind target-id attrs]
+   (let [[mid state] (next-entity-id state)
+         missile (merge (missiles/make-enemy mid origin target
+                                             (enemy-speed-for-state state)
+                                             target-kind target-id)
+                        {:enemy-kind enemy-kind-ballistic}
+                        attrs)]
+     (-> state
+         (update :enemy-missiles (fnil conj []) missile)
+         (assoc :wave-had-enemies? wave-flag-on
+                :wave-complete? wave-starts-complete?)))))
 
 (defn spawn-enemy-targeting-city-from
   "Spawn an enemy missile from an explicit sky origin toward a city."
@@ -287,6 +312,20 @@
   (let [ids (mapv :id (take n (living-cities state)))]
     (reduce spawn-enemy-targeting-city state ids)))
 
+(defn spawn-mirv-targeting-city
+  "Spawn a MIRV parent toward a city; splits into child-count warheads at split-progress."
+  [state city-id child-count split-progress]
+  (let [c (city state city-id)]
+    (when-not c
+      (throw (ex-info (str "unknown city " city-id) {:city-id city-id})))
+    (spawn-enemy-at state
+                    {:x (:x c) :y 0}
+                    {:x (:x c) :y (:y c)}
+                    :city city-id
+                    {:enemy-kind enemy-kind-mirv
+                     :child-count (long child-count)
+                     :split-progress (double split-progress)})))
+
 (defn add-static-fireball
   "Test/setup helper: place a fixed-radius fireball."
   [state x y radius]
@@ -294,21 +333,44 @@
         fb (missiles/make-static-fireball fid x y radius)]
     (update state :fireballs (fnil conj []) fb)))
 
+(defn- enemy-attrs-to-preserve
+  [enemy]
+  (select-keys enemy [:enemy-kind :child-count :split-progress]))
+
+(defn- retarget-enemy-from
+  "Rebuild an enemy path starting at x,y while preserving MIRV attrs."
+  [enemy x y]
+  (merge (missiles/make-enemy (:id enemy)
+                              {:x x :y y}
+                              {:x (:x1 enemy) :y (:y1 enemy)}
+                              (:speed enemy)
+                              (:target-kind enemy)
+                              (:target-id enemy))
+         (enemy-attrs-to-preserve enemy)))
+
 (defn route-enemy-through-point
   "Retarget the first enemy so its path starts at the given point (e.g. fireball)."
   [state x y]
   (update state :enemy-missiles
           (fn [ms]
             (if (seq ms)
-              (let [m (first ms)
-                    retargeted (missiles/make-enemy (:id m)
-                                                    {:x x :y y}
-                                                    {:x (:x1 m) :y (:y1 m)}
-                                                    (:speed m)
-                                                    (:target-kind m)
-                                                    (:target-id m))]
-                (into [retargeted] (rest ms)))
+              (into [(retarget-enemy-from (first ms) x y)] (rest ms))
               ms))))
+
+(defn- first-mirv-child-index
+  [enemies]
+  (first (keep-indexed (fn [i e] (when (mirv-child? e) i)) enemies)))
+
+(defn route-first-mirv-child-through-point
+  "Retarget the first MIRV child so its path starts at the given point."
+  [state x y]
+  (update state :enemy-missiles
+          (fn [ms]
+            (let [ms (vec ms)
+                  idx (first-mirv-child-index ms)]
+              (if idx
+                (assoc ms idx (retarget-enemy-from (nth ms idx) x y))
+                ms)))))
 
 (defn- impact-target
   [state enemy]
@@ -504,23 +566,74 @@
 (defn- keep-flying-enemy
   [state enemy]
   (update state :enemy-missiles (fnil conj []) enemy))
-(defn- tick-one-enemy
-  [state enemy dt fireballs]
+
+(defn- progress-of
+  [enemy-or-result]
+  (if (missiles/arrived? enemy-or-result)
+    1.0
+    (double (:progress enemy-or-result 0.0))))
+
+(defn- index-of-id
+  "Portable index lookup for .cljc (avoids java.util.List/.indexOf)."
+  [xs x]
+  (first (keep-indexed (fn [i v] (when (= v x) i)) xs)))
+
+(defn- mirv-child-target-ids
+  "Prefer starting at preferred city id, then cycle living cities for variety."
+  [state preferred-city-id n]
+  (let [living (mapv :id (living-cities state))]
+    (if (seq living)
+      (let [idx (or (index-of-id living preferred-city-id) 0)
+            ordered (vec (concat (subvec living idx) (subvec living 0 idx)))]
+        (vec (take n (cycle ordered))))
+      [])))
+
+(defn- split-mirv-parent
+  "Remove parent (already not re-queued) and spawn child warheads at split point."
+  [state parent]
+  (let [split-p (double (:split-progress parent 0.5))
+        at (missiles/position-at-progress parent split-p)
+        n (long (:child-count parent 0))
+        targets (mirv-child-target-ids state (:target-id parent) n)
+        origin {:x (:x at) :y (:y at)}]
+    (reduce (fn [s city-id]
+              (let [c (city s city-id)]
+                (if c
+                  (spawn-enemy-at s origin {:x (:x c) :y (:y c)} :city city-id
+                                  {:enemy-kind enemy-kind-mirv-child})
+                  s)))
+            state
+            targets)))
+
+(defn- should-split-mirv?
+  [enemy result]
+  (and (mirv-parent? enemy)
+       (>= (progress-of result)
+           (double (:split-progress enemy 1.0)))))
+
+(defn- resolve-advanced-enemy
+  "Apply MIRV split, impact, fireball kill, or continued flight for an advanced enemy."
+  [state enemy result fireballs]
   (cond
-    (enemy-hit-by-fireball? enemy fireballs)
+    (should-split-mirv? enemy result)
+    (split-mirv-parent state enemy)
+
+    (missiles/arrived? result)
+    (resolve-enemy-impact state enemy)
+
+    (enemy-hit-by-fireball? result fireballs)
     (destroy-enemy-by-fireball state)
 
     :else
-    (let [result (missiles/advance-enemy enemy dt)]
-      (cond
-        (missiles/arrived? result)
-        (resolve-enemy-impact state enemy)
+    (keep-flying-enemy state result)))
 
-        (enemy-hit-by-fireball? result fireballs)
-        (destroy-enemy-by-fireball state)
-
-        :else
-        (keep-flying-enemy state result)))))
+(defn- tick-one-enemy
+  [state enemy dt fireballs]
+  (if (enemy-hit-by-fireball? enemy fireballs)
+    (destroy-enemy-by-fireball state)
+    (resolve-advanced-enemy state enemy
+                            (missiles/advance-enemy enemy dt)
+                            fireballs)))
 
 (defn- tick-enemy-missiles
   [state dt]
@@ -612,6 +725,10 @@
 (defn wave-schedule-metrics
   [wave-number]
   (waves/schedule-metrics wave-number))
+
+(defn wave-mirv-count
+  [wave-number]
+  (waves/mirv-count wave-number))
 
 (defn harder-wave?
   [low-metrics high-metrics]
