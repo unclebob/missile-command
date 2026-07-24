@@ -18,9 +18,25 @@
        (<= 0 x) (< x width)
        (<= 0 y) (< y height)))
 
+(def battery-id-gen
+  (gen/elements [:left :center :right]))
+
 (defn- aim
   [state x y]
   (:state (core/handle state {:type :aim :x x :y y})))
+
+(defn- fire
+  [state battery-id]
+  (core/handle state {:type :fire :battery battery-id}))
+
+(defn- total-ammo
+  [state]
+  (reduce + (map :missiles (core/batteries state))))
+
+(defn- missile-from
+  [state battery-id]
+  (first (filter #(= battery-id (:battery %))
+                 (core/defensive-missiles state))))
 
 (defspec new-game-preserves-playfield-dimensions
   100
@@ -154,6 +170,75 @@
     (let [aimed (aim (core/new-game {:width w0 :height h0}) x y)
           resized (core/resize aimed w1 h1)]
       (in-playfield? w1 h1 (core/crosshair resized)))))
+
+(defspec fire-stocked-battery-launches-toward-crosshair
+  80
+  (for-all [width playfield-size-gen
+            height playfield-size-gen
+            battery-id battery-id-gen
+            x coordinate-gen
+            y coordinate-gen]
+    (let [before (aim (core/new-game {:width width :height height}) x y)
+          aim-point (core/crosshair before)
+          bat (core/battery before battery-id)
+          result (fire before battery-id)
+          after (:state result)
+          missile (missile-from after battery-id)]
+      (and (= 9 (:missiles (core/battery after battery-id)))
+           (= 1 (count (core/defensive-missiles after)))
+           (= (dec (total-ammo before)) (total-ammo after))
+           (= battery-id (:battery missile))
+           (= (:x bat) (:x0 missile))
+           (= (:y bat) (:y0 missile))
+           (= (:x aim-point) (:x1 missile))
+           (= (:y aim-point) (:y1 missile))
+           (= (:missile-speed bat) (:speed missile))
+           (= [{:type :sfx/launch :battery battery-id}] (:events result))))))
+
+(defspec fire-does-not-spend-other-batteries
+  60
+  (for-all [width playfield-size-gen
+            height playfield-size-gen
+            battery-id battery-id-gen]
+    (let [before (core/new-game {:width width :height height})
+          after (:state (fire before battery-id))
+          others (remove #(= battery-id (:id %)) (core/batteries after))]
+      (every? #(= 10 (:missiles %)) others))))
+
+(defspec fire-empty-or-destroyed-is-a-no-op
+  60
+  (for-all [width playfield-size-gen
+            height playfield-size-gen
+            battery-id battery-id-gen
+            mode (gen/elements [:empty :destroyed])]
+    (let [before (case mode
+                   :empty (core/set-battery-ammo
+                           (core/new-game {:width width :height height})
+                           battery-id 0)
+                   :destroyed (core/destroy-battery
+                               (core/new-game {:width width :height height})
+                               battery-id))
+          result (fire before battery-id)
+          after (:state result)]
+      (and (empty? (core/defensive-missiles after))
+           (empty? (:events result))
+           (= (:missiles (core/battery before battery-id))
+              (:missiles (core/battery after battery-id)))
+           (= (:destroyed? (core/battery before battery-id))
+              (:destroyed? (core/battery after battery-id)))))))
+
+(defspec center-missile-is-faster-than-side-missiles
+  40
+  (for-all [width playfield-size-gen
+            height playfield-size-gen]
+    (let [state (reduce (fn [s id] (:state (fire s id)))
+                        (core/new-game {:width width :height height})
+                        [:left :center :right])
+          by-battery (into {} (map (juxt :battery identity)
+                                   (core/defensive-missiles state)))]
+      (and (= 3 (count by-battery))
+           (> (:speed (by-battery :center)) (:speed (by-battery :left)))
+           (> (:speed (by-battery :center)) (:speed (by-battery :right)))))))
 
 (deftest property-suite-loads
   (is (fn? core/new-game))

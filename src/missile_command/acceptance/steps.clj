@@ -285,6 +285,94 @@
                 actual (core/score (:state world))]
             (assert-condition (= expected actual)
                               (str "score " actual " expected " expected)))
+          world)}
+
+   {:pattern #"^the player fires the <([A-Za-z0-9_]+)> battery$"
+    :fn (fn [world [_ battery-param] example]
+          (let [battery-id (support/example-battery example battery-param)
+                result (core/handle (:state world)
+                                    {:type :fire :battery battery-id})]
+            (assoc world :state (:state result))))}
+
+   {:pattern #"^the player fires every battery once$"
+    :fn (fn [world _ _]
+          (let [state (reduce (fn [s id]
+                                (:state (core/handle s {:type :fire :battery id})))
+                              (:state world)
+                              [:left :center :right])]
+            (assoc world :state state)))}
+
+   {:pattern #"^the <([A-Za-z0-9_]+)> battery has <([A-Za-z0-9_]+)> missiles$"
+    :fn (fn [world [_ battery-param ammo-param] example]
+          (let [battery-id (support/example-battery example battery-param)
+                expected (support/example-int example ammo-param "ammo")
+                actual (:missiles (battery world battery-id))]
+            (assert-condition (= expected actual)
+                              (str "battery " battery-id " missiles "
+                                   actual " expected " expected)))
+          world)}
+
+   {:pattern #"^every other battery has <([A-Za-z0-9_]+)> missiles$"
+    :fn (fn [world [_ ammo-param] example]
+          (let [expected (support/example-int example ammo-param "ammo")
+                fired (support/example-battery example "battery")
+                others (remove #(= fired (:id %)) (batteries world))]
+            (doseq [b others]
+              (assert-condition (= expected (:missiles b))
+                                (str "battery " (:id b) " missiles "
+                                     (:missiles b) " expected " expected))))
+          world)}
+
+   {:pattern #"^there are <([A-Za-z0-9_]+)> defensive missiles in flight$"
+    :fn (fn [world [_ count-param] example]
+          (assert-count (count (core/defensive-missiles (:state world)))
+                        (support/example-int example count-param "missile count")
+                        "defensive missiles")
+          world)}
+
+   {:pattern #"^a defensive missile from the <([A-Za-z0-9_]+)> battery targets <([A-Za-z0-9_]+)> <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ battery-param x-param y-param] example]
+          (let [battery-id (support/example-battery example battery-param)
+                target-x (support/example-int example x-param "x")
+                target-y (support/example-int example y-param "y")
+                match (first (filter #(and (= battery-id (:battery %))
+                                           (= target-x (:x1 %))
+                                           (= target-y (:y1 %)))
+                                     (core/defensive-missiles (:state world))))]
+            (assert-condition match
+                              (str "no defensive missile from " battery-id
+                                   " targeting " target-x "," target-y)))
+          world)}
+
+   {:pattern #"^the <([A-Za-z0-9_]+)> battery ammo is set to <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ battery-param ammo-param] example]
+          (assoc world :state
+                 (core/set-battery-ammo
+                  (:state world)
+                  (support/example-battery example battery-param)
+                  (support/example-int example ammo-param "ammo"))))}
+
+   {:pattern #"^the <([A-Za-z0-9_]+)> battery is destroyed$"
+    :fn (fn [world [_ battery-param] example]
+          (assoc world :state
+                 (core/destroy-battery
+                  (:state world)
+                  (support/example-battery example battery-param))))}
+
+   {:pattern #"^the center defensive missile is faster than each side defensive missile$"
+    :fn (fn [world _ _]
+          (let [by-battery (into {} (map (juxt :battery identity)
+                                         (core/defensive-missiles (:state world))))
+                center (or (by-battery :center)
+                           (support/fail! "missing center defensive missile"))
+                left (or (by-battery :left)
+                         (support/fail! "missing left defensive missile"))
+                right (or (by-battery :right)
+                          (support/fail! "missing right defensive missile"))]
+            (assert-gt (:speed center) (:speed left)
+                       "center missile not faster than left")
+            (assert-gt (:speed center) (:speed right)
+                       "center missile not faster than right"))
           world)}])
 
 (defn- match-handler

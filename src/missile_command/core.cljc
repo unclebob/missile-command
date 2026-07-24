@@ -1,5 +1,7 @@
 (ns missile-command.core
-  (:require [missile-command.world :as world]))
+  (:require [missile-command.batteries :as batteries]
+            [missile-command.missiles :as missiles]
+            [missile-command.world :as world]))
 
 (defn- clamp
   [n lo hi]
@@ -19,13 +21,28 @@
   (let [crosshair (or (:crosshair state) {:x 0 :y 0})]
     (clamp-point width height (:x crosshair) (:y crosshair))))
 
+(defn- update-battery
+  [state battery-id f]
+  (update state :batteries #(batteries/update-battery % battery-id f)))
+
+(defn- next-entity-id
+  [state]
+  (let [id (or (:next-entity-id state) 0)]
+    [id (assoc state :next-entity-id (inc id))]))
+
+(defn- no-events
+  [state]
+  {:state state :events []})
+
 (defn new-game
   "Create a new game state for the given playfield size."
   [{:keys [width height]}]
   (merge {:width width
           :height height
           :score 0
-          :crosshair (center-crosshair width height)}
+          :crosshair (center-crosshair width height)
+          :defensive-missiles []
+          :next-entity-id 0}
          (world/apply-layout width height)))
 
 (defn resize
@@ -78,20 +95,46 @@
   [state]
   (:score state))
 
+(defn defensive-missiles
+  [state]
+  (or (:defensive-missiles state) []))
+
+(defn set-battery-ammo
+  "Test/setup helper: set remaining missiles for a battery."
+  [state battery-id ammo]
+  (update-battery state battery-id #(batteries/set-ammo % ammo)))
+
+(defn destroy-battery
+  "Test/setup helper: mark a battery destroyed."
+  [state battery-id]
+  (update-battery state battery-id batteries/destroy))
+
+(defn- fire-battery
+  [state battery-id]
+  (let [bat (battery state battery-id)]
+    (if-not (batteries/can-fire? bat)
+      (no-events state)
+      (let [[missile-id state] (next-entity-id state)
+            missile (missiles/make-defensive missile-id battery-id bat
+                                             (crosshair state))]
+        {:state (-> state
+                    (update :defensive-missiles (fnil conj []) missile)
+                    (update-battery battery-id batteries/spend-ammo))
+         :events [{:type :sfx/launch :battery battery-id}]}))))
+
 (defn- aim
   [state x y]
-  (assoc state :crosshair
-         (clamp-point (playfield-width state)
-                      (playfield-height state)
-                      x y)))
+  (no-events
+   (assoc state :crosshair
+          (clamp-point (playfield-width state)
+                       (playfield-height state)
+                       x y))))
 
 (defn handle
   "Apply a player command. Returns {:state s :events [...]}."
   [state command]
   (case (:type command)
-    :aim
-    {:state (aim state (:x command) (:y command))
-     :events []}
-
+    :aim (aim state (:x command) (:y command))
+    :fire (fire-battery state (:battery command))
     (throw (ex-info (str "unsupported command: " (:type command))
                     {:command command}))))
