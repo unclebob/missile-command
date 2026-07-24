@@ -6,6 +6,7 @@
             [missile-command.missiles :as missiles]
             [missile-command.scoring :as scoring]
             [missile-command.high-scores :as high-scores]
+            [missile-command.options :as options]
             [missile-command.waves :as waves]
             [missile-command.world :as world]))
 (def initial-score 0)
@@ -26,6 +27,7 @@
 (def screen-the-end :the-end)
 (def screen-high-score-entry :high-score-entry)
 (def screen-high-scores :high-scores)
+(def screen-options :options)
 (def end-message-text "THE END")
 (def wrong-end-message-text "Game Over")
 (def title-game-name "Missile Command")
@@ -84,6 +86,7 @@
           :high-score-capacity high-scores/default-capacity
           :pending-high-score nil
           :submitted-high-score-initials nil
+          :options options/default-options
           :crosshair (center-crosshair width height)
           :defensive-missiles []
           :fireballs []
@@ -248,6 +251,22 @@
   [state]
   (= screen-high-scores (screen state)))
 
+(defn game-options
+  [state]
+  (or (:options state) options/default-options))
+
+(defn mute?
+  [state]
+  (options/mute? (game-options state)))
+
+(defn difficulty
+  [state]
+  (options/difficulty (game-options state)))
+
+(defn options?
+  [state]
+  (= screen-options (screen state)))
+
 (defn- carry-high-scores
   "Copy high-score table from source onto target (threadable: target first)."
   [target source]
@@ -257,6 +276,18 @@
          :pending-high-score nil
          :submitted-high-score-initials
          (:submitted-high-score-initials source)))
+
+(defn- carry-options
+  "Copy player options from source onto target (threadable: target first)."
+  [target source]
+  (assoc target :options (game-options source)))
+
+(defn- carry-shell
+  "Preserve high scores and options across shell transitions."
+  [target source]
+  (-> target
+      (carry-high-scores source)
+      (carry-options source)))
 
 (defn set-high-score-capacity
   [state capacity]
@@ -272,13 +303,50 @@
                                 initials
                                 score))))
 
+(defn open-options
+  "Open options from the title screen."
+  [state]
+  (if (title? state)
+    (assoc state :screen screen-options)
+    state))
+
+(defn leave-options
+  "Return from options to title."
+  [state]
+  (if (options? state)
+    (assoc state :screen screen-title)
+    state))
+
+(defn set-mute
+  [state mute-value]
+  (assoc state :options
+         (options/set-mute (game-options state) mute-value)))
+
+(defn set-difficulty
+  [state difficulty]
+  (assoc state :options
+         (options/set-difficulty (game-options state) difficulty)))
+
+(defn bind-fire-key
+  [state battery-id key]
+  (assoc state :options
+         (options/bind-fire-key (game-options state) battery-id key)))
+
+(defn fire-key-includes?
+  [state battery-id key]
+  (options/fire-key-includes? (game-options state) battery-id key))
+
+(defn pause-key-includes?
+  [state key]
+  (options/pause-key-includes? (game-options state) key))
+
 (defn start-game
   "Leave title (or any shell) and begin a fresh playing run at current size."
   [state]
   (let [w (playfield-width state)
         h (playfield-height state)]
     (-> (new-game {:width w :height h})
-        (carry-high-scores state)
+        (carry-shell state)
         (assoc :screen screen-playing
                :submitted-high-score-initials nil))))
 
@@ -302,7 +370,7 @@
         (let [w (playfield-width state)
               h (playfield-height state)]
           (-> (new-game {:width w :height h})
-              (carry-high-scores state)
+              (carry-shell state)
               (assoc :screen screen-title
                      :submitted-high-score-initials nil)))))))
 
@@ -320,7 +388,7 @@
           w (playfield-width state)
           h (playfield-height state)]
       (-> (new-game {:width w :height h})
-          (carry-high-scores (assoc state :high-scores table))
+          (carry-shell (assoc state :high-scores table))
           (assoc :screen screen-title
                  :pending-high-score nil
                  :submitted-high-score-initials norm)))))
@@ -821,8 +889,21 @@
     :close-high-scores (no-events (close-high-scores state))
     :submit-high-score
     (no-events (submit-high-score-initials state (:initials command)))
+    :open-options (no-events (open-options state))
+    :leave-options (no-events (leave-options state))
+    :set-mute (no-events (set-mute state (:mute command)))
+    :set-difficulty (no-events (set-difficulty state (:difficulty command)))
+    :bind-fire-key (no-events (bind-fire-key state (:battery command) (:key command)))
+    :key (if-let [battery-id (options/key->battery (game-options state) (:key command))]
+           (fire-battery state battery-id)
+           (no-events state))
     (throw (ex-info (str "unsupported command: " (:type command))
                     {:command command}))))
+
+(defn press-key
+  "Apply a remappable key: fire mapped battery when playing, else no-op result."
+  [state key]
+  (handle state {:type :key :key key}))
 
 (defn- spawn-fireball-at
   "Allocate and attach a expanding fireball centered at x,y."
@@ -1340,8 +1421,15 @@
   (map-living-batteries state #(batteries/set-ammo % ammo)))
 
 (defn wave-schedule-metrics
-  [wave-number]
-  (waves/schedule-metrics wave-number))
+  ([wave-number]
+   (waves/schedule-metrics wave-number))
+  ([wave-number difficulty]
+   (waves/schedule-metrics wave-number difficulty)))
+
+(defn wave-schedule-metrics-for
+  "Wave schedule metrics using the state's difficulty preset."
+  [state wave-number]
+  (waves/schedule-metrics wave-number (difficulty state)))
 
 (defn wave-mirv-count
   [wave-number]
