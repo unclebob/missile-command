@@ -190,8 +190,7 @@
                (dispatch world
                          "the horizontal span of the cities is less than width <width>"
                          ex))))
-
-  (it "aims the crosshair"
+(it "aims the crosshair"
     (let [world (fresh-world)
           aimed (dispatch world "the player aims at <x> <y>" {"x" "100" "y" "200"})]
       (should= {:x 100 :y 200} (core/crosshair (:state aimed)))))

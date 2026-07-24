@@ -290,7 +290,7 @@
                                      :y (support/example-int example y-param "y")})]
             (assoc world :state (:state result))))}
 
-   {:pattern #"^the crosshair is at (-?\d+) (-?\d+)$"
+{:pattern #"^the crosshair is at (-?\d+) (-?\d+)$"
     :fn (fn [world [_ x y] _]
           (let [expected {:x (support/parse-int x "x")
                           :y (support/parse-int y "y")}
@@ -481,6 +481,197 @@
                        "center missile not faster than left")
             (assert-gt (:speed center) (:speed right)
                        "center missile not faster than right"))
+          world)}
+
+   {:pattern #"^time advances by <([A-Za-z0-9_]+)> seconds$"
+    :fn (fn [world [_ dt-param] example]
+          (let [dt (Double/parseDouble (str (support/require-value example dt-param)))
+                result (core/tick (:state world) dt)]
+            (assoc world :state (:state result))))}
+
+   {:pattern #"^time advances until defensive missiles arrive$"
+    :fn (fn [world _ _]
+          (loop [s (:state world) n 0]
+            (cond
+              (empty? (core/defensive-missiles s)) (assoc world :state s)
+              (> n 5000) (support/fail! "missiles never arrived")
+              :else (recur (:state (core/tick s 0.05)) (inc n)))))}
+
+   {:pattern #"^time advances until the fireball reaches max radius$"
+    :fn (fn [world _ _]
+          (loop [s (:state world) n 0]
+            (let [r (if (seq (core/fireballs s))
+                      (apply max (map :radius (core/fireballs s)))
+                      0.0)
+                  max-r (core/max-fireball-radius s)]
+              (cond
+                (>= r (* 0.999 max-r))
+                (assoc world :state s :fireball-max-time (core/sim-time s))
+                (> n 5000) (support/fail! "fireball never reached max radius")
+                :else (recur (:state (core/tick s 0.01)) (inc n))))))}
+
+   {:pattern #"^time advances into the fireball shrink phase$"
+    :fn (fn [world _ _]
+          (loop [s (:state world) n 0]
+            (let [r (if (seq (core/fireballs s))
+                      (apply max (map :radius (core/fireballs s)))
+                      0.0)
+                  max-r (core/max-fireball-radius s)]
+              (cond
+                (and (seq (core/fireballs s)) (< r max-r))
+                (assoc world :state s :fireball-shrink-time (core/sim-time s))
+                (> n 5000) (support/fail! "fireball never entered shrink phase")
+                :else (recur (:state (core/tick s 0.01)) (inc n))))))}
+
+   {:pattern #"^time advances until fireballs expire$"
+    :fn (fn [world _ _]
+          (loop [s (:state world) n 0]
+            (cond
+              (empty? (core/fireballs s))
+              (assoc world :state s :fireball-end-time (core/sim-time s))
+              (> n 5000) (support/fail! "fireballs never expired")
+              :else (recur (:state (core/tick s 0.05)) (inc n)))))}
+
+   {:pattern #"^time advances until fireballs reach at least radius <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ r-param] example]
+          (let [min-r (Double/parseDouble (str (support/require-value example r-param)))]
+            (loop [s (:state world) n 0]
+              (let [r (if (seq (core/fireballs s))
+                        (apply max (map :radius (core/fireballs s)))
+                        0.0)]
+                (cond
+                  (>= r min-r) (assoc world :state s)
+                  (> n 5000) (support/fail! (str "fireball never reached radius " min-r))
+                  :else (recur (:state (core/tick s 0.01)) (inc n)))))))}
+
+   {:pattern #"^time advances until fireballs reach peak radius$"
+    :fn (fn [world _ _]
+          (loop [s (:state world) n 0]
+            (let [r (if (seq (core/fireballs s))
+                      (apply max (map :radius (core/fireballs s)))
+                      0.0)
+                  max-r (core/max-fireball-radius s)]
+              (cond
+                (>= r (* 0.999 max-r)) (assoc world :state s)
+                (> n 5000) (support/fail! "fireball never peaked")
+                :else (recur (:state (core/tick s 0.01)) (inc n))))))}
+
+   {:pattern #"^there are <([A-Za-z0-9_]+)> fireballs$"
+    :fn (fn [world [_ count-param] example]
+          (assert-count (count (core/fireballs (:state world)))
+                        (support/example-int example count-param "fireball count")
+                        "fireballs")
+          world)}
+
+   {:pattern #"^a fireball is centered at <([A-Za-z0-9_]+)> <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ x-param y-param] example]
+          (let [x (support/example-int example x-param "x")
+                y (support/example-int example y-param "y")
+                match (first (filter #(and (= x (:x %)) (= y (:y %)))
+                                     (core/fireballs (:state world))))]
+            (assert-condition match
+                              (str "no fireball centered at " x "," y)))
+          world)}
+
+   {:pattern #"^there is an active fireball$"
+    :fn (fn [world _ _]
+          (assert-condition (seq (core/fireballs (:state world)))
+                            "expected an active fireball")
+          world)}
+
+   {:pattern #"^the fireball start time is recorded$"
+    :fn (fn [world _ _]
+          (assoc world :fireball-start-time (core/sim-time (:state world))))}
+
+   {:pattern #"^the fireball max time is at least the fireball start time$"
+    :fn (fn [world _ _]
+          (assert-condition (>= (:fireball-max-time world)
+                                (:fireball-start-time world))
+                            "max time before start time")
+          world)}
+
+   {:pattern #"^the fireball shrink time is at least the fireball max time$"
+    :fn (fn [world _ _]
+          (assert-condition (>= (:fireball-shrink-time world)
+                                (:fireball-max-time world))
+                            "shrink time before max time")
+          world)}
+
+   {:pattern #"^the fireball end time is at least the fireball shrink time$"
+    :fn (fn [world _ _]
+          (assert-condition (>= (:fireball-end-time world)
+                                (:fireball-shrink-time world))
+                            "end time before shrink time")
+          world)}
+
+   {:pattern #"^a fireball radius is greater than <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ r-param] example]
+          (let [min-r (Double/parseDouble (str (support/require-value example r-param)))
+                r (apply max 0.0 (map :radius (core/fireballs (:state world))))]
+            (assert-gt r min-r (str "fireball radius " r " not > " min-r)))
+          world)}
+
+   {:pattern #"^a fireball radius is less than the max fireball radius$"
+    :fn (fn [world _ _]
+          (let [max-r (core/max-fireball-radius (:state world))
+                r (apply max 0.0 (map :radius (core/fireballs (:state world))))]
+            (assert-lt r max-r (str "fireball radius " r " not < max " max-r)))
+          world)}
+
+   {:pattern #"^a destroyable target at <([A-Za-z0-9_]+)> <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ x-param y-param] example]
+          (assoc world :state
+                 (core/add-destroyable-target
+                  (:state world)
+                  (support/example-int example x-param "x")
+                  (support/example-int example y-param "y"))))}
+
+   {:pattern #"^the destroyable target is destroyed$"
+    :fn (fn [world _ _]
+          (let [targets (core/destroyable-targets (:state world))]
+            (assert-condition (some :destroyed? targets)
+                              "expected a destroyed target"))
+          world)}
+
+   {:pattern #"^the destroyable target is not destroyed$"
+    :fn (fn [world _ _]
+          (let [targets (core/destroyable-targets (:state world))]
+            (assert-condition (every? (complement :destroyed?) targets)
+                              "expected no destroyed targets"))
+          world)}
+
+   {:pattern #"^the last applied time step is at most <([A-Za-z0-9_]+)> seconds$"
+    :fn (fn [world [_ dt-param] example]
+          (let [max-dt (Double/parseDouble (str (support/require-value example dt-param)))
+                actual (core/last-applied-dt (:state world))]
+            (assert-condition (<= actual max-dt)
+                              (str "last applied dt " actual " > " max-dt)))
+          world)}
+
+   {:pattern #"^a defensive missile from the <([A-Za-z0-9_]+)> battery has progressed toward <([A-Za-z0-9_]+)> <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ battery-param x-param y-param] example]
+          (let [battery-id (support/example-battery example battery-param)
+                aim-x (support/example-int example x-param "x")
+                aim-y (support/example-int example y-param "y")
+                m (first (filter #(and (= battery-id (:battery %))
+                                       (= aim-x (:x1 %))
+                                       (= aim-y (:y1 %)))
+                                 (core/defensive-missiles (:state world))))]
+            (assert-condition m "missing defensive missile")
+            (assert-gt (:progress m) 0.0 "missile has not progressed"))
+          world)}
+
+   {:pattern #"^a defensive missile from the <([A-Za-z0-9_]+)> battery has not reached <([A-Za-z0-9_]+)> <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ battery-param x-param y-param] example]
+          (let [battery-id (support/example-battery example battery-param)
+                aim-x (support/example-int example x-param "x")
+                aim-y (support/example-int example y-param "y")
+                m (first (filter #(and (= battery-id (:battery %))
+                                       (= aim-x (:x1 %))
+                                       (= aim-y (:y1 %)))
+                                 (core/defensive-missiles (:state world))))]
+            (assert-condition m "missing defensive missile")
+            (assert-lt (:progress m) 1.0 "missile already reached aim"))
           world)}])
 
 (defn- match-handler
