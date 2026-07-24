@@ -221,6 +221,7 @@
   [enemies]
   (mapcat (fn [e]
             [(str "enemy_id=" (:id e))
+             (str "enemy_kind=" (name (or (:enemy-kind e) :ballistic)))
              (str "enemy_x=" (:x e))
              (str "enemy_y=" (:y e))
              (str "enemy_origin_x=" (:x0 e))
@@ -229,7 +230,6 @@
              (str "enemy_target_y=" (:y1 e))
              (str "enemy_target=" (enemy-target-label e))])
           enemies))
-
 (defn- battery-sim-fields
   [state]
   (mapcat (fn [id]
@@ -341,8 +341,15 @@
    :battery {:default core/spawn-enemy-targeting-battery
              :from core/spawn-enemy-targeting-battery-from}})
 
-(defn- spawn-scenario-enemy
-  "Spawn one scenario enemy, honoring optional angled :origin [x y]."
+(defn- spawn-scenario-mirv
+  [state e]
+  (let [[_ id] (:target e)]
+    (core/spawn-mirv-targeting-city
+     state id
+     (or (:child-count e) 3)
+     (or (:split-progress e) 0.5))))
+
+(defn- spawn-scenario-ballistic
   [state e]
   (let [[kind id] (:target e)
         origin (:origin e)
@@ -351,6 +358,13 @@
       (nil? spawners) state
       origin ((:from spawners) state (first origin) (second origin) id)
       :else ((:default spawners) state id))))
+
+(defn- spawn-scenario-enemy
+  "Spawn one scenario enemy, honoring MIRV kind and optional angled :origin [x y]."
+  [state e]
+  (if (= :mirv (:kind e))
+    (spawn-scenario-mirv state e)
+    (spawn-scenario-ballistic state e)))
 
 (defn- apply-scenario-enemies
   [state scenario]

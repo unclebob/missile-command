@@ -21,7 +21,19 @@
       (and (= w (:wave m))
            (= (waves/enemy-count w) (:enemy-count m))
            (= (waves/enemy-speed w) (:enemy-speed m))
-           (= (waves/multiplier w) (:multiplier m))))))
+           (= (waves/multiplier w) (:multiplier m))
+           (= (waves/mirv-count w) (:mirv-count m))))))
+
+(defspec mirv-count-zero-early-then-nondecreasing
+  40
+  (for-all [w (gen/large-integer* {:min 1 :max 20})]
+    (let [m (waves/mirv-count w)]
+      (and (>= m 0)
+           (= m (max 0 (- (quot w 2) 1)))
+           (if (<= w 3)
+             (zero? m)
+             (pos? m))
+           (<= m (waves/mirv-count (inc w)))))))
 
 (defspec multiplier-steps-every-two-waves-and-caps
   50
