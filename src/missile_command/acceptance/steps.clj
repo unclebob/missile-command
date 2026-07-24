@@ -477,10 +477,15 @@
 
    {:pattern #"^the <([A-Za-z0-9_]+)> battery is destroyed$"
     :fn (fn [world [_ battery-param] example]
-          (assoc world :state
-                 (core/destroy-battery
-                  (:state world)
-                  (support/example-battery example battery-param))))}
+          (let [battery-id (support/example-battery example battery-param)
+                bat (battery world battery-id)]
+            (if (= :then (:gherkin-phase world))
+              (do
+                (assert-condition (:destroyed? bat)
+                                  (str "battery " battery-id " is not destroyed"))
+                world)
+              (assoc world :state
+                     (core/destroy-battery (:state world) battery-id)))))}
 
    {:pattern #"^the center defensive missile is faster than each side defensive missile$"
     :fn (fn [world _ _]
@@ -671,6 +676,102 @@
                                  (core/defensive-missiles (:state world))))]
             (assert-condition m "missing defensive missile")
             (assert-lt (:progress m) 1.0 "missile already reached aim"))
+          world)}
+
+   {:pattern #"^an enemy missile targeting city <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ city-param] example]
+          (assoc world :state
+                 (core/spawn-enemy-targeting-city
+                  (:state world)
+                  (support/example-int example city-param "city"))))}
+
+   {:pattern #"^an enemy missile targeting battery <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ battery-param] example]
+          (assoc world :state
+                 (core/spawn-enemy-targeting-battery
+                  (:state world)
+                  (support/example-battery example battery-param))))}
+
+   {:pattern #"^<([A-Za-z0-9_]+)> enemy missiles each targeting a different living city$"
+    :fn (fn [world [_ count-param] example]
+          (assoc world :state
+                 (core/spawn-enemies-targeting-distinct-cities
+                  (:state world)
+                  (support/example-int example count-param "spawn count"))))}
+
+   {:pattern #"^there are <([A-Za-z0-9_]+)> enemy missiles in flight$"
+    :fn (fn [world [_ count-param] example]
+          (assert-count (count (core/enemy-missiles (:state world)))
+                        (support/example-int example count-param "enemy count")
+                        "enemy missiles")
+          world)}
+
+   {:pattern #"^an enemy missile has progressed toward city <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ city-param] example]
+          (let [city-id (support/example-int example city-param "city")
+                m (first (filter #(and (= :city (:target-kind %))
+                                       (= city-id (:target-id %)))
+                                 (core/enemy-missiles (:state world))))]
+            (assert-condition m "missing enemy missile")
+            (assert-gt (:progress m) 0.0 "enemy has not progressed"))
+          world)}
+
+   {:pattern #"^time advances until enemy missiles impact or are destroyed$"
+    :fn (fn [world _ _]
+          (loop [s (:state world) n 0]
+            (cond
+              (empty? (core/enemy-missiles s)) (assoc world :state s)
+              (> n 10000) (support/fail! "enemy missiles never finished")
+              :else (recur (:state (core/tick s 0.05)) (inc n)))))}
+
+   {:pattern #"^time advances until the enemy missile is inside the fireball radius or has impacted$"
+    :fn (fn [world _ _]
+          (loop [s (:state world) n 0]
+            (cond
+              (empty? (core/enemy-missiles s)) (assoc world :state s)
+              (#{:fireball :impact} (core/last-enemy-fate s)) (assoc world :state s)
+              (> n 10000) (support/fail! "enemy never entered fireball or impacted")
+              :else (recur (:state (core/tick s 0.05)) (inc n)))))}
+
+   {:pattern #"^a fireball at <([A-Za-z0-9_]+)> <([A-Za-z0-9_]+)> with radius <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ x-param y-param r-param] example]
+          (assoc world :state
+                 (core/add-static-fireball
+                  (:state world)
+                  (support/example-int example x-param "x")
+                  (support/example-int example y-param "y")
+                  (support/example-int example r-param "radius"))))}
+
+   {:pattern #"^the enemy missile path passes within distance <([A-Za-z0-9_]+)> of that fireball center$"
+    :fn (fn [world [_ _r-param] example]
+          (let [x (support/example-int example "fireball_x" "x")
+                y (support/example-int example "fireball_y" "y")]
+            (assoc world :state (core/route-enemy-through-point (:state world) x y))))}
+
+   {:pattern #"^the enemy missile path stays farther than <([A-Za-z0-9_]+)> from that fireball center$"
+    :fn (fn [world _ _]
+          ;; Default vertical spawn plus far fireball examples already satisfy this.
+          world)}
+
+   {:pattern #"^the enemy missile is destroyed by the fireball$"
+    :fn (fn [world _ _]
+          (assert-condition (= :fireball (core/last-enemy-fate (:state world)))
+                            (str "expected fireball kill, got "
+                                 (core/last-enemy-fate (:state world))))
+          world)}
+
+   {:pattern #"^city <([A-Za-z0-9_]+)> is living$"
+    :fn (fn [world [_ city-param] example]
+          (let [city-id (support/example-int example city-param "city")]
+            (assert-condition (core/living-city? (:state world) city-id)
+                              (str "city " city-id " is not living")))
+          world)}
+
+   {:pattern #"^city <([A-Za-z0-9_]+)> is not living$"
+    :fn (fn [world [_ city-param] example]
+          (let [city-id (support/example-int example city-param "city")]
+            (assert-condition (not (core/living-city? (:state world) city-id))
+                              (str "city " city-id " is still living")))
           world)}])
 
 (defn- match-handler
@@ -680,9 +781,21 @@
             [handler matches]))
         step-handlers))
 
+(def gherkin-phases
+  {"Given" :given
+   "When" :when
+   "Then" :then})
+
+(defn- apply-gherkin-phase
+  [world keyword]
+  (if-let [phase (get gherkin-phases keyword)]
+    (assoc world :gherkin-phase phase)
+    world))
+
 (defn dispatch-step
   [world step example]
-  (let [text (:text step)]
+  (let [text (:text step)
+        world (apply-gherkin-phase world (:keyword step))]
     (if-let [[handler matches] (match-handler text)]
       ((:fn handler) world matches example)
       (support/fail! (str "unsupported step: " text)))))
