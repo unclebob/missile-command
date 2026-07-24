@@ -247,6 +247,7 @@
   (if-let [b (battery state battery-id)]
     (spawn-enemy-targeting-battery-from state (:x b) 0 battery-id)
     (throw (ex-info (str "unknown battery " battery-id) {:battery-id battery-id}))))
+
 (defn spawn-enemies-targeting-distinct-cities
   "Spawn n enemy missiles each aimed at a different living city."
   [state n]
@@ -469,14 +470,6 @@
   [living n]
   (if (seq living) (take n (cycle living)) []))
 
-(defn- wave-sky-origin-x
-  "Deterministic sky entry x for the i-th of n wave enemies across the playfield."
-  [state i n]
-  (let [w (double (playfield-width state))]
-    (if (pos? n)
-      (* w (/ (+ (double i) 0.5) (double n)))
-      0.0)))
-
 (defn set-wave-enemies-active
   "Test helper: replace in-flight enemies with n scheduled wave enemies."
   [state n]
@@ -486,10 +479,11 @@
                      :wave-complete? wave-starts-complete?
                      :wave-had-enemies? active?)
         living (mapv :id (living-cities state))
-        targets (vec (wave-targets-for living n))]
+        targets (vec (wave-targets-for living n))
+        width (playfield-width state)]
     (reduce (fn [s [i city-id]]
               (spawn-enemy-targeting-city-from
-               s (wave-sky-origin-x s i n) 0 city-id))
+               s (waves/sky-origin-x width i n) 0 city-id))
             state
             (map-indexed vector targets))))
 

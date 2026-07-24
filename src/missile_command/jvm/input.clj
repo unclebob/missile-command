@@ -1,8 +1,7 @@
 (ns missile-command.jvm.input
   "Pure host input mapping: UI events → core commands, CLI, telemetry. No Quil."
   (:require [clojure.string :as str]
-            [missile-command.core :as core]
-            [missile-command.missiles :as missiles]))
+            [missile-command.core :as core]))
 
 (def default-fire-keys
   {\z :left \Z :left \1 :left
@@ -333,6 +332,7 @@
       (nil? spawners) state
       origin ((:from spawners) state (first origin) (second origin) id)
       :else ((:default spawners) state id))))
+
 (defn- apply-scenario-enemies
   [state scenario]
   (let [enemies (or (:enemies scenario) [])]
@@ -352,6 +352,7 @@
       (apply-scenario-cities scenario)
       (apply-scenario-targets scenario)
       (apply-scenario-enemies scenario)))
+
 (defn format-fireball-phase-line
   "Phase timing line for one fireball."
   [state fireball phase]
