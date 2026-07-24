@@ -99,3 +99,7 @@
             (support/assert-lt (:progress m) 1.0 "missile already reached aim"))
           world)}
 ])
+
+;; clj-mutate-manifest-begin
+;; {:version 1, :tested-at "2026-07-24T15:37:48.434246-05:00", :module-hash "1376549632", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 4, :hash "1510457847"} {:id "defn-/advance-until", :kind "defn-", :line 6, :end-line 8, :hash "1259810946"} {:id "def/handlers", :kind "def", :line 10, :end-line 101, :hash "437682581"}]}
+;; clj-mutate-manifest-end

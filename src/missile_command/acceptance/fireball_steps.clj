@@ -5,24 +5,24 @@
 
 (def fireball-peak-fraction 0.999)
 
-(defn- max-live-fireball-radius
+(defn max-live-fireball-radius
   [state]
   (if (seq (core/fireballs state))
     (apply max (map :radius (core/fireballs state)))
     0.0))
 
-(defn- fireball-reached-peak?
+(defn fireball-reached-peak?
   [state]
   (>= (max-live-fireball-radius state)
       (* fireball-peak-fraction (core/max-fireball-radius state))))
 
-(defn- fireball-in-shrink-phase?
+(defn fireball-in-shrink-phase?
   [state]
   (and (seq (core/fireballs state))
        (< (max-live-fireball-radius state)
           (core/max-fireball-radius state))))
 
-(defn- fireball-radius-at-least?
+(defn fireball-radius-at-least?
   [state min-r]
   (>= (max-live-fireball-radius state) min-r))
 
