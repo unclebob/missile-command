@@ -10,6 +10,7 @@
             [missile-command.screens :as screens]
             [missile-command.high-scores :as high-scores]
             [missile-command.options :as options]
+            [missile-command.sfx :as sfx]
             [missile-command.waves :as waves]
             [missile-command.world :as world]))
 (def initial-score 0)
@@ -65,6 +66,9 @@
   [state]
   {:state state :events []})
 
+(def sfx-events sfx/events)
+(def sfx-emitted? sfx/emitted?)
+
 (defn new-game
   "Create a new game state for the given playfield size."
   [{:keys [width height]}]
@@ -86,6 +90,7 @@
           :pending-high-score nil
           :submitted-high-score-initials nil
           :options options/default-options
+          :sfx-events []
           :crosshair (center-crosshair width height)
           :defensive-missiles []
           :fireballs []
@@ -335,9 +340,12 @@
   (update-battery state battery-id #(batteries/set-ammo % ammo)))
 
 (defn destroy-battery
-  "Test/setup helper: mark a battery destroyed."
+  "Mark a battery destroyed; emit sfx when newly destroyed."
   [state battery-id]
-  (update-battery state battery-id batteries/destroy))
+  (let [bat (battery state battery-id)]
+    (sfx/maybe-emit (update-battery state battery-id batteries/destroy)
+                    (and bat (not (:destroyed? bat)))
+                    :sfx/battery-destroyed)))
 
 (defn add-destroyable-target
   "Test/setup helper: place a fireball-vulnerable stub at x,y."
@@ -352,7 +360,10 @@
 
 (defn destroy-city
   [state city-id]
-  (update-city state city-id cities/destroy))
+  (let [c (city state city-id)]
+    (sfx/maybe-emit (update-city state city-id cities/destroy)
+                    (and c (:alive? c))
+                    :sfx/city-destroyed)))
 
 (defn- enemy-speed-for-state
   "Enemy missile speed for the current wave, scaled by difficulty."
@@ -679,11 +690,14 @@
         (no-events state)
         (let [[missile-id state] (next-entity-id state)
               missile (missiles/make-defensive missile-id battery-id bat
-                                               (crosshair state))]
-          {:state (-> state
-                      (update :defensive-missiles (fnil conj []) missile)
-                      (update-battery battery-id batteries/spend-ammo))
-           :events [{:type :sfx/launch :battery battery-id}]})))))
+                                               (crosshair state))
+              remaining (dec (long (:missiles bat)))
+              events (sfx/launch-events battery-id remaining)
+              state (-> state
+                        (update :defensive-missiles (fnil conj []) missile)
+                        (update-battery battery-id batteries/spend-ammo)
+                        (sfx/emit-many events))]
+          {:state state :events events})))))
 
 (defn- aim
   [state x y]
@@ -870,7 +884,8 @@
                :enemy-missiles []
                :flyers []
                :defensive-missiles [])
-        update-end-message-reveal)))
+        update-end-message-reveal
+        (sfx/emit :sfx/the-end))))
 
 (defn evaluate-game-over
   "Apply reserve restores; enter THE END when no living cities and no reserve."
@@ -948,6 +963,7 @@
           (update :bonus-cities (fnil + initial-bonus-cities) new-awards)
           (update :bonus-city-earned-events
                   (fnil + initial-bonus-city-earned-events) new-awards)
+          (sfx/emit :sfx/bonus-city)
           apply-bonus-cities-from-reserve)
       state)))
 
@@ -970,7 +986,8 @@
       (add-score (scoring/enemy-kill-points
                   (if (smart-bomb? enemy) :smart :ballistic)
                   (multiplier state)))
-      (assoc :last-enemy-fate :fireball)))
+      (assoc :last-enemy-fate :fireball)
+      (sfx/emit :sfx/explosion)))
 
 (defn- spawn-impact-fireball
   "Visual/game blast at the impact point (ground strike)."
@@ -1163,7 +1180,8 @@
       apply-bonus-cities-from-reserve
       (assoc :wave-complete? wave-flag-on
              :wave-had-enemies? wave-starts-with-enemies?)
-      (update :wave (fnil inc waves/initial-wave))))
+      (update :wave (fnil inc waves/initial-wave))
+      (sfx/emit :sfx/wave-clear)))
 
 (defn- maybe-complete-wave
   "When all active wave enemies are gone, mark the wave complete and advance."
@@ -1233,11 +1251,7 @@
   [state ammo]
   (map-living-batteries state #(batteries/set-ammo % ammo)))
 
-(defn wave-schedule-metrics
-  ([wave-number]
-   (waves/schedule-metrics wave-number))
-  ([wave-number difficulty]
-   (waves/schedule-metrics wave-number difficulty)))
+(def wave-schedule-metrics waves/schedule-metrics)
 
 (defn wave-schedule-metrics-for
   "Wave schedule metrics using the state's difficulty preset."

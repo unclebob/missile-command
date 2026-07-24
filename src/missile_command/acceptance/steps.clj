@@ -12,6 +12,7 @@
             [missile-command.acceptance.hud-steps :as hud-steps]
             [missile-command.acceptance.high-score-steps :as high-score-steps]
             [missile-command.acceptance.options-steps :as options-steps]
+            [missile-command.acceptance.sfx-steps :as sfx-steps]
             [missile-command.core :as core]))
 
 (defn- assert-playfield-dimension
@@ -1025,8 +1026,8 @@
         pause-steps/handlers
         hud-steps/handlers
         high-score-steps/handlers
-        options-steps/handlers)))
-
+        options-steps/handlers
+        sfx-steps/handlers)))
 (defn- match-handler
   [text]
   (some (fn [handler]
