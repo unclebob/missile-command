@@ -60,6 +60,64 @@
       (should= (core/score before) (core/score after))
       (should= {:x 250 :y 150} (core/crosshair after)))))
 
+(describe "fire battery"
+  (it "launches a defensive missile toward the crosshair and spends ammo"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (core/handle {:type :aim :x 400 :y 200})
+                    :state)
+          result (core/handle state {:type :fire :battery :left})
+          after (:state result)
+          missiles (core/defensive-missiles after)
+          missile (first missiles)]
+      (should= 9 (:missiles (core/battery after :left)))
+      (should= 1 (count missiles))
+      (should= :left (:battery missile))
+      (should= 400 (:x1 missile))
+      (should= 200 (:y1 missile))
+      (should= (:x (core/battery state :left)) (:x0 missile))
+      (should= (:y (core/battery state :left)) (:y0 missile))
+      (should= (:missile-speed (core/battery state :left)) (:speed missile))))
+
+  (it "does not spend ammo on other batteries"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (core/handle {:type :aim :x 400 :y 200})
+                    :state
+                    (#(:state (core/handle % {:type :fire :battery :center}))))]
+      (should= 9 (:missiles (core/battery state :center)))
+      (should= 10 (:missiles (core/battery state :left)))
+      (should= 10 (:missiles (core/battery state :right)))))
+
+  (it "does nothing when the battery is empty"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (core/set-battery-ammo :left 0))
+          after (:state (core/handle state {:type :fire :battery :left}))]
+      (should= 0 (:missiles (core/battery after :left)))
+      (should= 0 (count (core/defensive-missiles after)))))
+
+  (it "does nothing when the battery is destroyed"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (core/destroy-battery :center))
+          after (:state (core/handle state {:type :fire :battery :center}))]
+      (should= 0 (count (core/defensive-missiles after)))
+      (should= 10 (:missiles (core/battery after :center)))
+      (should (:destroyed? (core/battery after :center)))))
+
+  (it "gives center missiles higher speed than side missiles"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (core/handle {:type :aim :x 400 :y 100})
+                    :state)
+          after (->> [:left :center :right]
+                     (reduce (fn [s id]
+                               (:state (core/handle s {:type :fire :battery id})))
+                             state))
+          by-battery (into {} (map (juxt :battery identity)
+                                   (core/defensive-missiles after)))]
+      (should= 3 (count by-battery))
+      (should (> (:speed (by-battery :center))
+                 (:speed (by-battery :left))))
+      (should (> (:speed (by-battery :center))
+                 (:speed (by-battery :right)))))))
+
 (describe "resize"
   (it "updates playfield size and reflows cities and batteries"
     (let [state (-> (core/new-game {:width 800 :height 600})
