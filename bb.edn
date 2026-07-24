@@ -67,7 +67,8 @@
                    "missile_command/missiles"
                    "missile_command/input"
                    "missile_command/acceptance"
-                   "missile_command/jvm/input"]))}
+                   "missile_command/jvm/input"
+                   "missile_command/jvm/window"]))}
 
   dry
   {:doc "DRY structural duplication analysis for testable modules"
@@ -80,7 +81,8 @@
                    "src/missile_command/missiles.cljc"
                    "src/missile_command/input.cljc"
                    "src/missile_command/acceptance"
-                   "src/missile_command/jvm/input.clj"]))}
+                   "src/missile_command/jvm/input.clj"
+                   "src/missile_command/jvm/window.clj"]))}
 
   parse-acceptance
   {:doc "Parse Gherkin features to JSON IR"

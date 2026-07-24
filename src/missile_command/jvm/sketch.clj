@@ -2,9 +2,11 @@
   "Quil sketch: route mouse/keyboard UI events into pure core commands."
   (:require [quil.core :as q]
             [quil.middleware :as m]
+            [quil.applet :as applet]
             [missile-command.core :as core]
             [missile-command.jvm.input :as input]
-            [missile-command.jvm.render :as render]))
+            [missile-command.jvm.render :as render]
+            [missile-command.jvm.window :as window]))
 
 (def default-width 800)
 (def default-height 600)
@@ -47,10 +49,21 @@
           state
           (:destroy-batteries @launch-options)))
 
+(defn- configure-display!
+  "Open on the screen under the pointer; do not steal keyboard focus."
+  []
+  (try
+    (let [surface (.getSurface (applet/current-applet))]
+      (window/place-on-pointer-screen! surface (q/width) (q/height)))
+    (catch Exception e
+      (binding [*out* *err*]
+        (println "window placement skipped:" (.getMessage e))))))
+
 (defn setup
   []
   (q/frame-rate 120)
   (q/no-cursor)
+  (configure-display!)
   (-> (core/new-game {:width (q/width) :height (q/height)})
       apply-destroy-options))
 
