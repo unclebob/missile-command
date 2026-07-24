@@ -1,0 +1,61 @@
+{:tasks
+ {gherkin-parser
+  {:doc "APS gherkin-parser (Babashka tools from Acceptance-Pipeline-Specification)"
+   :task (apply shell "gherkin-parser" *command-line-args*)}
+
+  gherkin-mutator
+  {:doc "APS gherkin-mutator"
+   :task (apply shell "gherkin-mutator" *command-line-args*)}
+
+  gherkin-ir-dry-checker
+  {:doc "APS gherkin-ir-dry-checker"
+   :task (apply shell {:dir (str (System/getProperty "user.home")
+                                 "/.local/share/swarmforge-tools/Acceptance-Pipeline-Specification")}
+                "bb" "gherkin-ir-dry-checker" *command-line-args*)}
+
+  check
+  {:doc "Validate Speclj structure of unit specs"
+   :task (apply shell "clojure" "-M:check" *command-line-args*)}
+
+  test
+  {:doc "Run unit tests (Speclj)"
+   :task (do
+           (shell "clojure" "-M:check" "spec")
+           (shell "clojure" "-M:test"))}
+
+  parse-acceptance
+  {:doc "Parse Gherkin features to JSON IR"
+   :task (shell "bash" "-c"
+                (str "set -euo pipefail; "
+                     "mkdir -p build/acceptance/ir; "
+                     "rm -f build/acceptance/ir/*.json; "
+                     "for f in features/*.feature; do "
+                     "  [ -e \"$f\" ] || continue; "
+                     "  base=$(basename \"$f\" .feature); "
+                     "  gherkin-parser \"$f\" \"build/acceptance/ir/${base}.json\"; "
+                     "done; "
+                     "for f in features/*/*.feature; do "
+                     "  [ -e \"$f\" ] || continue; "
+                     "  rel=${f#features/}; "
+                     "  rel=${rel%.feature}; "
+                     "  ir=$(echo \"$rel\" | tr '/' '-'); "
+                     "  gherkin-parser \"$f\" \"build/acceptance/ir/${ir}.json\"; "
+                     "done"))}
+
+  generate-acceptance
+  {:doc "Generate acceptance test entrypoints from IR"
+   :depends [parse-acceptance]
+   :task (shell "bash" "-c"
+                (str "set -euo pipefail; "
+                     "mkdir -p acceptance/generated/metadata; "
+                     "rm -f acceptance/generated/*_test.clj; "
+                     "rm -f acceptance/generated/metadata/*.json; "
+                     "for f in build/acceptance/ir/*.json; do "
+                     "  [ -e \"$f\" ] || continue; "
+                     "  bin/acceptance-entrypoint-generator \"$f\" acceptance/generated; "
+                     "done"))}
+
+  accept
+  {:doc "Normal acceptance pipeline: parse → generate → run generated tests"
+   :depends [generate-acceptance]
+   :task (shell "clojure" "-M:accept")}}}
