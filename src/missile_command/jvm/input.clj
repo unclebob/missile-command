@@ -225,6 +225,7 @@
                           fireballs)
         enemy-fields (mapcat (fn [e]
                                [(str "enemy_id=" (:id e))
+                                (str "enemy_kind=" (name (or (:enemy-kind e) :ballistic)))
                                 (str "enemy_x=" (:x e))
                                 (str "enemy_y=" (:y e))
                                 (str "enemy_origin_x=" (:x0 e))
@@ -310,15 +311,26 @@
         state (reduce (fn [s e]
                         (let [[kind id] (:target e)
                               origin (:origin e)
-                              [ox oy] (when origin [(first origin) (second origin)])]
-                          (case kind
-                            :city (if origin
-                                    (core/spawn-enemy-targeting-city-from s ox oy id)
-                                    (core/spawn-enemy-targeting-city s id))
-                            :battery (if origin
-                                       (core/spawn-enemy-targeting-battery-from s ox oy id)
-                                       (core/spawn-enemy-targeting-battery s id))
-                            s)))
+                              [ox oy] (when origin [(first origin) (second origin)])
+                              enemy-kind (:kind e)]
+                          (cond
+                            (= :mirv enemy-kind)
+                            (core/spawn-mirv-targeting-city
+                             s id
+                             (or (:child-count e) 3)
+                             (or (:split-progress e) 0.5))
+
+                            (= kind :city)
+                            (if origin
+                              (core/spawn-enemy-targeting-city-from s ox oy id)
+                              (core/spawn-enemy-targeting-city s id))
+
+                            (= kind :battery)
+                            (if origin
+                              (core/spawn-enemy-targeting-battery-from s ox oy id)
+                              (core/spawn-enemy-targeting-battery s id))
+
+                            :else s)))
                       state
                       enemies)
         state (if (contains? scenario :bonus-cities)
