@@ -79,6 +79,7 @@
                    "missile_command/sfx"
                    "missile_command/wave_banner"
                    "missile_command/wave_schedule"
+                   "missile_command/wave_lifecycle"
                    "missile_command/acceptance"
                    "missile_command/jvm/input"]))}
 
@@ -105,6 +106,7 @@
                    "src/missile_command/sfx.cljc"
                    "src/missile_command/wave_banner.cljc"
                    "src/missile_command/wave_schedule.cljc"
+                   "src/missile_command/wave_lifecycle.cljc"
                    "src/missile_command/acceptance"
                    "src/missile_command/jvm/input.clj"]))}
 

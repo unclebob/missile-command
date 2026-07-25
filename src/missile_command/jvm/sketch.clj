@@ -185,15 +185,18 @@
     state))
 
 (defn- spawn-scheduled-wave-enemies
-  "Launch the current wave's full schedule (ballistics, MIRVs, smart bombs, flyers)."
+  "Start attack 1 of the current wave (later attacks advance in core/tick)."
   [state]
   (core/activate-wave-schedule state))
 
 (defn- ensure-wave-enemies
-  "If no enemies or flyers are in flight, spawn this wave's schedule (normal play)."
+  "If the sky is empty and this wave has not started attacks, begin attack 1.
+  Sequential attacks 2..N are started by core when the previous attack ends."
   [state]
   (if (or (seq (core/enemy-missiles state))
-          (seq (core/flyers state)))
+          (seq (core/flyers state))
+          (:wave-attack state)
+          (core/wave-complete? state))
     state
     (spawn-scheduled-wave-enemies state)))
 

@@ -21,6 +21,15 @@
   [state]
   (or (:text (of state)) ""))
 
+(defn subtitle
+  "Optional second line (e.g. Bonus City when a city was restored)."
+  [state]
+  (or (:subtitle (of state)) ""))
+
+(defn bonus-city?
+  [state]
+  (boolean (:bonus-city? (of state))))
+
 (defn announced-wave
   [state]
   (long (or (:announced-wave (of state)) 0)))
@@ -52,6 +61,8 @@
          dy (- (:y p) (:y c))]
      (Math/sqrt (+ (* dx dx) (* dy dy))))))
 
+(def bonus-city-subtitle "Bonus City")
+
 (defn- banner-text-for
   [wave]
   (str "WAVE " (long wave)))
@@ -65,31 +76,42 @@
   (max 0.0 (min 1.0 (double t))))
 
 (defn make
-  [width height announced-wave]
-  (let [c (playfield-center width height)
-        start-x (- 0.0 offscreen-margin)]
-    {:announced-wave (long announced-wave)
-     :text (banner-text-for announced-wave)
-     :phase phase-enter
-     :progress 0.0
-     :x start-x
-     :y (:y c)
-     :enter-start-x start-x
-     :center-x (:x c)
-     :center-y (:y c)
-     :exit-end-x (+ (double width) offscreen-margin)}))
+  ([width height announced-wave]
+   (make width height announced-wave false))
+  ([width height announced-wave bonus-city?]
+   (let [c (playfield-center width height)
+         start-x (- 0.0 offscreen-margin)
+         bonus? (boolean bonus-city?)]
+     {:announced-wave (long announced-wave)
+      :text (banner-text-for announced-wave)
+      :bonus-city? bonus?
+      :subtitle (if bonus? bonus-city-subtitle "")
+      :phase phase-enter
+      :progress 0.0
+      :x start-x
+      :y (:y c)
+      :enter-start-x start-x
+      :center-x (:x c)
+      :center-y (:y c)
+      :exit-end-x (+ (double width) offscreen-margin)})))
 
 (defn enter
-  "Put state on wave-banner screen announcing wave."
+  "Put state on wave-banner screen announcing wave.
+  Optional bonus-city? shows a Bonus City subtitle when a city was restored."
   ([state announced-wave]
+   (enter state announced-wave false))
+  ([state announced-wave bonus-city?]
    (enter state
           (or (:width state) 0)
           (or (:height state) 0)
-          announced-wave))
+          announced-wave
+          bonus-city?))
   ([state width height announced-wave]
+   (enter state width height announced-wave false))
+  ([state width height announced-wave bonus-city?]
    (assoc state
           :screen screens/wave-banner
-          :wave-banner (make width height announced-wave))))
+          :wave-banner (make width height announced-wave bonus-city?))))
 
 (defn clear
   "Leave banner and restore playing screen."
@@ -143,5 +165,5 @@
     (finish-fn state)))
 
 ;; clj-mutate-manifest-begin
-;; {:version 1, :tested-at "2026-07-24T21:13:23.975346-05:00", :module-hash "295249608", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 3, :hash "-1156496799"} {:id "def/phase-enter", :kind "def", :line 5, :end-line 5, :hash "-1325013704"} {:id "def/phase-exit", :kind "def", :line 6, :end-line 6, :hash "571724543"} {:id "def/enter-duration", :kind "def", :line 8, :end-line 8, :hash "212342138"} {:id "def/exit-duration", :kind "def", :line 9, :end-line 9, :hash "698481786"} {:id "def/offscreen-margin", :kind "def", :line 10, :end-line 10, :hash "-1275849371"} {:id "defn/screen?", :kind "defn", :line 12, :end-line 14, :hash "-626378302"} {:id "defn/of", :kind "defn", :line 16, :end-line 18, :hash "-981582658"} {:id "defn/text", :kind "defn", :line 20, :end-line 22, :hash "1107135439"} {:id "defn/announced-wave", :kind "defn", :line 24, :end-line 26, :hash "-1105766107"} {:id "defn/phase", :kind "defn", :line 28, :end-line 30, :hash "-496719693"} {:id "defn/text-position", :kind "defn", :line 32, :end-line 36, :hash "1102855509"} {:id "defn-/playfield-center", :kind "defn-", :line 38, :end-line 41, :hash "-466748197"} {:id "defn/distance-to-center", :kind "defn", :line 43, :end-line 53, :hash "737446024"} {:id "defn-/banner-text-for", :kind "defn-", :line 55, :end-line 57, :hash "-1082966793"} {:id "defn-/lerp", :kind "defn-", :line 59, :end-line 61, :hash "-1528249028"} {:id "defn-/clamp01", :kind "defn-", :line 63, :end-line 65, :hash "2048038306"} {:id "defn/make", :kind "defn", :line 67, :end-line 80, :hash "-963403718"} {:id "defn/enter", :kind "defn", :line 82, :end-line 92, :hash "-1932914319"} {:id "defn/clear", :kind "defn", :line 94, :end-line 99, :hash "725549826"} {:id "defn-/phase-duration", :kind "defn-", :line 101, :end-line 103, :hash "-847565443"} {:id "defn-/complete-enter", :kind "defn-", :line 105, :end-line 112, :hash "-1727395524"} {:id "defn-/advance-banner-x", :kind "defn-", :line 114, :end-line 120, :hash "-79769897"} {:id "defn-/finish-phase", :kind "defn-", :line 122, :end-line 126, :hash "-539197714"} {:id "defn-/tick-banner", :kind "defn-", :line 128, :end-line 135, :hash "-1415388649"} {:id "defn/tick", :kind "defn", :line 137, :end-line 143, :hash "1743369184"}]}
+;; {:version 1, :tested-at "2026-07-25T10:12:01.181259-05:00", :module-hash "-1984950152", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 3, :hash "-1156496799"} {:id "def/phase-enter", :kind "def", :line 5, :end-line 5, :hash "-1325013704"} {:id "def/phase-exit", :kind "def", :line 6, :end-line 6, :hash "571724543"} {:id "def/enter-duration", :kind "def", :line 8, :end-line 8, :hash "212342138"} {:id "def/exit-duration", :kind "def", :line 9, :end-line 9, :hash "698481786"} {:id "def/offscreen-margin", :kind "def", :line 10, :end-line 10, :hash "-1275849371"} {:id "defn/screen?", :kind "defn", :line 12, :end-line 14, :hash "-626378302"} {:id "defn/of", :kind "defn", :line 16, :end-line 18, :hash "-981582658"} {:id "defn/text", :kind "defn", :line 20, :end-line 22, :hash "1107135439"} {:id "defn/subtitle", :kind "defn", :line 24, :end-line 27, :hash "1027294748"} {:id "defn/bonus-city?", :kind "defn", :line 29, :end-line 31, :hash "1429856038"} {:id "defn/announced-wave", :kind "defn", :line 33, :end-line 35, :hash "-1105766107"} {:id "defn/phase", :kind "defn", :line 37, :end-line 39, :hash "-496719693"} {:id "defn/text-position", :kind "defn", :line 41, :end-line 45, :hash "1102855509"} {:id "defn-/playfield-center", :kind "defn-", :line 47, :end-line 50, :hash "-466748197"} {:id "defn/distance-to-center", :kind "defn", :line 52, :end-line 62, :hash "737446024"} {:id "def/bonus-city-subtitle", :kind "def", :line 64, :end-line 64, :hash "1429876496"} {:id "defn-/banner-text-for", :kind "defn-", :line 66, :end-line 68, :hash "-1082966793"} {:id "defn-/lerp", :kind "defn-", :line 70, :end-line 72, :hash "-1528249028"} {:id "defn-/clamp01", :kind "defn-", :line 74, :end-line 76, :hash "2048038306"} {:id "defn/make", :kind "defn", :line 78, :end-line 96, :hash "-999226636"} {:id "defn/enter", :kind "defn", :line 98, :end-line 114, :hash "-1173265665"} {:id "defn/clear", :kind "defn", :line 116, :end-line 121, :hash "725549826"} {:id "defn-/phase-duration", :kind "defn-", :line 123, :end-line 125, :hash "-847565443"} {:id "defn-/complete-enter", :kind "defn-", :line 127, :end-line 134, :hash "-1727395524"} {:id "defn-/advance-banner-x", :kind "defn-", :line 136, :end-line 142, :hash "-79769897"} {:id "defn-/finish-phase", :kind "defn-", :line 144, :end-line 148, :hash "-539197714"} {:id "defn-/tick-banner", :kind "defn-", :line 150, :end-line 157, :hash "-1415388649"} {:id "defn/tick", :kind "defn", :line 159, :end-line 165, :hash "1743369184"}]}
 ;; clj-mutate-manifest-end

@@ -365,9 +365,25 @@
                               (str "score " actual " expected " expected)))
           world)}
 
+   {:pattern #"^the score is (\d+)$"
+    :fn (fn [world [_ score-text] _]
+          (let [expected (support/parse-int score-text "score")
+                actual (core/score (:state world))]
+            (support/assert-condition (= expected actual)
+                              (str "score " actual " expected " expected)))
+          world)}
+
    {:pattern #"^the multiplier is <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ mult-param] example]
           (let [expected (support/example-int example mult-param "multiplier")
+                actual (core/multiplier (:state world))]
+            (support/assert-condition (= expected actual)
+                              (str "multiplier " actual " expected " expected)))
+          world)}
+
+   {:pattern #"^the multiplier is (\d+)$"
+    :fn (fn [world [_ mult-text] _]
+          (let [expected (support/parse-int mult-text "multiplier")
                 actual (core/multiplier (:state world))]
             (support/assert-condition (= expected actual)
                               (str "multiplier " actual " expected " expected)))
