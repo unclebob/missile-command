@@ -37,14 +37,14 @@ Scenario: Waves and rearm 02 wave does not complete while enemies remain
   And there are <enemy_count> enemy missiles in flight
   And the last applied dt is <expected_applied_dt>
   And an enemy missile has progressed toward city 0
-  And the first enemy missile progress equals <expected_progress>
+  And the first enemy missile progress matches last applied dt and path length
   And the wave is not complete
 
 Examples:
-  | width | height | remaining | wave | enemy_count | expected_applied_dt | expected_progress     | expected_width | expected_height |
-  | 800   | 600    | 1         | 1    | 1           | 0.05                | 0.0030959752321981426 | 800            | 600             |
-  | 800   | 600    | 3         | 1    | 3           | 0.05                | 0.0035012699756042645 | 800            | 600             |
-  | 1920  | 1080   | 2         | 1    | 2           | 0.05                | 0.0018939054269892879 | 1920           | 1080            |
+  | width | height | remaining | wave | enemy_count | expected_applied_dt | expected_width | expected_height |
+  | 800   | 600    | 1         | 1    | 1           | 0.05                | 800            | 600             |
+  | 800   | 600    | 3         | 1    | 3           | 0.05                | 800            | 600             |
+  | 1920  | 1080   | 2         | 1    | 2           | 0.05                | 1920           | 1080            |
 
 Scenario: Waves and rearm 03 wave completes when all enemies are gone
   Given a new game with width <width> and height <height>
