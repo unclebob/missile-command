@@ -31,10 +31,13 @@ Build a dual-platform remake of the 1980 Atari arcade game *Missile Command*: de
 
 ## 3. Architecture
 
+> **Living plan:** module inventory, decisions, and phased extraction PRs are maintained in  
+> [`docs/architecture/ADR-001-modular-core-and-extraction-plan.md`](../../architecture/ADR-001-modular-core-and-extraction-plan.md).  
+> Prefer that ADR over this section when they disagree (layout and wave/bonus rules evolve).
+
 ### 3.1 Approach
 
 **Pure functional core + thin Quil hosts.**
-
 ```
 Host frame loop
   → raw mouse/keyboard

@@ -37,3 +37,25 @@
 
   (it "returns empty city ids when none live"
     (should= [] (#'wave-schedule/cycle-living-city-ids [] 3))))
+
+(describe "wave-schedule ensure attack start"
+  (it "needs-attack-start? when sky clear, nil attack, not complete"
+    (let [state (assoc (core/new-game {:width 800 :height 600}) :screen :playing)]
+      (should (wave-schedule/needs-attack-start? state))
+      (should-not (wave-schedule/needs-attack-start?
+                   (assoc state :wave-attack 1)))
+      (should-not (wave-schedule/needs-attack-start?
+                   (assoc state :wave-complete? true)))
+      (should-not (wave-schedule/needs-attack-start?
+                   (assoc state :enemy-missiles [{:id 0}])))))
+
+  (it "ensure-attack-started invokes begin-fn only when needed"
+    (let [calls (atom 0)
+          begin (fn [s] (swap! calls inc) (assoc s :started true))
+          base (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+          started (wave-schedule/ensure-attack-started base begin)
+          again (wave-schedule/ensure-attack-started
+                 (assoc base :wave-attack 1) begin)]
+      (should= 1 @calls)
+      (should (:started started))
+      (should-not (:started again)))))
