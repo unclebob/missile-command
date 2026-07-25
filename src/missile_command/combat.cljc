@@ -76,3 +76,7 @@
       (tick-defensive dt)
       (tick-fireballs dt)
       destroy-targets-in-fireballs))
+
+;; clj-mutate-manifest-begin
+;; {:version 1, :tested-at "2026-07-25T11:11:56.658861-05:00", :module-hash "-1667877736", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 6, :hash "572951404"} {:id "defn-/defensive-missiles", :kind "defn-", :line 8, :end-line 9, :hash "757290843"} {:id "defn-/fireballs", :kind "defn-", :line 11, :end-line 12, :hash "-1238649430"} {:id "defn-/next-entity-id", :kind "defn-", :line 14, :end-line 17, :hash "-1630959644"} {:id "defn/spawn-fireball-at", :kind "defn", :line 19, :end-line 27, :hash "1465751780"} {:id "defn-/spawn-fireball-from-missile", :kind "defn-", :line 29, :end-line 31, :hash "1839324960"} {:id "defn/tick-defensive", :kind "defn", :line 33, :end-line 42, :hash "128741151"} {:id "defn/tick-fireballs", :kind "defn", :line 44, :end-line 53, :hash "-1331599335"} {:id "defn-/target-hit-by-fireball?", :kind "defn-", :line 55, :end-line 57, :hash "1741845857"} {:id "defn/destroy-targets-in-fireballs", :kind "defn", :line 59, :end-line 70, :hash "-1400979185"} {:id "defn/tick-defensive-phase", :kind "defn", :line 72, :end-line 78, :hash "1446767887"}]}
+;; clj-mutate-manifest-end
