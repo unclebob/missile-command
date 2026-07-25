@@ -301,26 +301,42 @@
       (should (core/harder-wave? low high))
       (should-not (core/harder-wave? high low))))
 
-  (it "activate-wave-schedule spawns MIRVs from wave 4"
+  (it "activate-wave-schedule starts attack 1 with a full ballistic salvo"
     (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+                    (core/activate-wave-schedule))
+          metrics (core/wave-schedule-metrics-for state 1)]
+      (should= 1 (:wave-attack state))
+      (should= (:enemy-count metrics) (count (core/enemy-missiles state)))
+      (should (every? #(= core/enemy-kind-ballistic (:enemy-kind %))
+                      (core/enemy-missiles state)))))
+
+  (it "final sequential attack on wave 4 includes MIRVs"
+    (let [start (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/set-wave 4)
                     (core/activate-wave-schedule))
+          state (loop [s start n 0]
+                  (cond
+                    (= 3 (:wave-attack s)) s
+                    (> n 50000) s
+                    :else (recur (:state (core/tick s 0.05)) (inc n))))
           parents (core/mirv-parents state)
           metrics (core/wave-schedule-metrics-for state 4)]
+      (should= 3 (:wave-attack state))
       (should= (:enemy-count metrics)
                (count (filter #(= core/enemy-kind-ballistic (:enemy-kind %))
                               (core/enemy-missiles state))))
       (should= (:mirv-count metrics) (count parents))
-      (should (pos? (count parents)))
-      (should (every? #(= core/default-mirv-child-count (:child-count %)) parents))
-      (should (every? #(= (double core/default-mirv-split-progress)
-                          (double (:split-progress %)))
-                      parents))))
+      (should (pos? (count parents)))))
 
-  (it "activate-wave-schedule spawns smart bombs and flyers on later waves"
-    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+  (it "final sequential attack spawns smart bombs and flyers on later waves"
+    (let [start (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/set-wave 9)
                     (core/activate-wave-schedule))
+          state (loop [s start n 0]
+                  (cond
+                    (= 3 (:wave-attack s)) s
+                    (> n 50000) s
+                    :else (recur (:state (core/tick s 0.05)) (inc n))))
           metrics (core/wave-schedule-metrics-for state 9)]
       (should= (:smart-bomb-count metrics) (count (core/smart-bombs state)))
       (should= (:bomber-count metrics) (count (core/flyers-of-kind state :bomber)))

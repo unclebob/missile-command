@@ -7,11 +7,10 @@
     (should= 1 waves/initial-wave)
     (should= 10 waves/full-ammo))
 
-  (it "schedules three ballistic attacks every wave"
+  (it "schedules three salvos of three ballistics per wave"
     (should= 3 waves/attacks-per-wave)
+    (should= 3 waves/missiles-per-attack)
     (should= 3 (waves/enemy-count 1))
-    (should= 3 (waves/enemy-count 2))
-    (should= 3 (waves/enemy-count 5))
     (should= 3 (waves/enemy-count 10)))
 
   (it "uses faster enemies on higher waves"

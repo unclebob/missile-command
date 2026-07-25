@@ -242,6 +242,8 @@
 (def wave-banner? wave-banner/screen?)
 (def wave-banner wave-banner/of)
 (def wave-banner-text wave-banner/text)
+(def wave-banner-subtitle wave-banner/subtitle)
+(def wave-banner-bonus-city? wave-banner/bonus-city?)
 (def wave-banner-announced-wave wave-banner/announced-wave)
 (def wave-banner-phase wave-banner/phase)
 (def wave-banner-text-position wave-banner/text-position)
@@ -880,17 +882,22 @@
        first))
 
 (defn apply-bonus-cities-from-reserve
-  "Place reserve cities onto destroyed slots while living cities stay under max."
+  "Place reserve cities onto destroyed slots while living cities stay under max.
+  Sets :bonus-city-for-banner? when any city is restored (for wave banner)."
   [state]
-  (loop [s state]
+  (loop [s state
+         placed? false]
     (let [id (when (and (pos? (bonus-cities s))
                         (< (count (living-cities s)) world/city-count))
                (lowest-destroyed-city-id s))]
       (if id
         (recur (-> s
                    (update-city id cities/restore)
-                   (update :bonus-cities dec)))
-        s))))
+                   (update :bonus-cities dec))
+               true)
+        (if placed?
+          (assoc s :bonus-city-for-banner? true)
+          s)))))
 
 (defn- make-end-fireball
   [state fireball-id]
@@ -1180,13 +1187,37 @@
             (assoc state :flyers [])
             (flyers state))))
 
-(defn- wave-ready-to-complete?
+(defn- sky-clear?
+  [state]
+  (and (empty? (enemy-missiles state))
+       (empty? (flyers state))))
+
+(defn- current-wave-attack
+  "1-based salvo index within the wave, or nil if salvos have not started.
+  Test helpers that only call set-wave-enemies-active leave this nil."
+  [state]
+  (when-let [a (:wave-attack state)]
+    (long a)))
+
+(defn- attacks-per-wave [] (long waves/attacks-per-wave))
+
+(defn- attack-cleared?
+  "Sky empty after this attack had enemies."
   [state]
   (boolean
    (and (:wave-had-enemies? state)
         (not (:wave-complete? state))
-        (empty? (enemy-missiles state))
-        (empty? (flyers state)))))
+        (sky-clear? state))))
+
+(defn- wave-ready-to-complete?
+  "Wave ends after the last sequential attack is cleared.
+  Unset :wave-attack (tests) completes on first clear."
+  [state]
+  (boolean
+   (and (attack-cleared? state)
+        (let [a (current-wave-attack state)
+              n (attacks-per-wave)]
+          (or (nil? a) (>= a n))))))
 
 (defn- unused-defensive-missiles
   "Sum of remaining ammo on non-destroyed batteries (before rearm)."
@@ -1206,17 +1237,22 @@
               (multiplier state))))
 
 (defn- maybe-complete-wave
-  "When all active wave enemies are gone, mark complete, announce next wave banner."
+  "When the last attack of the wave is cleared, mark complete and show banner.
+  Banner includes Bonus City when a city was restored from reserve this wave."
   [state]
   (if (wave-ready-to-complete? state)
-    (-> state
-        award-wave-end-bonuses
-        apply-bonus-cities-from-reserve
-        (assoc :wave-complete? wave-flag-on
-               :wave-had-enemies? wave-starts-with-enemies?)
-        (update :wave (fnil inc waves/initial-wave))
-        (#(wave-banner/enter % (wave %)))
-        (sfx/emit :sfx/wave))
+    (let [state (-> state
+                    award-wave-end-bonuses
+                    apply-bonus-cities-from-reserve)
+          bonus-city-added? (boolean (:bonus-city-for-banner? state))]
+      (-> state
+          (dissoc :bonus-city-for-banner?)
+          (assoc :wave-complete? wave-flag-on
+                 :wave-had-enemies? wave-starts-with-enemies?
+                 :wave-attack nil)
+          (update :wave (fnil inc waves/initial-wave))
+          (#(wave-banner/enter % (wave %) bonus-city-added?))
+          (sfx/emit :sfx/wave)))
     state))
 
 
@@ -1379,23 +1415,57 @@
         (spawn-flyer flyer-kind 0.0 y w y default-flyer-speed)
         (configure-last-flyer-drops default-flyer-drop-count))))
 
-(defn activate-wave-schedule
-  "Spawn the full current-wave schedule: ballistics, MIRVs, smart bombs, flyers.
-  Hosts call this when the sky is empty and play should continue."
+(defn- spawn-wave-specials
+  "MIRVs, smart bombs, and flyers for the current wave (final attack only)."
   [state]
   (let [m (waves/schedule-metrics-for-state state (wave state))
-        ballistic (long (:enemy-count m 0))
         mirvs (long (:mirv-count m 0))
         smarts (long (:smart-bomb-count m 0))
         bombers (long (:bomber-count m 0))
         sats (long (:satellite-count m 0))]
-    (cond-> (-> state
-                (assoc :flyers [])
-                (set-wave-enemies-active ballistic))
+    (cond-> state
       (pos? mirvs) (spawn-wave-mirvs mirvs)
       (pos? smarts) (spawn-wave-smart-bombs smarts)
       (pos? bombers) (spawn-wave-flyer :bomber)
       (pos? sats) (spawn-wave-flyer :satellite))))
+
+(defn- start-wave-attack
+  "Begin attack k (1-based): a full salvo of ballistics; specials on the last."
+  [state k]
+  (let [n (attacks-per-wave)
+        k (long k)
+        m (waves/schedule-metrics-for-state state (wave state))
+        ballistic (long (:enemy-count m 0))
+        state (-> state
+                  (assoc :flyers []
+                         :wave-attack k
+                         :wave-complete? wave-starts-complete?)
+                  (set-wave-enemies-active ballistic))
+        state (if (= k n)
+                (spawn-wave-specials state)
+                state)]
+    ;; Always mark the attack as started so a cleared (or empty) sky can
+    ;; advance/complete even if no living targets remain.
+    (assoc state
+           :wave-attack k
+           :wave-had-enemies? true)))
+
+(defn activate-wave-schedule
+  "Start attack 1 of the current wave (a 3-missile salvo). Attacks 2 and 3
+  begin only after the previous attack is fully cleared."
+  [state]
+  (start-wave-attack state 1))
+
+(defn- maybe-advance-wave-attack
+  "When the current attack is cleared and more remain, start the next attack."
+  [state]
+  (if-not (attack-cleared? state)
+    state
+    (let [a (current-wave-attack state)
+          n (attacks-per-wave)]
+      (if (and a (< a n))
+        (start-wave-attack state (inc a))
+        state))))
 
 (defn set-non-destroyed-battery-ammo
   "Test helper: set ammo on every non-destroyed battery."
@@ -1417,6 +1487,7 @@
          :wave wave-number
          :wave-complete? wave-starts-complete?
          :wave-had-enemies? wave-starts-with-enemies?
+         :wave-attack nil
          :enemy-missiles []
          :flyers []))
 
@@ -1437,7 +1508,8 @@
       wave-banner/clear
       clear-combat-entities
       (assoc :wave-complete? wave-starts-complete?
-             :wave-had-enemies? wave-starts-with-enemies?)
+             :wave-had-enemies? wave-starts-with-enemies?
+             :wave-attack nil)
       (rearm-surviving-batteries)))
 
 (defn- advance-clock
@@ -1473,6 +1545,7 @@
                 (destroy-targets-in-fireballs)
                 (tick-enemy-missiles applied)
                 (tick-flyers applied)
+                (maybe-advance-wave-attack)
                 (maybe-complete-wave)
                 (evaluate-game-over)))
 
