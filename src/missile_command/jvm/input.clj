@@ -433,6 +433,13 @@
     (core/begin-wave-attack state (long k))
     state))
 
+(defn- apply-scenario-rng-seed
+  "Optional :rng-seed for deterministic sky origins."
+  [state scenario]
+  (if-let [seed (:rng-seed scenario)]
+    (core/with-rng-seed state (long seed))
+    state))
+
 (defn- apply-scenario-size
   [state scenario]
   (if-let [w (:width scenario)]
@@ -609,6 +616,7 @@
       (apply-scenario-high-scores scenario)
       (apply-scenario-options scenario)
       (apply-scenario-screen scenario)
+      (apply-scenario-rng-seed scenario)
       (apply-scenario-wave-attack scenario)))
 
 (defn format-fireball-phase-line
