@@ -89,9 +89,9 @@
     (assert! (re-find #"(?i)rng" (:out p)) "property missing rng suite"))
 
   (let [rng (slurp "src/missile_command/rng.cljc")
-        input (slurp "src/missile_command/jvm/input.clj")]
+        scenario (slurp "src/missile_command/jvm/scenario.clj")]
     (assert! (re-find #"next-sky-origin-x" rng) "B rng missing next-sky-origin-x")
-    (assert! (re-find #"rng-seed" input) "B scenario loader missing rng-seed"))
+    (assert! (re-find #"rng-seed" scenario) "B scenario loader missing rng-seed"))
 
   (let [a (origins-for-seed 42 "tmp/ssr-a.edn")
         b (origins-for-seed 42 "tmp/ssr-b.edn")

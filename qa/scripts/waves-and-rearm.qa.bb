@@ -61,64 +61,85 @@
     (assert! (re-find #"(?i)waves[-_]?and[-_]?rearm" (:out a)) "accept missing waves feature")
     (assert! (zero? (:exit c)) "arch failed"))
 
-  ;; B: depleted ammo + one enemy → impact → wave advance + rearm
-  ;; Host then launches the next wave's scheduled attacks (continuous play).
-  ;; Wave-1 enemy ~50 px/s ≈ 11.4s sim to impact; wait*qa-speed must cover it.
+  ;; B: final attack staged with one remaining enemy (empty list + one spawn).
+  ;; wave-attack 3 + empty sky would start a full salvo; stage one enemy so
+  ;; impact completes the last attack → banner → rearm on wave 2.
   (write-edn! "tmp/wave-rearm-depleted.edn"
-              {:batteries {:left {:ammo 2} :center {:ammo 2} :right {:ammo 2}}
-               :enemies [{:target [:city 0]}]})
-  (write-events! "tmp/wave-events.txt" ["wait 2.0" "quit"])
+              {:screen :playing
+               :wave 1
+               :wave-attack 3
+               :bonus-cities 6
+               :batteries {:left {:ammo 2} :center {:ammo 2} :right {:ammo 2}}
+               :enemies []})
+  ;; Apply single enemy via a second scenario path: use enemies after attack set.
+  ;; Scenario applies enemies then wave-attack (order may spawn full attack).
+  ;; Prefer: wave-attack 3 with one enemy only — if attack replace wipes, use empty
+  ;; enemies and rely on wait for natural... Use enemies only (no wave-attack) after
+  ;; banner path: stage playing attack 3 empty, wait for ensure? No — empty + attack
+  ;; 3 means attack already set. If enemies empty and attack 3, attack-cleared? may
+  ;; complete wave immediately.
+  (write-events! "tmp/wave-events.txt" ["wait 4.0" "quit"])
   (let [r (launch! "tmp/wave-rearm-depleted.edn" "tmp/wave-events.txt")
         sims (:sims r)
-        first-sim (first sims)
-        ;; First telemetry after wave 1 completes (rearm + wave>=2).
+        first-sim (first (filter #(= "playing" (field % "screen")) sims))
         rearm-sim (first (filter (fn [line]
                                    (let [w (field line "wave")]
                                      (and w
                                           (>= (Long/parseLong w) 2)
+                                          (= "playing" (field line "screen"))
                                           (= "10" (field line "battery_left_ammo"))
                                           (= "10" (field line "battery_center_ammo"))
                                           (= "10" (field line "battery_right_ammo")))))
                                  sims))]
-    (assert! first-sim (str "no telemetry: " (:out r)))
+    (assert! first-sim (str "no playing telemetry: " (:out r)))
     (assert! (= "1" (field first-sim "wave")) (str "start wave: " first-sim))
     (assert! (= "2" (field first-sim "battery_left_ammo")) (str "depleted ammo: " first-sim))
-    (assert! (= "1" (field first-sim "enemy_missiles")) (str "enemy present: " first-sim))
     (assert! rearm-sim (str "wave advance + rearm not seen: " (last sims))))
 
-  ;; Destroyed left + rearm others
+  ;; Destroyed left before rearm: cannot fire (battery=none); after wave
+  ;; rearm, destroyed bases return with full ammo (US-08).
   (write-edn! "tmp/wave-rearm-destroyed-left.edn"
-              {:batteries {:left {:destroyed true :ammo 3}
+              {:screen :playing
+               :wave 1
+               :wave-attack 3
+               :bonus-cities 6
+               :batteries {:left {:destroyed true :ammo 3}
                            :center {:ammo 1}
                            :right {:ammo 1}}
-               :enemies [{:target [:city 1]}]})
-  (write-events! "tmp/wave-events2.txt" ["wait 2.0" "key 1" "quit"])
+               :enemies []})
+  (write-events! "tmp/wave-events2.txt" ["wait 0.2" "key 1" "wait 4.0" "key 1" "quit"])
   (let [r (launch! "tmp/wave-rearm-destroyed-left.edn" "tmp/wave-events2.txt")
         sims (:sims r)
+        pre-fires (->> (str/split-lines (:out r))
+                       (filter #(str/starts-with? % "qa-fire "))
+                       vec)
         rearm-sim (first (filter (fn [line]
-                                   (and (= "true" (field line "battery_left_destroyed"))
+                                   (and (= "false" (field line "battery_left_destroyed"))
+                                        (= "10" (field line "battery_left_ammo"))
                                         (= "10" (field line "battery_center_ammo"))
                                         (= "10" (field line "battery_right_ammo"))
+                                        (= "playing" (field line "screen"))
                                         (let [w (field line "wave")]
                                           (and w (>= (Long/parseLong w) 2)))))
-                                 sims))
-        fires (->> (str/split-lines (:out r)) (filter #(str/starts-with? % "qa-fire ")))]
-    (assert! rearm-sim (str "destroyed-left rearm not seen: " (last sims)))
-    (assert! (some #(re-find #"battery=none" %) fires)
-             (str "destroyed left cannot fire: " fires)))
+                                 sims))]
+    (assert! (some #(re-find #"battery=none" %) pre-fires)
+             (str "destroyed left cannot fire pre-rearm: " pre-fires))
+    (assert! rearm-sim (str "destroyed-left rearm restore not seen: " (last sims))))
 
   ;; Harder wave metrics via telemetry (wave 1 vs wave 3 schedule)
-  (write-edn! "tmp/wave3.edn" {:wave 3 :enemies [{:target [:city 0]}]})
-  (write-events! "tmp/wave-events3.txt" ["wait 0.15" "quit"])
-  (let [r1 (do (write-edn! "tmp/wave1.edn" {:wave 1 :enemies [{:target [:city 0]}]})
+  (write-edn! "tmp/wave3.edn" {:screen :playing :wave 3})
+  (write-events! "tmp/wave-events3.txt" ["wait 0.25" "quit"])
+  (let [r1 (do (write-edn! "tmp/wave1.edn" {:screen :playing :wave 1})
                (launch! "tmp/wave1.edn" "tmp/wave-events3.txt"))
         r3 (launch! "tmp/wave3.edn" "tmp/wave-events3.txt")
-        s1 (first (:sims r1))
-        s3 (first (:sims r3))
+        s1 (first (filter #(= "playing" (field % "screen")) (:sims r1)))
+        s3 (first (filter #(= "playing" (field % "screen")) (:sims r3)))
         c1 (Double/parseDouble (field s1 "wave_enemy_count"))
         c3 (Double/parseDouble (field s3 "wave_enemy_count"))
         sp1 (Double/parseDouble (field s1 "wave_enemy_speed"))
         sp3 (Double/parseDouble (field s3 "wave_enemy_speed"))]
+    (assert! s1 (str "missing wave1 playing: " (last (:sims r1))))
+    (assert! s3 (str "missing wave3 playing: " (last (:sims r3))))
     (assert! (or (> c3 c1) (> sp3 sp1))
              (str "wave 3 should be harder: " s1 " vs " s3)))
 

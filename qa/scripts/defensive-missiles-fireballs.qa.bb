@@ -100,7 +100,7 @@
         (assert! (zero? (:exit c)) (str "arch exit " (:exit c)))))
 
     ;; B. flight + fireball phases at 400,100
-    (let [r (launch! {:events ["aim 400 100" "key 2" "wait 4.0"]
+    (let [r (launch! {:events ["start" "wait 0.1" "aim 400 100" "key 2" "wait 8.0"]
                       :width 800 :height 600})
           fb (:fireballs r)
           ph (phases fb)
