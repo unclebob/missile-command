@@ -187,6 +187,7 @@ bb play --qa --qa-speed 10 --qa-scenario tmp/wave-rearm-depleted.edn --qa-events
 | `:targets` | Optional destroyable test targets at playfield coordinates |
 | `:high-score-capacity` | Max table length (default 10) |
 | `:high-scores` | Seed table vector of `{:initials "AAA" :score 1000}` (replaces loaded table when present) |
+| `:screen` | Optional shell/play screen keyword (e.g. `:playing`) for staged host setups |
 
 Examples for common setups:
 
@@ -287,7 +288,12 @@ qa-sim t=1.5 missiles_in_flight=0 fireballs=1 enemy_missiles=1 center_x=200 cent
 | `cities_alive=` / battery destroyed flags | Living cities / battery state |
 | `battery_*_ammo=` | Remaining missiles per battery |
 | `wave=` / `wave_complete=` | Wave lifecycle |
-| `wave_enemy_count=` / `wave_enemy_speed=` | Scheduled hardness metrics for current wave |
+| `wave_enemy_count=` / `wave_enemy_speed=` | Scheduled ballistic hardness metrics for current wave |
+| `wave_mirv_count=` / `wave_smart_bomb_count=` | Scheduled MIRV / smart-bomb counts |
+| `wave_bomber_count=` / `wave_satellite_count=` | Scheduled flyer counts |
+| `ballistic_missiles=` | Live ballistic enemies only (excludes MIRV/smart) |
+| `mirv_parents=` / `smart_bombs=` | Live MIRV parents and smart bombs in flight |
+| `flyers_bomber=` / `flyers_satellite=` | Live bombers / satellites |
 | `score=` | Running score (starts at 0) |
 | `final_score=` | Score frozen at THE END (else current score) |
 | `multiplier=` | Score multiplier for the current wave (1–6) |

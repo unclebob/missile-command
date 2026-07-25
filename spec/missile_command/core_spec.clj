@@ -1,6 +1,7 @@
 (ns missile-command.core-spec
   (:require [speclj.core :refer :all]
-            [missile-command.core :as core]))
+            [missile-command.core :as core]
+            [missile-command.wave-schedule :as wave-schedule]))
 
 (describe "new-game"
   (it "records the playfield width and height"
@@ -335,7 +336,11 @@
                (count (filter #(= core/enemy-kind-ballistic (:enemy-kind %))
                               (core/enemy-missiles state))))
       (should= (:mirv-count metrics) (count parents))
-      (should (pos? (count parents)))))
+      (should (pos? (count parents)))
+      (should (every? #(= core/default-mirv-child-count (:child-count %)) parents))
+      (should (every? #(= (double core/default-mirv-split-progress)
+                          (double (:split-progress %)))
+                      parents))))
 
   (it "final sequential attack spawns smart bombs and flyers on later waves"
     (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
