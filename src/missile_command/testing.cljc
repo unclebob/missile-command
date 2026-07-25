@@ -11,11 +11,6 @@
   (:require [missile-command.combat :as combat]
             [missile-command.missiles :as missiles]))
 
-(defn- next-entity-id
-  [state]
-  (let [id (long (or (:next-entity-id state) 0))]
-    [id (assoc state :next-entity-id (inc id))]))
-
 (defn- enemy-attrs-to-preserve
   [enemy]
   (select-keys enemy [:enemy-kind :child-count :split-progress
@@ -49,10 +44,19 @@
               (retarget-enemy-at-index ms idx x y)
               (vec ms)))))
 
-(defn route-first-smart-bomb-through-point
+(defn- route-first-fn
+  "Build a (fn [state x y]) that retargets the first enemy matching pred."
+  [pred]
+  (fn [state x y]
+    (route-first-enemy-matching state pred x y)))
+
+(def route-first-smart-bomb-through-point
   "Retarget the first smart bomb so its path starts at the given point."
-  [state x y]
-  (route-first-enemy-matching state combat/smart-bomb? x y))
+  (route-first-fn combat/smart-bomb?))
+
+(def route-first-mirv-child-through-point
+  "Retarget the first MIRV child so its path starts at the given point."
+  (route-first-fn combat/mirv-child?))
 
 (defn route-smart-bomb-centered-in-fireball
   "Place the smart bomb path through the fireball center (well-centered kill)."
@@ -92,20 +96,16 @@
               (into [(retarget-enemy-from (first ms) x y)] (rest ms))
               ms))))
 
-(defn route-first-mirv-child-through-point
-  "Retarget the first MIRV child so its path starts at the given point."
-  [state x y]
-  (route-first-enemy-matching state combat/mirv-child? x y))
 (defn add-static-fireball
   "Test/setup helper: place a fixed-radius fireball."
   [state x y radius]
-  (let [[fid state] (next-entity-id state)
+  (let [[fid state] (combat/allocate-entity-id state)
         fb (missiles/make-static-fireball fid x y radius)]
     (update state :fireballs (fnil conj []) fb)))
 
 (defn add-destroyable-target
   "Test/setup helper: place a fireball-vulnerable stub at x,y."
   [state x y]
-  (let [[id state] (next-entity-id state)
+  (let [[id state] (combat/allocate-entity-id state)
         target {:id id :x x :y y :destroyed? false}]
     (update state :destroyable-targets (fnil conj []) target)))
