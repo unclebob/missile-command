@@ -7,15 +7,15 @@ Hand off **one task at a time** (SwarmForge: complete pipeline before starting t
 | Order | Task name | Plan | Status |
 |------:|-----------|------|--------|
 | 0 | `arch-docs-adr` | [pr-00-document-adr.md](pr-00-document-adr.md) | Done (docs landed) |
-| 1 | `wave-start-in-core` | [pr-01-wave-start-in-core.md](pr-01-wave-start-in-core.md) | **In handoff → coder** |
-| 2 | `sfx-event-contract` | [pr-02-sfx-event-contract.md](pr-02-sfx-event-contract.md) | Queued (after PR1 chain) |
-| 3 | `extract-bonus-cities` | [pr-03-extract-bonus-cities.md](pr-03-extract-bonus-cities.md) | Queued |
-| 4 | `extract-combat` | [pr-04-extract-combat.md](pr-04-extract-combat.md) | Queued |
-| 5 | `extract-shell` | [pr-05-extract-shell.md](pr-05-extract-shell.md) | Queued |
-| 6 | `core-testing-api` | [pr-06-core-testing-api.md](pr-06-core-testing-api.md) | Queued |
-| 7 | `host-input-split` | [pr-07-host-input-split.md](pr-07-host-input-split.md) | Queued |
-| 8 | `seedable-sky-rng` | [pr-08-seedable-sky-rng.md](pr-08-seedable-sky-rng.md) | Queued |
-| 9 | `arch-docs-invariants` | [pr-09-arch-docs-invariants.md](pr-09-arch-docs-invariants.md) | Queued |
+| 1 | `wave-start-in-core` | [pr-01-wave-start-in-core.md](pr-01-wave-start-in-core.md) | Queued to coder (prio 50) |
+| 2 | `sfx-event-contract` | [pr-02-sfx-event-contract.md](pr-02-sfx-event-contract.md) | Queued to coder (prio 51) |
+| 3 | `extract-bonus-cities` | [pr-03-extract-bonus-cities.md](pr-03-extract-bonus-cities.md) | Queued to coder (prio 52) |
+| 4 | `extract-combat` | [pr-04-extract-combat.md](pr-04-extract-combat.md) | Queued to coder (prio 53) |
+| 5 | `extract-shell` | [pr-05-extract-shell.md](pr-05-extract-shell.md) | Queued to coder (prio 54) |
+| 6 | `core-testing-api` | [pr-06-core-testing-api.md](pr-06-core-testing-api.md) | Queued to coder (prio 55) |
+| 7 | `host-input-split` | [pr-07-host-input-split.md](pr-07-host-input-split.md) | Queued to coder (prio 56) |
+| 8 | `seedable-sky-rng` | [pr-08-seedable-sky-rng.md](pr-08-seedable-sky-rng.md) | Queued to coder (prio 57) |
+| 9 | `arch-docs-invariants` | [pr-09-arch-docs-invariants.md](pr-09-arch-docs-invariants.md) | Queued to coder (prio 58) |
 
 ## Rules for every PR
 
