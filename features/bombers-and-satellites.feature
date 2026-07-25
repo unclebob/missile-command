@@ -127,8 +127,8 @@ Scenario: Bombers and satellites 07 later waves schedule bombers and satellites
 Examples:
   | width | height | wave | bomber_count | satellite_count | expected_width | expected_height |
   | 800   | 600    | 1    | 0            | 0               | 800            | 600             |
-  | 800   | 600    | 5    | 0            | 0               | 800            | 600             |
-  | 800   | 600    | 8    | 1            | 0               | 800            | 600             |
-  | 800   | 600    | 10   | 1            | 1               | 800            | 600             |
-  | 1920  | 1080   | 7    | 0            | 0               | 1920           | 1080            |
-  | 1920  | 1080   | 9    | 1            | 1               | 1920           | 1080            |
+  | 800   | 600    | 3    | 0            | 0               | 800            | 600             |
+  | 800   | 600    | 4    | 1            | 0               | 800            | 600             |
+  | 800   | 600    | 5    | 1            | 1               | 800            | 600             |
+  | 1920  | 1080   | 3    | 0            | 0               | 1920           | 1080            |
+  | 1920  | 1080   | 5    | 1            | 1               | 1920           | 1080            |

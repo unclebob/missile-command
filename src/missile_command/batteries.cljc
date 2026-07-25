@@ -21,8 +21,14 @@
   (assoc battery :missiles ammo))
 
 (defn destroy
+  "Mark destroyed and empty ammo so the base cannot fire until restored."
   [battery]
-  (assoc battery :destroyed? true))
+  (assoc battery :destroyed? true :missiles 0))
+
+(defn restore
+  "Clear destroyed flag and set ammo (wave rearm)."
+  [battery ammo]
+  (assoc battery :destroyed? false :missiles (long ammo)))
 
 ;; clj-mutate-manifest-begin
 ;; {:version 1, :tested-at "2026-07-24T14:35:25.991954-05:00", :module-hash "814722448", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 2, :hash "1828854097"} {:id "defn/update-battery", :kind "defn", :line 4, :end-line 7, :hash "-773024030"} {:id "defn/can-fire?", :kind "defn", :line 9, :end-line 14, :hash "-1043056803"} {:id "defn/spend-ammo", :kind "defn", :line 16, :end-line 18, :hash "2076101157"} {:id "defn/set-ammo", :kind "defn", :line 20, :end-line 22, :hash "1974119726"} {:id "defn/destroy", :kind "defn", :line 24, :end-line 26, :hash "-1826858571"}]}

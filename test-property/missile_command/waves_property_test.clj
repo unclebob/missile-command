@@ -30,8 +30,8 @@
 (defspec bomber-and-satellite-schedule-gates
   40
   (for-all [w (gen/large-integer* {:min 1 :max 20})]
-    (and (= (if (>= w 8) 1 0) (waves/bomber-count w))
-         (= (if (>= w 9) 1 0) (waves/satellite-count w)))))
+    (and (= (if (>= w 4) 1 0) (waves/bomber-count w))
+         (= (if (>= w 5) 1 0) (waves/satellite-count w)))))
 
 (defspec cycle-targets-covers-pool-then-wraps
   40

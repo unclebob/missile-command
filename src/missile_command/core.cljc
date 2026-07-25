@@ -402,9 +402,11 @@
 (def enemy-kind-smart :smart)
 
 ;; Edge band for smart-bomb evasion: outer ring of the blast (ratio of radius).
-(def smart-bomb-edge-inner-factor 0.625)
+;; Core (d <= factor*r) is lethal; outer ring dodges once. Wider than a thin rim
+;; so near-misses are readable in play.
+(def smart-bomb-edge-inner-factor 0.45)
 (def ^:private smart-not-yet-evaded false)
-(def smart-bomb-evade-clearance 8.0)
+(def smart-bomb-evade-clearance 12.0)
 
 (defn- mirv-parent?
   [enemy]
@@ -1227,9 +1229,12 @@
             (mapv #(transform-living-battery % f) bs))))
 
 (defn rearm-surviving-batteries
-  "Refill non-destroyed batteries to full ammo."
+  "Restore every battery: clear destroyed and refill to full ammo.
+  (Name kept for call-site compatibility; destroyed bases come back each wave.)"
   [state]
-  (map-living-batteries state #(batteries/set-ammo % waves/full-ammo)))
+  (update state :batteries
+          (fn [bs]
+            (mapv #(batteries/restore % waves/full-ammo) (or bs [])))))
 
 (defn- non-destroyed-batteries
   [state]
@@ -1274,6 +1279,122 @@
             state
             (map-indexed vector targets))))
 
+;; Defaults for scheduled advanced enemies (arcade-style mid-descent split).
+(def default-mirv-child-count 3)
+(def default-mirv-split-progress 0.5)
+(def default-flyer-speed 100.0)
+(def default-flyer-altitude-fraction 0.18)
+(def default-flyer-drop-count 3)
+;; First drop progress; later drops are staggered evenly toward this upper bound.
+(def default-flyer-drop-progress-start 0.25)
+(def default-flyer-drop-progress-end 0.75)
+
+(defn- living-city-ids
+  [state]
+  (mapv :id (living-cities state)))
+
+(defn- cycle-living-city-ids
+  "Take n living city ids, cycling when fewer cities than n."
+  [state n]
+  (let [ids (living-city-ids state)]
+    (if (seq ids)
+      (vec (take (long n) (cycle ids)))
+      [])))
+
+(defn- spawn-wave-mirvs
+  "Spawn n MIRV parents toward living cities from distributed sky origins."
+  [state n]
+  (let [city-ids (cycle-living-city-ids state n)
+        width (playfield-width state)
+        total (count city-ids)]
+    (reduce (fn [s [i city-id]]
+              (let [c (city s city-id)]
+                (if c
+                  (spawn-enemy-at s
+                                  {:x (waves/sky-origin-x width i total) :y 0}
+                                  {:x (:x c) :y (:y c)}
+                                  :city city-id
+                                  {:enemy-kind enemy-kind-mirv
+                                   :child-count default-mirv-child-count
+                                   :split-progress default-mirv-split-progress})
+                  s)))
+            state
+            (map-indexed vector city-ids))))
+
+(defn- spawn-wave-smart-bombs
+  "Spawn n smart bombs toward living cities."
+  [state n]
+  (reduce (fn [s city-id]
+            (spawn-smart-bomb-targeting-city s city-id))
+          state
+          (cycle-living-city-ids state n)))
+
+(defn- flyer-drop-progresses
+  "Stagger n drop times between start and end so bombs fall one after another."
+  [n]
+  (let [n (long n)
+        lo default-flyer-drop-progress-start
+        hi default-flyer-drop-progress-end]
+    (if (<= n 1)
+      [lo]
+      (mapv (fn [i]
+              (+ lo (* (- hi lo) (/ (double i) (double (dec n))))))
+            (range n)))))
+
+(defn- configure-last-flyer-drops
+  "Attach staggered drop schedule to the most recently spawned flyer."
+  [state drop-count]
+  (update state :flyers
+          (fn [fs]
+            (if (seq fs)
+              (let [fs (vec fs)
+                    idx (dec (count fs))
+                    ids (living-city-ids state)
+                    n (long drop-count)
+                    targets (if (seq ids)
+                              (vec (take n (cycle ids)))
+                              [])
+                    progresses (flyer-drop-progresses (count targets))
+                    drops (mapv (fn [j city-id at]
+                                  {:id j
+                                   :at-progress (double at)
+                                   :target [:city city-id]})
+                                (range (count targets))
+                                targets
+                                progresses)]
+                (assoc fs idx (assoc (nth fs idx)
+                                     :drops drops
+                                     :drops-fired #{})))
+              (vec fs)))))
+
+(defn- spawn-wave-flyer
+  "Spawn one bomber or satellite crossing the upper sky with city-bound drops."
+  [state flyer-kind]
+  (let [w (double (playfield-width state))
+        h (double (playfield-height state))
+        y (* h default-flyer-altitude-fraction)]
+    (-> state
+        (spawn-flyer flyer-kind 0.0 y w y default-flyer-speed)
+        (configure-last-flyer-drops default-flyer-drop-count))))
+
+(defn activate-wave-schedule
+  "Spawn the full current-wave schedule: ballistics, MIRVs, smart bombs, flyers.
+  Hosts call this when the sky is empty and play should continue."
+  [state]
+  (let [m (waves/schedule-metrics-for-state state (wave state))
+        ballistic (long (:enemy-count m 0))
+        mirvs (long (:mirv-count m 0))
+        smarts (long (:smart-bomb-count m 0))
+        bombers (long (:bomber-count m 0))
+        sats (long (:satellite-count m 0))]
+    (cond-> (-> state
+                (assoc :flyers [])
+                (set-wave-enemies-active ballistic))
+      (pos? mirvs) (spawn-wave-mirvs mirvs)
+      (pos? smarts) (spawn-wave-smart-bombs smarts)
+      (pos? bombers) (spawn-wave-flyer :bomber)
+      (pos? sats) (spawn-wave-flyer :satellite))))
+
 (defn set-non-destroyed-battery-ammo
   "Test helper: set ammo on every non-destroyed battery."
   [state ammo]
@@ -1297,11 +1418,22 @@
          :enemy-missiles []
          :flyers []))
 
+(defn- clear-combat-entities
+  "Remove in-flight combat visuals between waves (defensive missiles + fireballs).
+  Does not restore cities (bonus cities handle that)."
+  [state]
+  (assoc state
+         :defensive-missiles []
+         :fireballs []
+         :destroyable-targets []))
+
 (defn start-next-wave
-  "Begin the next wave: rearm survivors; leave banner; wave number already advanced."
+  "Begin the next wave: restore and rearm all batteries; clear leftover
+  fireballs/missiles; leave banner."
   [state]
   (-> state
       wave-banner/clear
+      clear-combat-entities
       (assoc :wave-complete? wave-starts-complete?
              :wave-had-enemies? wave-starts-with-enemies?)
       (rearm-surviving-batteries)))
@@ -1332,8 +1464,12 @@
         {:state state :events []})
 
       (wave-banner? state)
+      ;; Keep combat fireballs/missiles animating during the banner so they do
+      ;; not pop out of existence; start-next-wave clears leftovers afterward.
       {:state (-> state
                   (advance-clock applied)
+                  (tick-defensive-missiles applied)
+                  (tick-fireballs applied)
                   (wave-banner/tick applied start-next-wave))
        :events []}
 

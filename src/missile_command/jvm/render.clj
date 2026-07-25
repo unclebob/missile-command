@@ -48,13 +48,81 @@
   [state]
   (doseq [e (core/enemy-missiles state)]
     (let [x (double (or (:x e) (:x0 e)))
-          y (double (or (:y e) (:y0 e)))]
-      (q/stroke 255 80 80)
-      (q/stroke-weight 2)
-      (q/line (:x0 e) (:y0 e) x y)
-      (q/fill 255 60 60)
-      (q/no-stroke)
-      (q/ellipse x y 8 8)))
+          y (double (or (:y e) (:y0 e)))
+          kind (:enemy-kind e)
+          dropped? (:dropped-from-flyer? e)
+          smart-evaded? (and (= kind core/enemy-kind-smart) (:smart-evaded? e))]
+      (cond
+        (= kind core/enemy-kind-mirv)
+        (do (q/stroke 255 200 40)
+            (q/stroke-weight 3)
+            (q/line (:x0 e) (:y0 e) x y)
+            (q/fill 255 220 60)
+            (q/no-stroke)
+            (q/ellipse x y 12 12))
+        (= kind core/enemy-kind-mirv-child)
+        (do (q/stroke 255 140 40)
+            (q/stroke-weight 2)
+            (q/line (:x0 e) (:y0 e) x y)
+            (q/fill 255 120 40)
+            (q/no-stroke)
+            (q/ellipse x y 7 7))
+        (= kind core/enemy-kind-smart)
+        (do (if smart-evaded?
+              (do (q/stroke 255 255 255)
+                  (q/stroke-weight 3)
+                  (q/line (:x0 e) (:y0 e) x y)
+                  (q/fill 180 255 255)
+                  (q/no-stroke)
+                  (q/quad x (- y 9) (+ x 9) y x (+ y 9) (- x 9) y))
+              (do (q/stroke 80 255 220)
+                  (q/stroke-weight 2)
+                  (q/line (:x0 e) (:y0 e) x y)
+                  (q/fill 40 255 200)
+                  (q/no-stroke)
+                  (q/quad x (- y 7) (+ x 7) y x (+ y 7) (- x 7) y))))
+        dropped?
+        ;; Magenta — bombs released mid-flight from bombers/satellites.
+        (do (q/stroke 255 80 220)
+            (q/stroke-weight 2)
+            (q/line (:x0 e) (:y0 e) x y)
+            (q/fill 255 60 200)
+            (q/no-stroke)
+            (q/ellipse x y 9 9))
+        :else
+        (do (q/stroke 255 80 80)
+            (q/stroke-weight 2)
+            (q/line (:x0 e) (:y0 e) x y)
+            (q/fill 255 60 60)
+            (q/no-stroke)
+            (q/ellipse x y 8 8)))))
+  (q/no-stroke))
+
+(defn- flyers!
+  "Draw bombers (wide wings) and satellites (diamond + body) crossing the sky."
+  [state]
+  (doseq [f (core/flyers state)]
+    (let [x (double (or (:x f) (:x0 f)))
+          y (double (or (:y f) (:y0 f)))
+          bomber? (= :bomber (:kind f))]
+      (if bomber?
+        (do (q/fill 200 200 220)
+            (q/no-stroke)
+            (q/ellipse x y 18 8)
+            (q/fill 160 160 180)
+            (q/triangle (- x 14) y (- x 4) (- y 6) (- x 4) (+ y 6))
+            (q/triangle (+ x 14) y (+ x 4) (- y 6) (+ x 4) (+ y 6))
+            (q/fill 255 80 80)
+            (q/ellipse (+ x 6) y 3 3))
+        (do (q/fill 180 255 120)
+            (q/no-stroke)
+            (q/ellipse x y 10 10)
+            (q/fill 120 200 80)
+            (q/quad x (- y 10) (+ x 8) y x (+ y 10) (- x 8) y)
+            (q/stroke 180 255 120)
+            (q/stroke-weight 1)
+            (q/line (- x 12) y (+ x 12) y)
+            (q/no-stroke)))))
   (q/no-stroke))
 
 (defn crosshair-at!
@@ -118,9 +186,13 @@
            (hud! state))
 
        (core/wave-banner? state)
-       (do (scenery/ground! state)
+       (do (missiles! state)
+           (enemies! state)
+           (flyers! state)
+           (scenery/ground! state)
            (scenery/cities! state)
            (scenery/batteries! state)
+           (fireballs! state)
            (let [pos (core/wave-banner-text-position state)
                  txt (core/wave-banner-text state)
                  w (core/playfield-width state)
@@ -137,6 +209,7 @@
 
        :else
        (do (enemies! state)
+           (flyers! state)
            (missiles! state)
            (targets! state)
            (scenery/ground! state)

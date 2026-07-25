@@ -5,15 +5,16 @@
 (def full-ammo 10)
 (def max-multiplier 6)
 
-;; Wave-1 base speed (px/s). Kept moderate so early play is defendable on
-;; a ~600px playfield (~11s sky→ground at 50 px/s). Higher waves ramp 25%/step.
-(def base-enemy-speed 50.0)
-(def enemy-speed-wave-factor 0.25)
+;; Wave-1 base speed (px/s). ~15s sky→ground on a 600px playfield at 40 px/s.
+;; Higher waves add 12.5% of base per step (5 px/s each wave).
+(def base-enemy-speed 40.0)
+(def enemy-speed-wave-factor 0.125)
 
 (defn enemy-count
-  "Number of ballistic enemies scheduled for a wave (arcade base)."
+  "Number of ballistic enemies scheduled for a wave (arcade base).
+  Starts at 3; grows by 1 every two waves (half the old +1/wave rate)."
   [wave]
-  (+ 2 wave))
+  (+ 3 (quot (dec (long wave)) 2)))
 
 (defn enemy-speed
   "Enemy missile speed (px/s) for a wave (arcade base)."
@@ -26,9 +27,9 @@
   (max 0 (- (quot (long wave) 2) 1)))
 
 (defn smart-bomb-count
-  "Number of smart bombs scheduled for a wave (0 until later waves)."
+  "Number of smart bombs scheduled for a wave (from wave 3)."
   [wave]
-  (max 0 (quot (- (long wave) 5) 2)))
+  (max 0 (quot (- (long wave) 2) 2)))
 
 (defn- flyer-count-from-wave
   "1 scheduled flyer when wave is at least min-wave, else 0."
@@ -36,14 +37,14 @@
   (if (>= (long wave) (long min-wave)) 1 0))
 
 (defn bomber-count
-  "Bombers scheduled for a wave (from wave 8)."
+  "Bombers scheduled for a wave (from wave 4)."
   [wave]
-  (flyer-count-from-wave wave 8))
+  (flyer-count-from-wave wave 4))
 
 (defn satellite-count
-  "Satellites scheduled for a wave (from wave 9)."
+  "Satellites scheduled for a wave (from wave 5)."
   [wave]
-  (flyer-count-from-wave wave 9))
+  (flyer-count-from-wave wave 5))
 
 (defn multiplier
   "Score multiplier for a wave: +1× every two waves, capped at max-multiplier."

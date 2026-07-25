@@ -91,9 +91,9 @@ Scenario: Options 05 difficulty scales wave enemy count and speed
 
 Examples:
   | width | height | wave | enemy_count | enemy_speed | expected_width | expected_height |
-  | 800   | 600    | 1    | 2           | 35.0        | 800            | 600             |
-  | 800   | 600    | 3    | 3           | 52.5        | 800            | 600             |
-  | 1920  | 1080   | 1    | 2           | 35.0        | 1920           | 1080            |
+  | 800   | 600    | 1    | 2           | 28.0        | 800            | 600             |
+  | 800   | 600    | 3    | 2           | 35.0        | 800            | 600             |
+  | 1920  | 1080   | 1    | 2           | 28.0        | 1920           | 1080            |
 
 Scenario: Options 06 difficulty change is stored and applies on start
   When the player opens options from the title
@@ -107,7 +107,7 @@ Scenario: Options 06 difficulty change is stored and applies on start
   Then the playfield width is <expected_width>
   And the playfield height is <expected_height>
   And wave 1 enemy count is 2
-  And wave 1 enemy speed is 42.5
+  And wave 1 enemy speed is 34.0
 
 Examples:
   | width | height | expected_width | expected_height |
