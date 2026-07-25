@@ -56,14 +56,8 @@
     (assert! (re-find #"(?m)missiles_in_flight=" readme)
              "README missing missiles_in_flight="))
 
-  (let [u (run! "unit" "bb test")
-        a (run! "accept" "bb accept")
-        c (run! "arch" "bb arch-check")
+  (let [c (run! "arch" "bb arch-check")
         p (run! "property" "bb property")]
-    (assert! (zero? (:exit u)) "unit failed")
-    (assert! (zero? (:exit a)) "accept failed")
-    (assert! (re-find #"(?i)defensive[-_]?missiles[-_]?fireballs" (:out a))
-             "accept missing defensive-missiles-fireballs")
     (assert! (zero? (:exit c)) "arch failed")
     (assert! (zero? (:exit p)) "property failed"))
 

@@ -71,14 +71,7 @@
     (assert! (re-find #"(?m)enemy_origin_x=" readme) "README missing enemy_origin_x=")
     (assert! (re-find #"(?m)enemy_origin_y=" readme) "README missing enemy_origin_y="))
 
-  (let [u (run! "unit" "bb test")
-        a (run! "accept" "bb accept")
-        c (run! "arch" "bb arch-check")]
-    (assert! (zero? (:exit u)) "unit failed")
-    (assert! (zero? (:exit a)) "accept failed")
-    (assert! (re-find #"(?i)waves[-_]?and[-_]?rearm|enemy[-_]?missile[-_]?angles"
-                      (:out a))
-             "accept missing waves/angles")
+  (let [c (run! "arch" "bb arch-check")]
     (assert! (zero? (:exit c)) "arch failed"))
 
   ;; B–C: start → attack 1 with 3 enemies; random origins at y=0

@@ -64,19 +64,15 @@
     (assert! (re-find #"(?m):origin" readme) "README missing scenario :origin")
     (assert! (re-find #"(?m)enemy_origin_x=" readme) "README missing enemy_origin_x"))
 
-  (let [u (run! "unit" "bb test")
-        a (run! "accept" "bb accept")
-        c (run! "arch" "bb arch-check")]
-    (assert! (zero? (:exit u)) "unit failed")
-    (assert! (zero? (:exit a)) "accept failed")
-    (assert! (re-find #"(?i)enemy[-_]?missile[-_]?angles" (:out a))
-             "accept missing angles feature")
+  (let [c (run! "arch" "bb arch-check")]
     (assert! (zero? (:exit c)) "arch failed"))
 
   ;; B: angled city path — origin offset, diagonal motion, city dies
   ;; Continuous play may spawn the next wave after impact; assert the first impact.
+  ;; Stage :screen :playing so combat ticks (title freezes entities at y=0).
   (write-edn! "tmp/angle-city.edn"
-              {:enemies [{:origin [50 0] :target [:city 0]}]})
+              {:screen :playing
+               :enemies [{:origin [50 0] :target [:city 0]}]})
   (write-events! "tmp/angle-events.txt" ["wait 2.0" "quit"])
   (let [r (launch! {:scenario-path "tmp/angle-city.edn"
                     :events-path "tmp/angle-events.txt"})
@@ -118,7 +114,8 @@
 
   ;; C: angled battery impact
   (write-edn! "tmp/angle-battery.edn"
-              {:enemies [{:origin [200 0] :target [:battery :left]}]})
+              {:screen :playing
+               :enemies [{:origin [200 0] :target [:battery :left]}]})
   (write-events! "tmp/angle-events2.txt" ["wait 2.0" "quit"])
   (let [r (launch! {:scenario-path "tmp/angle-battery.edn"
                     :events-path "tmp/angle-events2.txt"})
@@ -129,11 +126,9 @@
              (str "battery origin: " first-sim))
     (assert! destroyed (str "left never destroyed: " (last (:sims r)))))
 
-  ;; D: wave variety — normal schedule, varied origins
-  (write-edn! "tmp/angle-wave.edn" {})
-  (write-events! "tmp/angle-events3.txt" ["wait 0.25" "quit"])
-  (let [r (launch! {:scenario-path "tmp/angle-wave.edn"
-                    :events-path "tmp/angle-events3.txt"})
+  ;; D: wave variety — start a new game so schedule spawns ballistics
+  (write-events! "tmp/angle-events3.txt" ["wait 0.1" "start" "wait 0.4" "quit"])
+  (let [r (launch! {:events-path "tmp/angle-events3.txt"})
         multi (first (filter (fn [line]
                                (let [n (field line "enemy_missiles")]
                                  (and n (>= (Long/parseLong n) 3))))

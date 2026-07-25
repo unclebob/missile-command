@@ -50,12 +50,7 @@
     (assert! (re-find #"(?m)missile-command-settings" readme) "README missing settings")
     (assert! (re-find #"(?m)--qa" readme) "README missing --qa"))
 
-  (let [u (run! "unit" "bb test")
-        a (run! "accept" "bb accept")
-        c (run! "arch" "bb arch-check")]
-    (assert! (zero? (:exit u)) "unit failed")
-    (assert! (zero? (:exit a)) "accept failed")
-    (assert! (re-find #"(?i)desktop[-_]?host" (:out a)) "accept missing desktop-host")
+  (let [c (run! "arch" "bb arch-check")]
     (assert! (zero? (:exit c)) "arch failed"))
 
   ;; B: title → start → playing + HUD

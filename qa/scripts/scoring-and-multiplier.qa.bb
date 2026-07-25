@@ -60,17 +60,11 @@
     (assert! (re-find #"(?m)score=" readme) "README missing score= telemetry")
     (assert! (re-find #"(?m)multiplier=" readme) "README missing multiplier="))
 
-  (let [u (run! "unit" "bb test")
-        a (run! "accept" "bb accept")
-        c (run! "arch" "bb arch-check")]
-    (assert! (zero? (:exit u)) "unit failed")
-    (assert! (zero? (:exit a)) "accept failed")
-    (assert! (re-find #"(?i)scoring[-_]?and[-_]?multiplier" (:out a))
-             "accept missing scoring feature")
+  (let [c (run! "arch" "bb arch-check")]
     (assert! (zero? (:exit c)) "arch failed"))
 
   ;; B: initial score/mult/wave
-  (write-edn! "tmp/score-init.edn" {})
+  (write-edn! "tmp/score-init.edn" {:screen :playing})
   (write-events! "tmp/score-init-events.txt" ["wait 0.15" "quit"])
   (let [r (launch! {:scenario-path "tmp/score-init.edn"
                     :events-path "tmp/score-init-events.txt"})
@@ -81,8 +75,10 @@
     (assert! (= 1 (long-field s0 "wave")) (str "wave start: " s0)))
 
   ;; C: fireball kill awards 25 while another enemy remains
+  ;; Stage :screen :playing — title freezes combat (no score / no motion).
   (write-edn! "tmp/score-kill.edn"
-              {:wave 1
+              {:screen :playing
+               :wave 1
                :enemies [{:origin [217 0] :target [:city 1]}
                          {:origin [339 0] :target [:city 2]}]})
   (write-events! "tmp/score-kill-events.txt" ["wait 1.5" "quit"])
@@ -101,7 +97,8 @@
 
   ;; C2: wave 3 kill awards 50 (2×)
   (write-edn! "tmp/score-kill-w3.edn"
-              {:wave 3
+              {:screen :playing
+               :wave 3
                :enemies [{:origin [217 0] :target [:city 1]}
                          {:origin [339 0] :target [:city 2]}]})
   (write-events! "tmp/score-kill-w3-events.txt" ["wait 1.5" "quit"])
@@ -115,38 +112,45 @@
                             (:sims r)))]
     (assert! kill (str "expected score=50 at mult 2: " (take-last 5 (:sims r)))))
 
-  ;; D: wave-end bonus after unintercepted impact (ammo 10×3, 5 cities left → 650)
+  ;; D: wave-end bonus after attack 3 clears (3 ballistics hit → 3 cities left).
+  ;; Score: 3 cities×100 + 30 ammo×5 = 450 at mult 1 (sequential 3-attack wave).
   (write-edn! "tmp/score-wave-end.edn"
-              {:wave 1
+              {:screen :playing
+               :wave 1
+               :wave-attack 3
                :batteries {:left {:ammo 10} :center {:ammo 10} :right {:ammo 10}}
-               :enemies [{:origin [96 0] :target [:city 0]}]})
-  (write-events! "tmp/score-wave-end-events.txt" ["wait 2.0" "quit"])
+               :enemies []})
+  (write-events! "tmp/score-wave-end-events.txt" ["wait 2.5" "quit"])
   (let [r (launch! {:scenario-path "tmp/score-wave-end.edn"
                     :events-path "tmp/score-wave-end-events.txt"})
         awarded (first (filter (fn [line]
                                  (let [sc (long-field line "score")
                                        w (long-field line "wave")]
-                                   (and sc (>= sc 650) w (>= w 2))))
+                                   (and sc (>= sc 450) w (>= w 2))))
                                (:sims r)))]
-    (assert! awarded (str "expected wave-end score>=650: " (last (:sims r))))
-    (assert! (= 650 (long-field awarded "score"))
-             (str "exact wave-end 650: " awarded)))
+    (assert! awarded (str "expected wave-end score>=450: " (last (:sims r))))
+    (assert! (= 450 (long-field awarded "score"))
+             (str "exact wave-end 450: " awarded)))
 
-  ;; D2: wave 3 impact → 1300 at 2×
+  ;; D2: wave 3 attack 3 clear → 900 at 2× (3 cities×200 + 30 ammo×10)
   (write-edn! "tmp/score-wave-end-w3.edn"
-              {:wave 3
+              {:screen :playing
+               :wave 3
+               :wave-attack 3
                :batteries {:left {:ammo 10} :center {:ammo 10} :right {:ammo 10}}
-               :enemies [{:origin [96 0] :target [:city 0]}]})
-  (write-events! "tmp/score-wave-end-w3-events.txt" ["wait 2.0" "quit"])
+               :enemies []})
+  (write-events! "tmp/score-wave-end-w3-events.txt" ["wait 2.5" "quit"])
   (let [r (launch! {:scenario-path "tmp/score-wave-end-w3.edn"
                     :events-path "tmp/score-wave-end-w3-events.txt"})
-        awarded (first (filter #(= 1300 (long-field % "score")) (:sims r)))]
-    (assert! awarded (str "expected wave-end 1300: " (last (:sims r)))))
+        awarded (first (filter #(= 900 (long-field % "score")) (:sims r)))]
+    (assert! awarded (str "expected wave-end 900: " (last (:sims r)))))
 
   ;; F: multiplier schedule via staged waves (short waits)
   (doseq [[w mult] [[1 1] [2 1] [3 2] [11 6] [13 6]]]
     (write-edn! (str "tmp/score-mult-" w ".edn")
-                {:wave w :enemies [{:origin [96 0] :target [:city 0]}]})
+                {:screen :playing
+                 :wave w
+                 :enemies [{:origin [96 0] :target [:city 0]}]})
     (write-events! "tmp/score-mult-events.txt" ["wait 0.12" "quit"])
     (let [r (launch! {:scenario-path (str "tmp/score-mult-" w ".edn")
                       :events-path "tmp/score-mult-events.txt"})

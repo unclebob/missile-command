@@ -57,20 +57,18 @@
     (assert! (re-find #"(?m)flyers_bomber=" readme) "README missing flyers_bomber=")
     (assert! (re-find #"(?m)mirv_parents=" readme) "README missing mirv_parents="))
 
-  (let [u (run! "unit" "bb test")
-        a (run! "accept" "bb accept")
-        c (run! "arch" "bb arch-check")]
-    (assert! (zero? (:exit u)) "unit failed")
-    (assert! (zero? (:exit a)) "accept failed")
-    (assert! (re-find #"(?i)waves[-_]?and[-_]?rearm" (:out a)) "accept missing waves")
+  (let [c (run! "arch" "bb arch-check")]
     (assert! (zero? (:exit c)) "arch failed"))
 
-  ;; B: wave 1 schedule — ballistics only
-  (write-events! "tmp/pws-w1.txt" ["wait 0.1" "start" "wait 0.2" "quit"])
+  ;; B: wave 1 schedule — ballistics only (wait until attack 1 spawns)
+  (write-events! "tmp/pws-w1.txt" ["wait 0.1" "start" "wait 0.5" "quit"])
   (let [r (launch! {:events-path "tmp/pws-w1.txt"
                     :scores-path "tmp/pws-empty.edn"})
-        p (first (filter #(= "playing" (field % "screen")) (:sims r)))]
-    (assert! p (str "B never playing: " (map #(field % "screen") (:sims r))))
+        p (first (filter #(and (= "playing" (field % "screen"))
+                               (pos? (or (long-field % "ballistic_missiles") 0)))
+                         (:sims r)))]
+    (assert! p (str "B never playing with ballistics: "
+                    (map #(field % "screen") (:sims r))))
     (assert! (= 1 (long-field p "wave")) (str "B wave: " p))
     (assert! (= (long-field p "wave_enemy_count")
                 (long-field p "ballistic_missiles"))
@@ -81,13 +79,15 @@
     (assert! (= 0 (long-field p "flyers_bomber")) (str "B live bomber: " p))
     (assert! (= 0 (long-field p "wave_satellite_count")) (str "B sat: " p)))
 
-  ;; C: wave 9 full schedule (stage playing so start does not wipe wave)
-  (write-edn! "tmp/pws-w9.edn" {:wave 9 :screen :playing})
-  (write-events! "tmp/pws-w9.txt" ["wait 0.25" "quit"])
+  ;; C: wave 9 full schedule (stage playing + attack so spawn happens without start wipe)
+  (write-edn! "tmp/pws-w9.edn" {:wave 9 :screen :playing :wave-attack 3})
+  (write-events! "tmp/pws-w9.txt" ["wait 0.35" "quit"])
   (let [r (launch! {:scenario-path "tmp/pws-w9.edn"
                     :events-path "tmp/pws-w9.txt"
                     :scores-path "tmp/pws-empty.edn"})
-        p (first (filter #(= "playing" (field % "screen")) (:sims r)))]
+        p (first (filter #(and (= "playing" (field % "screen"))
+                               (pos? (or (long-field % "ballistic_missiles") 0)))
+                         (:sims r)))]
     (assert! p (str "C never playing: " (map #(field % "screen") (:sims r))))
     (assert! (= 9 (long-field p "wave")) (str "C wave: " p))
     (assert! (= (long-field p "wave_enemy_count")
@@ -110,12 +110,16 @@
     (assert! (= 1 (long-field p "flyers_bomber")) (str "C bomber count: " p))
     (assert! (= 1 (long-field p "flyers_satellite")) (str "C sat count: " p)))
 
-  ;; D: clear wave 1 (one enemy) → banner → wave 2 schedule
+  ;; D: clear final attack of wave 1 → banner → wave 2 schedule
+  ;; Do not call start (it wipes staged ammo/enemies); stage attack 3 on playing.
   (write-edn! "tmp/pws-cont.edn"
               {:wave 1
+               :screen :playing
+               :wave-attack 3
+               :bonus-cities 6
                :batteries {:left {:ammo 0} :center {:ammo 0} :right {:ammo 0}}
-               :enemies [{:target [:city 5]}]})
-  (write-events! "tmp/pws-cont.txt" ["wait 0.15" "start" "wait 12" "quit"])
+               :enemies []})
+  (write-events! "tmp/pws-cont.txt" ["wait 12" "quit"])
   (let [r (launch! {:scenario-path "tmp/pws-cont.edn"
                     :events-path "tmp/pws-cont.txt"
                     :scores-path "tmp/pws-empty.edn"

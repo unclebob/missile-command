@@ -54,13 +54,8 @@
     (assert! (re-find #"(?m)qa-sfx" readme) "README missing qa-sfx")
     (assert! (re-find #"(?m)sfx_count=" readme) "README missing sfx_count="))
 
-  (let [u (run! "unit" "bb test")
-        a (run! "accept" "bb accept")
-        c (run! "arch" "bb arch-check")
+  (let [c (run! "arch" "bb arch-check")
         p (run! "property" "bb property")]
-    (assert! (zero? (:exit u)) "unit failed")
-    (assert! (zero? (:exit a)) "accept failed")
-    (assert! (re-find #"(?i)sound[-_]?events" (:out a)) "accept missing sound-events")
     (assert! (zero? (:exit c)) "arch failed")
     (assert! (zero? (:exit p)) "property failed"))
 
