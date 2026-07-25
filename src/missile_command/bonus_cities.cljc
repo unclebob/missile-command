@@ -26,15 +26,19 @@
   [state]
   (long-key state :bonus-city-earned-events initial-earned-events))
 
+(defn- assoc-long
+  [state k n]
+  (assoc state k (long n)))
+
 (defn set-threshold
   "Test/setup helper: configure the score interval for bonus city awards."
   [state n]
-  (assoc state :bonus-city-threshold (long n)))
+  (assoc-long state :bonus-city-threshold n))
 
 (defn set-reserve
   "Test/setup helper: set bonus cities currently held in reserve."
   [state n]
-  (assoc state :bonus-cities (long n)))
+  (assoc-long state :bonus-cities n))
 
 (defn- lowest-destroyed-city-id
   [cities]
@@ -91,3 +95,7 @@
                   (fnil + initial-earned-events) new-awards)
           (sfx/emit :sfx/bonus-city))
       state)))
+
+;; clj-mutate-manifest-begin
+;; {:version 1, :tested-at "2026-07-25T11:10:14.065444-05:00", :module-hash "-550446732", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 6, :hash "-521014101"} {:id "def/initial-reserve", :kind "def", :line 8, :end-line 8, :hash "-609448841"} {:id "def/initial-awarded", :kind "def", :line 9, :end-line 9, :hash "1709139305"} {:id "def/initial-earned-events", :kind "def", :line 10, :end-line 10, :hash "273985318"} {:id "defn-/long-key", :kind "defn-", :line 12, :end-line 14, :hash "-1645808299"} {:id "defn/reserve", :kind "defn", :line 16, :end-line 19, :hash "-1932761285"} {:id "defn/threshold", :kind "defn", :line 21, :end-line 23, :hash "-1051720"} {:id "defn/earned-events", :kind "defn", :line 25, :end-line 27, :hash "1399409350"} {:id "defn-/assoc-long", :kind "defn-", :line 29, :end-line 31, :hash "1236782351"} {:id "defn/set-threshold", :kind "defn", :line 33, :end-line 36, :hash "-1052881477"} {:id "defn/set-reserve", :kind "defn", :line 38, :end-line 41, :hash "-466599069"} {:id "defn-/lowest-destroyed-city-id", :kind "defn-", :line 43, :end-line 49, :hash "-1591641332"} {:id "defn-/living-count", :kind "defn-", :line 51, :end-line 53, :hash "-1846203363"} {:id "defn-/update-city", :kind "defn-", :line 55, :end-line 61, :hash "253645926"} {:id "defn/apply-from-reserve", :kind "defn", :line 63, :end-line 80, :hash "112891178"} {:id "defn/sync-from-score", :kind "defn", :line 82, :end-line 97, :hash "-493561009"}]}
+;; clj-mutate-manifest-end
