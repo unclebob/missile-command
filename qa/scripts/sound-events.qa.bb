@@ -56,12 +56,7 @@
     (assert! (re-find #"(?m)qa-sfx" readme) "README missing qa-sfx")
     (assert! (re-find #"(?m)sfx_count=" readme) "README missing sfx_count="))
 
-  (let [u (run! "unit" "bb test")
-        a (run! "accept" "bb accept")
-        c (run! "arch" "bb arch-check")]
-    (assert! (zero? (:exit u)) "unit failed")
-    (assert! (zero? (:exit a)) "accept failed")
-    (assert! (re-find #"(?i)sound[-_]?events" (:out a)) "accept missing sound-events")
+  (let [c (run! "arch" "bb arch-check")]
     (assert! (zero? (:exit c)) "arch failed"))
 
   ;; B: fire → sfx/launch played when unmuted

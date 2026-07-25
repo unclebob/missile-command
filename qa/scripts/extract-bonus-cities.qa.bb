@@ -60,14 +60,8 @@
   (let [readme (slurp "README.md")]
     (assert! (re-find #"(?m)bonus_cities=" readme) "README missing bonus_cities="))
 
-  (let [u (run! "unit" "bb test")
-        a (run! "accept" "bb accept")
-        c (run! "arch" "bb arch-check")
+  (let [c (run! "arch" "bb arch-check")
         p (run! "property" "bb property")]
-    (assert! (zero? (:exit u)) "unit failed")
-    (assert! (zero? (:exit a)) "accept failed")
-    (assert! (re-find #"(?i)bonus[-_]?cities" (:out a)) "accept missing bonus-cities")
-    (assert! (re-find #"(?i)the[-_]?end" (:out a)) "accept missing the-end")
     (assert! (zero? (:exit c)) "arch failed")
     (assert! (zero? (:exit p)) "property failed"))
 

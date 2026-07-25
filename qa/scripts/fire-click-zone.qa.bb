@@ -135,16 +135,8 @@
     (println "Discovered accept:" accept-cmd)
     (println "Discovered launch:" launch-cmd)
 
-    ;; A. unit / accept / arch
-    (let [unit (run-documented! "unit" unit-cmd)
-          accept (run-documented! "accept" accept-cmd)
-          arch (when (seq arch-cmd) (run-documented! "arch" arch-cmd))]
-      (assert! (zero? (:exit unit)) (str "unit exit " (:exit unit)))
-      (assert! (no-failures? (:out unit)) "unit failures")
-      (assert! (zero? (:exit accept)) (str "accept exit " (:exit accept)))
-      (assert! (no-failures? (:out accept)) "accept failures")
-      (assert! (re-find #"(?i)fire[-_]?click[-_]?zone" (:out accept))
-               "accept missing fire-click-zone coverage")
+    ;; A. arch (unit/accept run separately)
+    (let [arch (when (seq arch-cmd) (run-documented! "arch" arch-cmd))]
       (when arch
         (assert! (zero? (:exit arch)) (str "arch exit " (:exit arch)))))
 

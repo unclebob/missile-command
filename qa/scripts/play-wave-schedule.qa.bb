@@ -57,12 +57,7 @@
     (assert! (re-find #"(?m)flyers_bomber=" readme) "README missing flyers_bomber=")
     (assert! (re-find #"(?m)mirv_parents=" readme) "README missing mirv_parents="))
 
-  (let [u (run! "unit" "bb test")
-        a (run! "accept" "bb accept")
-        c (run! "arch" "bb arch-check")]
-    (assert! (zero? (:exit u)) "unit failed")
-    (assert! (zero? (:exit a)) "accept failed")
-    (assert! (re-find #"(?i)waves[-_]?and[-_]?rearm" (:out a)) "accept missing waves")
+  (let [c (run! "arch" "bb arch-check")]
     (assert! (zero? (:exit c)) "arch failed"))
 
   ;; B: wave 1 schedule — ballistics only

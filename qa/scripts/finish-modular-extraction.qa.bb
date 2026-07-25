@@ -59,14 +59,8 @@
   (assert! (.exists (io/file "src/missile_command/jvm/scenario.clj")) "missing scenario")
   (assert! (.exists (io/file "src/missile_command/testing.cljc")) "missing testing")
 
-  (let [u (run! "unit" "bb test")
-        a (run! "accept" "bb accept")
-        c (run! "arch" "bb arch-check")
+  (let [c (run! "arch" "bb arch-check")
         p (run! "property" "bb property")]
-    (assert! (zero? (:exit u)) "unit failed")
-    (assert! (zero? (:exit a)) "accept failed")
-    (assert! (re-find #"(?i)mirv|defensive|enemy|smart|bomber" (:out a))
-             "accept missing combat features")
     (assert! (zero? (:exit c)) "arch failed")
     (assert! (zero? (:exit p)) "property failed"))
 

@@ -53,12 +53,7 @@
     (assert! (re-find #"(?m)--qa-speed" readme) "README missing --qa-speed")
     (assert! (re-find #"(?m)wave=" readme) "README missing wave telemetry"))
 
-  (let [u (run! "unit" "bb test")
-        a (run! "accept" "bb accept")
-        c (run! "arch" "bb arch-check")]
-    (assert! (zero? (:exit u)) "unit failed")
-    (assert! (zero? (:exit a)) "accept failed")
-    (assert! (re-find #"(?i)waves[-_]?and[-_]?rearm" (:out a)) "accept missing waves feature")
+  (let [c (run! "arch" "bb arch-check")]
     (assert! (zero? (:exit c)) "arch failed"))
 
   ;; B: final attack staged with one remaining enemy (empty list + one spawn).

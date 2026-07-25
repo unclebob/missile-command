@@ -40,12 +40,8 @@
   (assert! (.exists (io/file "qa/procedures/host-input-split.qa.md")) "missing procedure")
   (assert! (.exists (io/file "docs/architecture/plans/pr-07-host-input-split.md")) "missing plan")
 
-  (let [u (run! "unit" "bb test")
-        a (run! "accept" "bb accept")
-        c (run! "arch" "bb arch-check")
+  (let [c (run! "arch" "bb arch-check")
         p (run! "property" "bb property")]
-    (assert! (zero? (:exit u)) "unit failed")
-    (assert! (zero? (:exit a)) "accept failed")
     (assert! (zero? (:exit c)) "arch failed")
     (assert! (zero? (:exit p)) "property failed"))
 

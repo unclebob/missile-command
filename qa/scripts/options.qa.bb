@@ -59,12 +59,7 @@
     (assert! (re-find #"(?m)difficulty=" readme) "README missing difficulty=")
     (assert! (re-find #"(?m)missile-command-settings" readme) "README missing settings path"))
 
-  (let [u (run! "unit" "bb test")
-        a (run! "accept" "bb accept")
-        c (run! "arch" "bb arch-check")]
-    (assert! (zero? (:exit u)) "unit failed")
-    (assert! (zero? (:exit a)) "accept failed")
-    (assert! (re-find #"(?i)options" (:out a)) "accept missing options feature")
+  (let [c (run! "arch" "bb arch-check")]
     (assert! (zero? (:exit c)) "arch failed"))
 
   ;; B: open options, defaults

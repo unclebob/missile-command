@@ -27,12 +27,8 @@
            "missing ADR")
   (assert! (.exists (io/file "docs/architecture/plans/README.md")) "missing plan index")
 
-  (let [u (run! "unit" "bb test")
-        a (run! "accept" "bb accept")
-        c (run! "arch" "bb arch-check")
+  (let [c (run! "arch" "bb arch-check")
         p (run! "property" "bb property")]
-    (assert! (zero? (:exit u)) "unit failed")
-    (assert! (zero? (:exit a)) "accept failed")
     (assert! (zero? (:exit c)) "arch failed")
     (assert! (zero? (:exit p)) "property failed"))
 

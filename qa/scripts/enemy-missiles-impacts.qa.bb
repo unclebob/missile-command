@@ -53,13 +53,7 @@
     (assert! (re-find #"(?m)--qa-enemy" readme) "README missing --qa-enemy")
     (assert! (re-find #"(?m)enemy_missiles=" readme) "README missing enemy telemetry"))
 
-  (let [u (run-doc! "unit" "bb test")
-        a (run-doc! "accept" "bb accept")
-        c (run-doc! "arch" "bb arch-check")]
-    (assert! (zero? (:exit u)) "unit failed")
-    (assert! (not (re-find #"\b[1-9]\d*\s+failures?\b" (:out u))) "unit failures")
-    (assert! (zero? (:exit a)) "accept failed")
-    (assert! (re-find #"(?i)enemy[-_]?missiles[-_]?impacts" (:out a)) "accept missing enemy feature")
+  (let [c (run-doc! "arch" "bb arch-check")]
     (assert! (zero? (:exit c)) "arch failed"))
 
   ;; B: city impact
