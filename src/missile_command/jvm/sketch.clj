@@ -184,22 +184,6 @@
     (input/apply-scenario state (input/load-scenario-edn path))
     state))
 
-(defn- spawn-scheduled-wave-enemies
-  "Start attack 1 of the current wave (later attacks advance in core/tick)."
-  [state]
-  (core/activate-wave-schedule state))
-
-(defn- ensure-wave-enemies
-  "If the sky is empty and this wave has not started attacks, begin attack 1.
-  Sequential attacks 2..N are started by core when the previous attack ends."
-  [state]
-  (if (or (seq (core/enemy-missiles state))
-          (seq (core/flyers state))
-          (:wave-attack state)
-          (core/wave-complete? state))
-    state
-    (spawn-scheduled-wave-enemies state)))
-
 (defn setup
   []
   (q/frame-rate 60)
@@ -216,10 +200,7 @@
                   apply-qa-fireballs
                   ;; Scenario may stage zero cities → enter THE END even from title.
                   core/evaluate-game-over)
-        ;; Only spawn wave attacks when already playing (not on title/end).
-        state (if (core/playing? state)
-                (ensure-wave-enemies state)
-                state)]
+        ]
     (when (:qa-telemetry? @launch-options)
       (emit-sim! state)
       ;; Surface SFX already logged during setup (e.g. THE END on zero cities).
@@ -238,16 +219,12 @@
     (* wall speed)))
 
 (defn- advance-one-step
-  "One core tick; after wave banner ends, spawn next-wave enemies."
+  "One core tick. Core starts attack 1 when the sky is empty."
   [state dt]
   (let [was-banner? (core/wave-banner? state)
         result (core/tick state dt)
         state' (:state result)
-        banner-finished? (and was-banner? (core/playing? state'))
-        ;; After banner, launch next wave attacks for continuous play.
-        state' (if banner-finished?
-                 (ensure-wave-enemies state')
-                 state')]
+        banner-finished? (and was-banner? (core/playing? state'))]
     [state' banner-finished?]))
 
 (defn- tick-state
@@ -328,7 +305,7 @@
             (case (:type ev)
               :click (let [s (apply-handle state (input/click-command (:x ev) (:y ev)))
                            s (if (and (core/playing? s) (not (core/playing? state)))
-                               (-> s apply-destroy-options ensure-wave-enemies)
+                               (apply-destroy-options s)
                                s)]
                        (when (and (:qa-telemetry? @launch-options)
                                   (not= (core/screen state) (core/screen s)))
@@ -337,13 +314,7 @@
               :aim (apply-handle state (input/aim-command (:x ev) (:y ev)))
               :start (let [s (apply-handle state {:type :start})
                            s (cond-> s
-                               (core/playing? s) apply-destroy-options
-                               ;; Skip auto wave if QA will stage enemies next.
-                               (and (core/playing? s)
-                                    (empty? (:qa-enemies @launch-options))
-                                    (not-any? #(= :enemy (:type %))
-                                              @pending-qa-events))
-                               ensure-wave-enemies)]
+                               (core/playing? s) apply-destroy-options)]
                        (when (:qa-telemetry? @launch-options)
                          (emit-sim! s))
                        s)
@@ -430,7 +401,7 @@
                        (or (= \newline ch) (= \return ch))
                        (cond
                          (core/title? state)
-                         (ensure-wave-enemies (apply-handle state {:type :start}))
+                         (apply-handle state {:type :start})
                          (core/the-end? state) (apply-handle state {:type :confirm})
                          (core/high-score-entry? state)
                          (let [draft @initials-draft
@@ -447,25 +418,13 @@
                           (core/add-static-fireball state x y radius))
               state)))))))
 
-(defn- ensure-playing-has-wave
-  "If we are playing with an empty sky and the wave is not complete, spawn
-  the schedule. Covers click-to-start and any path that forgot to spawn."
-  [state]
-  (if (and (core/playing? state)
-           (not (core/wave-complete? state))
-           (empty? (core/enemy-missiles state))
-           (empty? (core/flyers state)))
-    (ensure-wave-enemies state)
-    state))
-
 (defn update-state
   [state]
   (let [scripted? (seq @pending-qa-events)
         state (-> state
                   (input/resize-if-needed (q/width) (q/height)
                                           core/resize core/playfield-width core/playfield-height)
-                  tick-state
-                  ensure-playing-has-wave)]
+                  tick-state)]
     (if scripted?
       (drain-one-qa-event state)
       (-> state
@@ -492,13 +451,9 @@
 (defn mouse-pressed
   [state event]
   (if (left-button? event)
-    (let [was-title? (core/title? state)
-          next (apply-handle state (input/click-command (q/mouse-x) (q/mouse-y)))]
-      ;; Click starts from title; host must spawn wave 1 (same as Enter).
-      (if (and was-title? (core/playing? next))
-        (ensure-wave-enemies next)
-        next))
+    (apply-handle state (input/click-command (q/mouse-x) (q/mouse-y)))
     state))
+
 (defn- initials-char?
   [ch]
   (and ch (re-matches #"[A-Za-z0-9]" (str ch))))
@@ -561,7 +516,7 @@
       (or (= \newline ch) (= \return ch) (= (int 10) (int ch)))
       (cond
         (core/title? state)
-        (ensure-wave-enemies (apply-handle state {:type :start}))
+        (apply-handle state {:type :start})
         (core/the-end? state) (apply-handle state {:type :confirm})
         (core/high-score-entry? state)
         (let [draft @initials-draft]
