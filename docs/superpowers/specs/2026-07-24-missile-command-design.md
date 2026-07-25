@@ -299,11 +299,15 @@ Core emits events; hosts play synthesized SFX unless muted.
 | Event | When |
 |-------|------|
 | `:sfx/launch` | Defensive missile fired |
-| `:sfx/explosion` | Fireball catches enemy or major blast |
+| `:sfx/boom` | Expanding combat fireball onset (defensive arrival or ground impact) |
+| `:sfx/intercepted` | Fireball destroys an enemy (intercept) |
+| `:sfx/warning` | Title screen (once per visit) |
+| `:sfx/explosion` | Other major blast (legacy; not used for intercept) |
 | `:sfx/city-destroyed` | City hit |
 | `:sfx/battery-destroyed` | Battery hit |
 | `:sfx/low-ammo` | Battery ammo hits a low threshold (e.g. 2) on fire |
-| `:sfx/wave-clear` | Wave completed |
+| `:sfx/wave` | Wave banner shown (between waves) |
+| `:sfx/wave-clear` | Legacy alias (unused; banner uses `:sfx/wave`) |
 | `:sfx/bonus-city` | Bonus city earned |
 | `:sfx/the-end` | THE END sequence |
 | `:sfx/ui` | Menu confirm/navigate (optional) |

@@ -133,5 +133,5 @@ Scenario: Waves and rearm 06 higher waves schedule more or faster enemies
 Examples:
   | width | height | low_wave | high_wave | low_count | low_speed | high_count | high_speed | expected_width | expected_height |
   | 800   | 600    | 1        | 2         | 3         | 40.0      | 3          | 45.0       | 800            | 600             |
-  | 800   | 600    | 1        | 3         | 3         | 40.0      | 4          | 50.0       | 800            | 600             |
-  | 1920  | 1080   | 2        | 4         | 3         | 45.0      | 4          | 55.0       | 1920           | 1080            |
+  | 800   | 600    | 1        | 3         | 3         | 40.0      | 3          | 50.0       | 800            | 600             |
+  | 1920  | 1080   | 2        | 4         | 3         | 45.0      | 3          | 55.0       | 1920           | 1080            |

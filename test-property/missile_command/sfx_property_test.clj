@@ -8,9 +8,11 @@
 (defspec emit-appends-and-emitted-detects
   40
   (for-all [types (gen/vector
-                   (gen/elements [:sfx/launch :sfx/explosion :sfx/city-destroyed
+                   (gen/elements [:sfx/launch :sfx/boom :sfx/explosion
+                                  :sfx/intercepted :sfx/city-destroyed
                                   :sfx/battery-destroyed :sfx/low-ammo
-                                  :sfx/wave-clear :sfx/bonus-city :sfx/the-end])
+                                  :sfx/wave :sfx/wave-clear :sfx/bonus-city
+                                  :sfx/the-end :sfx/warning])
                    0 8)]
     (let [state (reduce sfx/emit {:sfx-events []} types)
           log (sfx/events state)]
