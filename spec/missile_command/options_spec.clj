@@ -20,7 +20,18 @@
 
   (it "toggles mute"
     (should (opts/mute? (opts/set-mute opts/default-options true)))
-    (should-not (opts/mute? (opts/set-mute opts/default-options false)))))
+    (should-not (opts/mute? (opts/set-mute opts/default-options false))))
+
+  (it "parses mute from common truthy/falsey tokens"
+    (should (opts/parse-mute "true"))
+    (should (opts/parse-mute "TRUE"))
+    (should (opts/parse-mute "1"))
+    (should (opts/parse-mute "yes"))
+    (should-not (opts/parse-mute "false"))
+    (should-not (opts/parse-mute "0"))
+    (should-not (opts/parse-mute "no"))
+    (should (opts/parse-mute true))
+    (should-not (opts/parse-mute false))))
 
 (describe "difficulty scaling"
   (it "uses arcade 1.0, normal 0.85, easy 0.7"

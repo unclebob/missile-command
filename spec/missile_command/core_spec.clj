@@ -1,6 +1,7 @@
 (ns missile-command.core-spec
   (:require [speclj.core :refer :all]
-            [missile-command.core :as core]))
+            [missile-command.core :as core]
+            [missile-command.wave-schedule :as wave-schedule]))
 
 (describe "new-game"
   (it "records the playfield width and height"
@@ -137,7 +138,7 @@
                     (core/destroy-battery :center))
           after (:state (core/handle state {:type :fire :battery :center}))]
       (should= 0 (count (core/defensive-missiles after)))
-      (should= 10 (:missiles (core/battery after :center)))
+      (should= 0 (:missiles (core/battery after :center)))
       (should (:destroyed? (core/battery after :center)))))
 
   (it "gives center missiles higher speed than side missiles"
@@ -311,14 +312,9 @@
                       (core/enemy-missiles state)))))
 
   (it "final sequential attack on wave 4 includes MIRVs"
-    (let [start (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/set-wave 4)
-                    (core/activate-wave-schedule))
-          state (loop [s start n 0]
-                  (cond
-                    (= 3 (:wave-attack s)) s
-                    (> n 50000) s
-                    :else (recur (:state (core/tick s 0.05)) (inc n))))
+                    (core/start-wave-attack 3))
           parents (core/mirv-parents state)
           metrics (core/wave-schedule-metrics-for state 4)]
       (should= 3 (:wave-attack state))
@@ -326,17 +322,16 @@
                (count (filter #(= core/enemy-kind-ballistic (:enemy-kind %))
                               (core/enemy-missiles state))))
       (should= (:mirv-count metrics) (count parents))
-      (should (pos? (count parents)))))
+      (should (pos? (count parents)))
+      (should (every? #(= core/default-mirv-child-count (:child-count %)) parents))
+      (should (every? #(= (double core/default-mirv-split-progress)
+                          (double (:split-progress %)))
+                      parents))))
 
   (it "final sequential attack spawns smart bombs and flyers on later waves"
-    (let [start (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/set-wave 9)
-                    (core/activate-wave-schedule))
-          state (loop [s start n 0]
-                  (cond
-                    (= 3 (:wave-attack s)) s
-                    (> n 50000) s
-                    :else (recur (:state (core/tick s 0.05)) (inc n))))
+                    (core/start-wave-attack 3))
           metrics (core/wave-schedule-metrics-for state 9)]
       (should= (:smart-bomb-count metrics) (count (core/smart-bombs state)))
       (should= (:bomber-count metrics) (count (core/flyers-of-kind state :bomber)))

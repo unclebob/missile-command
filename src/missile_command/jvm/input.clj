@@ -315,23 +315,31 @@
                         (str/join "," types)
                         "none"))]))
 
+(defn- inactive-wave-banner-fields
+  []
+  [(str "banner_text=none")
+   (str "banner_phase=none")
+   (str "banner_x=0")
+   (str "banner_y=0")
+   (str "banner_announced_wave=0")])
+
+(defn- active-wave-banner-fields
+  [state]
+  (let [pos (core/wave-banner-text-position state)
+        ph (core/wave-banner-phase state)]
+    [(str "banner_text="
+          (str/replace (or (core/wave-banner-text state) "") #"\s+" "_"))
+     (str "banner_phase=" (if ph (name ph) "none"))
+     (str "banner_x=" (double (:x pos)))
+     (str "banner_y=" (double (:y pos)))
+     (str "banner_announced_wave="
+          (core/wave-banner-announced-wave state))]))
+
 (defn- wave-banner-sim-fields
   [state]
-  (if-not (core/wave-banner? state)
-    [(str "banner_text=none")
-     (str "banner_phase=none")
-     (str "banner_x=0")
-     (str "banner_y=0")
-     (str "banner_announced_wave=0")]
-    (let [pos (core/wave-banner-text-position state)
-          ph (core/wave-banner-phase state)]
-      [(str "banner_text="
-            (str/replace (or (core/wave-banner-text state) "") #"\s+" "_"))
-       (str "banner_phase=" (if ph (name ph) "none"))
-       (str "banner_x=" (double (:x pos)))
-       (str "banner_y=" (double (:y pos)))
-       (str "banner_announced_wave="
-            (core/wave-banner-announced-wave state))])))
+  (if (core/wave-banner? state)
+    (active-wave-banner-fields state)
+    (inactive-wave-banner-fields)))
 
 (defn format-sim-telemetry-line
   "Periodic simulation snapshot line."
@@ -349,6 +357,14 @@
               (str "wave_complete=" (boolean (core/wave-complete? state)))
               (str "wave_enemy_count=" (:enemy-count metrics))
               (str "wave_enemy_speed=" (:enemy-speed metrics))
+              (str "wave_mirv_count=" (long (:mirv-count metrics 0)))
+              (str "wave_smart_bomb_count=" (long (:smart-bomb-count metrics 0)))
+              (str "wave_bomber_count=" (long (:bomber-count metrics 0)))
+              (str "wave_satellite_count=" (long (:satellite-count metrics 0)))
+              (str "mirv_parents=" (count (core/mirv-parents state)))
+              (str "smart_bombs=" (count (core/smart-bombs state)))
+              (str "flyers_bomber=" (count (core/flyers-of-kind state :bomber)))
+              (str "flyers_satellite=" (count (core/flyers-of-kind state :satellite)))
               (str "score=" (core/score state))
               (str "final_score=" (core/final-score state))
               (str "multiplier=" (core/multiplier state))
@@ -367,6 +383,10 @@
               (str "missiles_in_flight=" (count missiles))
               (str "fireballs=" (count fireballs))
               (str "enemy_missiles=" (count enemies))
+              (str "ballistic_missiles="
+                   (count (filter #(= :ballistic
+                                      (or (:enemy-kind %) :ballistic))
+                                  enemies)))
               (str "cities_alive=" (count (core/living-cities state)))
               (str "hud_score=" (:score hud))
               (str "hud_wave=" (:wave hud))
@@ -394,6 +414,13 @@
   [state scenario]
   (if-let [w (:wave scenario)]
     (core/set-wave state w)
+    state))
+
+(defn- apply-scenario-screen
+  "Optional :screen keyword (e.g. :playing) for staged host setups."
+  [state scenario]
+  (if-let [s (:screen scenario)]
+    (assoc state :screen (keyword s))
     state))
 
 (defn- apply-scenario-size
@@ -454,18 +481,34 @@
               state)
             entries)))
 
-(defn- apply-scenario-options
+(defn- apply-scenario-mute
   [state scenario]
-  (cond-> state
-    (contains? scenario :mute)
-    (core/set-mute (:mute scenario))
-    (contains? scenario :difficulty)
-    (core/set-difficulty (:difficulty scenario))
-    (map? (:options scenario))
+  (if (contains? scenario :mute)
+    (core/set-mute state (:mute scenario))
+    state))
+
+(defn- apply-scenario-difficulty
+  [state scenario]
+  (if (contains? scenario :difficulty)
+    (core/set-difficulty state (:difficulty scenario))
+    state))
+
+(defn- apply-scenario-options-map
+  [state scenario]
+  (if (map? (:options scenario))
     (core/import-settings
+     state
      (merge (core/export-settings state)
             {:options (merge (core/game-options state)
-                             (:options scenario))}))))
+                             (:options scenario))}))
+    state))
+
+(defn- apply-scenario-options
+  [state scenario]
+  (-> state
+      (apply-scenario-mute scenario)
+      (apply-scenario-difficulty scenario)
+      (apply-scenario-options-map scenario)))
 
 (defn- spawn-scenario-mirv
   [state e]
@@ -554,7 +597,8 @@
       (apply-scenario-flyers scenario)
       (apply-scenario-score-and-bonus scenario)
       (apply-scenario-high-scores scenario)
-      (apply-scenario-options scenario)))
+      (apply-scenario-options scenario)
+      (apply-scenario-screen scenario)))
 
 (defn format-fireball-phase-line
   "Phase timing line for one fireball."

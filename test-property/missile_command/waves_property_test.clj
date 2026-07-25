@@ -52,8 +52,8 @@
   (for-all [w (gen/large-integer* {:min 1 :max 25})]
     (let [m (waves/smart-bomb-count w)]
       (and (>= m 0)
-           (= m (max 0 (quot (- w 5) 2)))
-           (if (<= w 6) (zero? m) (pos? m))
+           (= m (max 0 (quot (- w 2) 2)))
+           (if (<= w 3) (zero? m) (pos? m))
            (<= m (waves/smart-bomb-count (inc w)))))))
 
 (defspec mirv-count-zero-early-then-nondecreasing

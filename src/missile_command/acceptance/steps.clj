@@ -1,6 +1,5 @@
 (ns missile-command.acceptance.steps
-  (:require [clojure.string :as str]
-            [missile-command.acceptance.step-support :as support]
+  (:require [missile-command.acceptance.step-support :as support]
             [missile-command.acceptance.enemy-steps :as enemy-steps]
             [missile-command.acceptance.end-steps :as end-steps]
             [missile-command.acceptance.wave-steps :as wave-steps]

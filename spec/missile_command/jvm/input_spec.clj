@@ -428,5 +428,37 @@
           drop (first (:drops (first (core/flyers state))))]
       (should= [:city 0] (:target drop))
       (should= 0.3 (double (:at-progress drop)))))
-)
 
+  (it "applies mute and difficulty scenario options"
+    (let [state (input/apply-scenario
+                 (core/new-game {:width 800 :height 600})
+                 {:mute true :difficulty :easy})]
+      (should (core/mute? state))
+      (should= :easy (core/difficulty state))))
+
+  (it "merges nested options map from scenario"
+    (let [state (input/apply-scenario
+                 (core/new-game {:width 800 :height 600})
+                 {:options {:mute true}})]
+      (should (core/mute? state)))))
+
+(describe "wave banner telemetry"
+  (it "reports none fields when not on wave-banner"
+    (let [state (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+          line (input/format-sim-telemetry-line state)]
+      (should (str/includes? line "banner_text=none"))
+      (should (str/includes? line "banner_phase=none"))))
+
+  (it "reports banner text phase and position during wave-banner"
+    (let [start (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+                    (core/set-wave-enemies-active 1))
+          state (loop [s start n 0]
+                  (cond
+                    (core/wave-banner? s) s
+                    (> n 10000) s
+                    :else (recur (:state (core/tick s 0.05)) (inc n))))
+          line (input/format-sim-telemetry-line state)]
+      (should (core/wave-banner? state))
+      (should (str/includes? line "banner_text=WAVE_2"))
+      (should (str/includes? line "banner_phase=enter"))
+      (should (str/includes? line "banner_announced_wave=2")))))

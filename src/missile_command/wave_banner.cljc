@@ -120,32 +120,50 @@
          :screen screens/playing
          :wave-banner nil))
 
+(defn- phase-duration
+  [ph]
+  (if (= ph phase-enter) enter-duration exit-duration))
+
+(defn- complete-enter
+  [state b]
+  (assoc state :wave-banner
+         (assoc b
+                :phase phase-exit
+                :progress 0.0
+                :x (:center-x b)
+                :y (:center-y b))))
+
+(defn- advance-banner-x
+  [state b ph progress']
+  (let [x (if (= ph phase-enter)
+            (lerp (:enter-start-x b) (:center-x b) progress')
+            (lerp (:center-x b) (:exit-end-x b) progress'))]
+    (assoc state :wave-banner
+           (assoc b :progress progress' :x x :y (:center-y b)))))
+
+(defn- finish-phase
+  [state b ph finish-fn]
+  (if (= ph phase-enter)
+    (complete-enter state b)
+    (finish-fn state)))
+
+(defn- tick-banner
+  [state b dt finish-fn]
+  (let [ph (:phase b)
+        progress (double (or (:progress b) 0.0))
+        progress' (clamp01 (+ progress (/ (double dt) (phase-duration ph))))]
+    (if (>= progress' 1.0)
+      (finish-phase state b ph finish-fn)
+      (advance-banner-x state b ph progress'))))
+
 (defn tick
   "Advance banner animation; returns updated state.
   When finished, calls finish-fn with state (no banner)."
   [state dt finish-fn]
-  (let [b (of state)]
-    (if-not b
-      (finish-fn state)
-      (let [ph (:phase b)
-            progress (double (or (:progress b) 0.0))
-            dur (if (= ph phase-enter) enter-duration exit-duration)
-            progress' (clamp01 (+ progress (/ (double dt) dur)))]
-        (if (and (= ph phase-enter) (>= progress' 1.0))
-          (assoc state :wave-banner
-                 (assoc b
-                        :phase phase-exit
-                        :progress 0.0
-                        :x (:center-x b)
-                        :y (:center-y b)))
-          (if (and (= ph phase-exit) (>= progress' 1.0))
-            (finish-fn state)
-            (let [x (if (= ph phase-enter)
-                      (lerp (:enter-start-x b) (:center-x b) progress')
-                      (lerp (:center-x b) (:exit-end-x b) progress'))]
-              (assoc state :wave-banner
-                     (assoc b :progress progress' :x x :y (:center-y b))))))))))
+  (if-let [b (of state)]
+    (tick-banner state b dt finish-fn)
+    (finish-fn state)))
 
 ;; clj-mutate-manifest-begin
-;; {:version 1, :tested-at "2026-07-24T16:26:40.312112-05:00", :module-hash "-1757701544", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 3, :hash "-1156496799"} {:id "def/phase-enter", :kind "def", :line 5, :end-line 5, :hash "-1325013704"} {:id "def/phase-exit", :kind "def", :line 6, :end-line 6, :hash "571724543"} {:id "def/enter-duration", :kind "def", :line 7, :end-line 7, :hash "969557294"} {:id "def/exit-duration", :kind "def", :line 8, :end-line 8, :hash "-1906795612"} {:id "def/offscreen-margin", :kind "def", :line 9, :end-line 9, :hash "-1275849371"} {:id "defn/screen?", :kind "defn", :line 11, :end-line 13, :hash "-626378302"} {:id "defn/of", :kind "defn", :line 15, :end-line 17, :hash "-981582658"} {:id "defn/text", :kind "defn", :line 19, :end-line 21, :hash "1107135439"} {:id "defn/announced-wave", :kind "defn", :line 23, :end-line 25, :hash "-1105766107"} {:id "defn/phase", :kind "defn", :line 27, :end-line 29, :hash "-496719693"} {:id "defn/text-position", :kind "defn", :line 31, :end-line 35, :hash "1102855509"} {:id "defn-/playfield-center", :kind "defn-", :line 37, :end-line 40, :hash "-466748197"} {:id "defn/distance-to-center", :kind "defn", :line 42, :end-line 52, :hash "737446024"} {:id "defn-/banner-text-for", :kind "defn-", :line 54, :end-line 56, :hash "-1082966793"} {:id "defn-/lerp", :kind "defn-", :line 58, :end-line 60, :hash "-1528249028"} {:id "defn-/clamp01", :kind "defn-", :line 62, :end-line 64, :hash "2048038306"} {:id "defn/make", :kind "defn", :line 66, :end-line 79, :hash "-963403718"} {:id "defn/enter", :kind "defn", :line 81, :end-line 91, :hash "-1932914319"} {:id "defn/clear", :kind "defn", :line 93, :end-line 98, :hash "725549826"} {:id "defn/tick", :kind "defn", :line 100, :end-line 124, :hash "-455791148"}]}
+;; {:version 1, :tested-at "2026-07-24T21:13:23.975346-05:00", :module-hash "295249608", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 3, :hash "-1156496799"} {:id "def/phase-enter", :kind "def", :line 5, :end-line 5, :hash "-1325013704"} {:id "def/phase-exit", :kind "def", :line 6, :end-line 6, :hash "571724543"} {:id "def/enter-duration", :kind "def", :line 8, :end-line 8, :hash "212342138"} {:id "def/exit-duration", :kind "def", :line 9, :end-line 9, :hash "698481786"} {:id "def/offscreen-margin", :kind "def", :line 10, :end-line 10, :hash "-1275849371"} {:id "defn/screen?", :kind "defn", :line 12, :end-line 14, :hash "-626378302"} {:id "defn/of", :kind "defn", :line 16, :end-line 18, :hash "-981582658"} {:id "defn/text", :kind "defn", :line 20, :end-line 22, :hash "1107135439"} {:id "defn/announced-wave", :kind "defn", :line 24, :end-line 26, :hash "-1105766107"} {:id "defn/phase", :kind "defn", :line 28, :end-line 30, :hash "-496719693"} {:id "defn/text-position", :kind "defn", :line 32, :end-line 36, :hash "1102855509"} {:id "defn-/playfield-center", :kind "defn-", :line 38, :end-line 41, :hash "-466748197"} {:id "defn/distance-to-center", :kind "defn", :line 43, :end-line 53, :hash "737446024"} {:id "defn-/banner-text-for", :kind "defn-", :line 55, :end-line 57, :hash "-1082966793"} {:id "defn-/lerp", :kind "defn-", :line 59, :end-line 61, :hash "-1528249028"} {:id "defn-/clamp01", :kind "defn-", :line 63, :end-line 65, :hash "2048038306"} {:id "defn/make", :kind "defn", :line 67, :end-line 80, :hash "-963403718"} {:id "defn/enter", :kind "defn", :line 82, :end-line 92, :hash "-1932914319"} {:id "defn/clear", :kind "defn", :line 94, :end-line 99, :hash "725549826"} {:id "defn-/phase-duration", :kind "defn-", :line 101, :end-line 103, :hash "-847565443"} {:id "defn-/complete-enter", :kind "defn-", :line 105, :end-line 112, :hash "-1727395524"} {:id "defn-/advance-banner-x", :kind "defn-", :line 114, :end-line 120, :hash "-79769897"} {:id "defn-/finish-phase", :kind "defn-", :line 122, :end-line 126, :hash "-539197714"} {:id "defn-/tick-banner", :kind "defn-", :line 128, :end-line 135, :hash "-1415388649"} {:id "defn/tick", :kind "defn", :line 137, :end-line 143, :hash "1743369184"}]}
 ;; clj-mutate-manifest-end
