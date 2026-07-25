@@ -1,6 +1,6 @@
 # US-20 — Sound effects from game events
 
-**Status:** in-specifier  
+**Status:** done  
 **Depends on:** US-06, US-19  
 **Design:** §8
 

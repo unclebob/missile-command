@@ -1,6 +1,6 @@
 # US-19 — Options (mute, keys, difficulty)
 
-**Status:** in-specifier  
+**Status:** done  
 **Depends on:** US-15  
 **Design:** §5.3, §6.5, §8
 

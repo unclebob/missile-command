@@ -1,6 +1,6 @@
 # US-21 — Play on the desktop (JVM Quil)
 
-**Status:** in-specifier  
+**Status:** done  
 **Depends on:** US-16, US-17, US-20  
 **Design:** §3, §4, §7, §10
 
