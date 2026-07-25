@@ -34,11 +34,16 @@
     (print out) (flush)
     {:exit (:exit r) :out out}))
 
+(defn write-edn! [path data]
+  (io/make-parents path)
+  (spit path (pr-str data)))
+
 (defn launch!
-  [{:keys [events-path extra timeout-ms]
+  [{:keys [events-path scenario-path extra timeout-ms]
     :or {timeout-ms 45000 extra ""}}]
   (let [cmd (str "bb play 800 600 --qa --qa-speed 10"
                  (when (seq extra) (str " " extra))
+                 (when scenario-path (str " --qa-scenario " scenario-path))
                  (when events-path (str " --qa-events " events-path)))]
     (println "==> host:" cmd) (flush)
     (let [r (p/shell {:out :string :err :string :continue true :timeout timeout-ms}
@@ -79,10 +84,13 @@
     (assert! (some #(str/starts-with? % "battery:") targets)
              (str "need battery target: " targets)))
 
-  ;; C: unintercepted battery impact
-  (write-events! "tmp/bat-hit.txt"
-                 ["wait 0.1" "start" "enemy battery:left" "wait 2.0" "quit"])
-  (let [r (launch! {:events-path "tmp/bat-hit.txt"})
+  ;; C: unintercepted battery impact (only battery-bound enemy; no concurrent wave)
+  (write-edn! "tmp/bat-hit.edn"
+              {:screen :playing
+               :enemies [{:target [:battery :left]}]})
+  (write-events! "tmp/bat-hit.txt" ["wait 2.0" "quit"])
+  (let [r (launch! {:scenario-path "tmp/bat-hit.edn"
+                    :events-path "tmp/bat-hit.txt"})
         hit (first (filter #(= "true" (field % "battery_left_destroyed"))
                            (:sims r)))]
     (assert! hit (str "left battery never destroyed: " (last (:sims r))))

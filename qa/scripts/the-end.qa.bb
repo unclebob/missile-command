@@ -76,8 +76,10 @@
     (assert! (>= (long-field s0 "cities_alive") 1) (str "need living cities: " s0)))
 
   ;; C: all cities destroyed, reserve 0 → THE END + message + score
+  ;; Must stage :screen :playing so evaluate-game-over / end sequence run.
   (write-edn! "tmp/the-end-enter.edn"
-              {:cities {:destroyed [0 1 2 3 4 5]}
+              {:screen :playing
+               :cities {:destroyed [0 1 2 3 4 5]}
                :bonus-cities 0
                :score 2500})
   (write-events! "tmp/the-end-enter-events.txt" ["wait 1.5" "key 1" "quit"])
@@ -111,20 +113,23 @@
     (assert! (some #(re-find #"battery=none" %) fires)
              (str "post-end fire should be none: " fires)))
 
-  ;; D: reserve restores cities — not THE END
+  ;; D: reserve prevents THE END mid-wave (cities stay down until wave-end place).
   (write-edn! "tmp/the-end-reserve.edn"
-              {:cities {:destroyed [0 1 2 3 4 5]}
+              {:screen :playing
+               :cities {:destroyed [0 1 2 3 4 5]}
                :bonus-cities 2
                :score 100})
   (write-events! "tmp/the-end-reserve-events.txt" ["wait 0.4" "quit"])
   (let [r (launch! {:scenario-path "tmp/the-end-reserve.edn"
                     :events-path "tmp/the-end-reserve-events.txt"})
-        after (first (filter #(>= (long-field % "cities_alive") 1) (:sims r)))
+        s0 (first (:sims r))
         never-end (every? #(= "false" (field % "the_end")) (:sims r))]
-    (assert! after (str "reserve should restore living cities: " (last (:sims r))))
+    (assert! s0 (str "no telemetry: " (:out r)))
     (assert! never-end (str "should not THE END with reserve: " (last (:sims r))))
-    (assert! (= 0 (long-field after "bonus_cities"))
-             (str "reserve spent: " after)))
+    (assert! (= 2 (long-field s0 "bonus_cities"))
+             (str "reserve held until wave end: " s0))
+    (assert! (= 0 (long-field s0 "cities_alive"))
+             (str "cities stay down mid-wave: " s0)))
 
   (println "\nPASS: the-end automated QA (A–D, G partial via telemetry)")
   (println "PASS: look-and-feel approved (THE END fireball + letter reveal)")

@@ -49,13 +49,18 @@
        vec))
 
 (defn launch!
-  [{:keys [events targets width height timeout-ms]
-    :or {timeout-ms 90000 width 800 height 600 targets []}}]
+  [{:keys [events targets width height timeout-ms scenario]
+    :or {timeout-ms 90000 width 800 height 600 targets [] scenario nil}}]
   (let [events-path "tmp/qa-fireball-events.txt"
+        scenario-path "tmp/qa-fireball-scenario.edn"
         _ (write-events! events-path (concat events ["quit"]))
+        _ (when scenario
+            (io/make-parents scenario-path)
+            (spit scenario-path (pr-str scenario)))
         target-args (str/join " " (map #(str "--qa-target " %) targets))
         cmd (str "bb play " width " " height
                  " --qa-telemetry "
+                 (when scenario (str "--qa-scenario " scenario-path " "))
                  (when (seq target-args) (str target-args " "))
                  "--qa-events " events-path)]
     (println "==> host:" cmd)
@@ -128,8 +133,10 @@
                    (str "no sim radius < max after t_max=" tm " max=" rm
                         " sims=" (take 5 sim-after-max))))))
 
-    ;; C. destroyable hit / miss
-    (let [r (launch! {:events ["aim 400 200" "key 2" "wait 3.5"]
+    ;; C. destroyable hit / miss.
+    ;; Stage :screen :playing so combat ticks; do not call start (it wipes targets).
+    (let [r (launch! {:scenario {:screen :playing}
+                      :events ["wait 0.1" "aim 400 200" "key 2" "wait 3.5"]
                       :targets ["400,200"]
                       :width 800 :height 600})
           sims (:sims r)
@@ -138,7 +145,8 @@
                     sims)]
       (assert! hit (str "expected destroyed target in sim telemetry: " sims)))
 
-    (let [r (launch! {:events ["aim 400 200" "key 2" "wait 3.5"]
+    (let [r (launch! {:scenario {:screen :playing}
+                      :events ["wait 0.1" "aim 400 200" "key 2" "wait 3.5"]
                       :targets ["50,50"]
                       :width 800 :height 600})
           sims (:sims r)

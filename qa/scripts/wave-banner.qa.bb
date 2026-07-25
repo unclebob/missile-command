@@ -63,13 +63,16 @@
   (let [c (run! "arch" "bb arch-check")]
     (assert! (zero? (:exit c)) "arch failed"))
 
-  ;; B–E: single enemy on wave 1, wait for clear → banner → resume wave 2
+  ;; B–E: finish final attack of wave 1 → WAVE 2 banner enter/exit → resume.
+  ;; Stage attack 3 on :playing (start would wipe staged state).
   (write-edn! "tmp/wb.edn"
               {:wave 1
-               :batteries {:left {:ammo 2} :center {:ammo 2} :right {:ammo 2}}
-               :enemies [{:target [:city 0]}]})
-  (write-events! "tmp/wb.txt"
-                 ["wait 0.1" "start" "wait 8" "quit"])
+               :screen :playing
+               :wave-attack 3
+               :bonus-cities 6
+               :batteries {:left {:ammo 0} :center {:ammo 0} :right {:ammo 0}}
+               :enemies []})
+  (write-events! "tmp/wb.txt" ["wait 12" "quit"])
   (let [r (launch! {:scenario-path "tmp/wb.edn"
                     :events-path "tmp/wb.txt"
                     :scores-path "tmp/wb-scores.edn"
@@ -80,7 +83,7 @@
         exits (filter #(= "exit" (field % "banner_phase")) banners)
         after-banner (drop-while #(not= "wave-banner" (field % "screen")) all)
         resumed (first (filter #(= "playing" (field % "screen")) after-banner))]
-    (assert! (seq banners) (str "B never wave-banner: " (map #(field % "screen") all)))
+    (assert! (seq banners) (str "B never wave-banner: " (mapv #(field % "screen") all)))
     (let [b0 (first banners)]
       (assert! (= "WAVE_2" (field b0 "banner_text")) (str "B text: " b0))
       (assert! (= 2 (long-field b0 "banner_announced_wave")) (str "B announced: " b0)))

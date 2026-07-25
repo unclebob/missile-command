@@ -140,70 +140,72 @@
       (when arch
         (assert! (zero? (:exit arch)) (str "arch exit " (:exit arch)))))
 
-    ;; B1. stocked batteries — click each horizontal third
-    (let [r (launch-with-events!
-             {:events ["click 100 150" "click 450 150" "click 800 150"]
-              :width 900 :height 600})
-          t (:telemetry r)]
-      (assert! (= 3 (count t)) (str "expected 3 telemetry lines, got " t "\n" (:out r)))
-      (expect-telemetry! t 0 #"left" 100 150)
-      (expect-telemetry! t 1 #"center" 450 150)
-      (expect-telemetry! t 2 #"right" 800 150))
+    ;; Leave title before firing (title swallows combat input).
+    (let [start ["start" "wait 0.1"]]
+      ;; B1. stocked batteries — click each horizontal third
+      (let [r (launch-with-events!
+               {:events (concat start ["click 100 150" "click 450 150" "click 800 150"])
+                :width 900 :height 600})
+            t (:telemetry r)]
+        (assert! (= 3 (count t)) (str "expected 3 telemetry lines, got " t "\n" (:out r)))
+        (expect-telemetry! t 0 #"left" 100 150)
+        (expect-telemetry! t 1 #"center" 450 150)
+        (expect-telemetry! t 2 #"right" 800 150))
 
-    ;; B2. empty left via keys, click left third falls back to center; empty key is none
-    (let [empty-left (vec (concat ["aim 400 200"] (repeat 10 "key 1")))
-          r (launch-with-events!
-             {:events (concat empty-left
-                              ["key 1"           ; none
-                               "click 100 160"   ; center fallback
-                               "aim 500 200"
-                               "key 2"])         ; center key still works
-              :width 900 :height 600})
-          t (:telemetry r)]
-      (assert! (>= (count t) 12) (str "empty-left session short: " (count t) "\n" (:out r)))
-      (assert! (re-find #"battery=none" (nth t 10))
-               (str "11th left key should be none: " (nth t 10)))
-      (expect-telemetry! t 11 #"center" 100 160)
-      (assert! (re-find #"battery=center" (nth t 12))
-               (str "center key fire: " (nth t 12)))
-      (assert! (re-find #"target_x=500" (nth t 12))
-               (str "center key should aim 500,200: " (nth t 12))))
+      ;; B2. empty left via keys, click left third falls back to center; empty key is none
+      (let [empty-left (vec (concat start ["aim 400 200"] (repeat 10 "key 1")))
+            r (launch-with-events!
+               {:events (concat empty-left
+                                ["key 1"           ; none
+                                 "click 100 160"   ; center fallback
+                                 "aim 500 200"
+                                 "key 2"])         ; center key still works
+                :width 900 :height 600})
+            t (:telemetry r)]
+        (assert! (>= (count t) 12) (str "empty-left session short: " (count t) "\n" (:out r)))
+        (assert! (re-find #"battery=none" (nth t 10))
+                 (str "11th left key should be none: " (nth t 10)))
+        (expect-telemetry! t 11 #"center" 100 160)
+        (assert! (re-find #"battery=center" (nth t 12))
+                 (str "center key fire: " (nth t 12)))
+        (assert! (re-find #"target_x=500" (nth t 12))
+                 (str "center key should aim 500,200: " (nth t 12))))
 
-    ;; C. destroyed batteries via CLI
-    (let [r (launch-with-events!
-             {:destroy "left"
-              :events ["key 1"           ; destroyed left -> none
-                       "click 100 150"]  ; left third -> center
-              :width 900 :height 600})
-          t (:telemetry r)]
-      (assert! (>= (count t) 2) (str "destroy-left telemetry short: " t))
-      (assert! (re-find #"battery=none" (first t)) (str "key left destroyed: " (first t)))
-      (expect-telemetry! t 1 #"center" 100 150))
+      ;; C. destroyed batteries via CLI
+      (let [r (launch-with-events!
+               {:destroy "left"
+                :events (concat start
+                                ["key 1"           ; destroyed left -> none
+                                 "click 100 150"])  ; left third -> center
+                :width 900 :height 600})
+            t (:telemetry r)]
+        (assert! (>= (count t) 2) (str "destroy-left telemetry short: " t))
+        (assert! (re-find #"battery=none" (first t)) (str "key left destroyed: " (first t)))
+        (expect-telemetry! t 1 #"center" 100 150))
 
-    (let [r (launch-with-events!
-             {:destroy "center"
-              :events ["key 2"
-                       "click 450 150"]
-              :width 900 :height 600})
-          t (:telemetry r)]
-      (assert! (re-find #"battery=none" (first t)) (str "key center destroyed: " (first t)))
-      (assert! (re-find #"battery=left" (second t)) (str "center click fallback: " (second t)))
-      (assert! (re-find #"target_x=450" (second t)) (str "center click target: " (second t))))
+      (let [r (launch-with-events!
+               {:destroy "center"
+                :events (concat start ["key 2" "click 450 150"])
+                :width 900 :height 600})
+            t (:telemetry r)]
+        (assert! (re-find #"battery=none" (first t)) (str "key center destroyed: " (first t)))
+        (assert! (re-find #"battery=left" (second t)) (str "center click fallback: " (second t)))
+        (assert! (re-find #"target_x=450" (second t)) (str "center click target: " (second t))))
 
-    (let [r (launch-with-events!
-             {:destroy "left,center"
-              :events ["click 100 150"]
-              :width 900 :height 600})
-          t (:telemetry r)]
-      (expect-telemetry! t 0 #"right" 100 150))
+      (let [r (launch-with-events!
+               {:destroy "left,center"
+                :events (concat start ["click 100 150"])
+                :width 900 :height 600})
+            t (:telemetry r)]
+        (expect-telemetry! t 0 #"right" 100 150))
 
-    (let [r (launch-with-events!
-             {:destroy "left,center,right"
-              :events ["click 450 150" "key 1"]
-              :width 900 :height 600})
-          t (:telemetry r)]
-      (assert! (every? #(re-find #"battery=none" %) t)
-               (str "all destroyed expected none: " t)))
+      (let [r (launch-with-events!
+               {:destroy "left,center,right"
+                :events (concat start ["click 450 150" "key 1"])
+                :width 900 :height 600})
+            t (:telemetry r)]
+        (assert! (every? #(re-find #"battery=none" %) t)
+                 (str "all destroyed expected none: " t))))
 
     (println)
     (println "PASS: fire-click-zone automated QA (procedures A–C)")

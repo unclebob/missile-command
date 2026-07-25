@@ -17,8 +17,15 @@
 (defn field [line key]
   (when-let [[_ v] (re-find (re-pattern (str key "=([^\\s]+)")) line)] v))
 
+(defn long-field [line key]
+  (when-let [v (field line key)] (Long/parseLong v)))
+
 (defn lines-with [out prefix]
   (->> (str/split-lines out) (map str/trim) (filter #(str/starts-with? % prefix)) vec))
+
+(defn write-edn! [path data]
+  (io/make-parents path)
+  (spit path (pr-str data)))
 
 (defn write-events! [path lines]
   (io/make-parents path)
@@ -33,12 +40,18 @@
     {:exit (:exit r) :out out}))
 
 (defn launch!
-  [{:keys [extra events timeout-ms] :or {timeout-ms 25000 events []}}]
-  (let [path "tmp/qa-enemy-events.txt"
-        _ (write-events! path (concat events ["quit"]))
-        cmd (str "bb play 800 600 --qa-telemetry "
+  "Host run. Prefer events after start, or :screen :playing scenarios.
+  Title freezes combat; start wipes staged scenario entities."
+  [{:keys [scenario extra events timeout-ms]
+    :or {timeout-ms 25000 events ["wait 2.0" "quit"] extra "" scenario nil}}]
+  (let [scenario-path "tmp/qa-enemy-scenario.edn"
+        events-path "tmp/qa-enemy-events.txt"
+        _ (when scenario (write-edn! scenario-path scenario))
+        _ (write-events! events-path (concat events ["quit"]))
+        cmd (str "bb play 800 600 --qa --qa-speed 10 "
+                 (when scenario (str "--qa-scenario " scenario-path " "))
                  (when (seq extra) (str extra " "))
-                 "--qa-events " path)]
+                 "--qa-events " events-path)]
     (println "==> host:" cmd) (flush)
     (let [r (p/shell {:out :string :err :string :continue true :timeout timeout-ms}
                      "bash" "-lc" cmd)
@@ -56,41 +69,39 @@
   (let [c (run-doc! "arch" "bb arch-check")]
     (assert! (zero? (:exit c)) "arch failed"))
 
-  ;; B: city impact
-  (let [r (launch! {:extra "--qa-enemy city:0" :events ["wait 5.5"]})
-        last-sim (last (:sims r))]
-    (assert! last-sim (str "no sim telemetry: " (:out r)))
-    (assert! (= "0" (field last-sim "enemy_missiles"))
-             (str "enemy should be gone: " last-sim))
-    (assert! (= "5" (field last-sim "cities_alive"))
-             (str "city 0 should die -> 5 alive: " last-sim)))
+  ;; B: city impact — wave may continue after; assert first city loss.
+  (let [r (launch! {:scenario {:screen :playing
+                               :enemies [{:target [:city 0]}]}})
+        hit (first (filter #(= 5 (long-field % "cities_alive")) (:sims r)))]
+    (assert! hit (str "city 0 should die -> 5 alive: " (last (:sims r)))))
 
-  ;; B: battery impact + cannot fire
-  (let [r (launch! {:extra "--qa-enemy battery:left"
-                    :events ["wait 5.5" "key 1"]})
-        last-sim (last (:sims r))
+  ;; B: battery impact + cannot fire (start then enemy event; do not wipe via start after)
+  (let [r (launch! {:events ["wait 0.1" "start" "enemy battery:left" "wait 2.0" "key 1"]})
+        destroyed (first (filter #(= "true" (field % "battery_left_destroyed"))
+                                 (:sims r)))
         fires (lines-with (:out r) "qa-fire ")]
-    (assert! (= "true" (field last-sim "battery_left_destroyed"))
-             (str "left battery destroyed: " last-sim))
+    (assert! destroyed (str "left battery destroyed: " (last (:sims r))))
     (assert! (some #(re-find #"battery=none" %) fires)
              (str "key-fire left should be none: " fires)))
 
-  ;; C: fireball on city-1 path (x≈218 at 800px) intercepts and saves city
-  (let [r (launch! {:extra "--qa-enemy city:1 --qa-fireball 218,200,80"
-                    :events ["wait 5.5"]})
-        last-sim (last (:sims r))
-        fates (filter #(re-find #"last_enemy_fate=fireball" %) (:sims r))]
-    (assert! (seq fates) (str "expected fireball fate: " (take-last 3 (:sims r))))
-    (assert! (= "0" (field last-sim "enemy_missiles")) "enemy gone after intercept")
-    (assert! (= "6" (field last-sim "cities_alive"))
-             (str "city should survive intercept: " last-sim)))
+  ;; C: fireball on city-1 path intercepts staged enemy (wave may continue after).
+  ;; Static fireball TTL≈1s — place near sky so the enemy enters it promptly.
+  (let [r (launch! {:scenario {:screen :playing
+                               :enemies [{:origin [217 0] :target [:city 1]}]}
+                    :extra "--qa-fireball 217,40,50"
+                    :events ["wait 1.5"]})
+        fate (first (filter #(re-find #"last_enemy_fate=fireball" %) (:sims r)))]
+    (assert! fate (str "expected fireball fate: " (take-last 3 (:sims r))))
+    (assert! (= 6 (long-field fate "cities_alive"))
+             (str "city should still be alive at intercept: " fate)))
 
   ;; D: far fireball does not save city 0
-  (let [r (launch! {:extra "--qa-enemy city:0 --qa-fireball 700,100,20"
-                    :events ["wait 5.5"]})
-        last-sim (last (:sims r))]
-    (assert! (= "5" (field last-sim "cities_alive"))
-             (str "city should die when fireball is far: " last-sim))
+  (let [r (launch! {:scenario {:screen :playing
+                               :enemies [{:target [:city 0]}]}
+                    :extra "--qa-fireball 700,100,20"
+                    :events ["wait 2.0"]})
+        hit (first (filter #(= 5 (long-field % "cities_alive")) (:sims r)))]
+    (assert! hit (str "city should die when fireball is far: " (last (:sims r))))
     (assert! (not-any? #(re-find #"last_enemy_fate=fireball" %) (:sims r))
              "should not intercept with far fireball"))
 
