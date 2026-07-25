@@ -1,6 +1,7 @@
 (ns missile-command.browser.render
   "Browser draw helpers — icons match the JVM desktop host scenery."
-  (:require [quil.core :as q :include-macros true]
+  (:require [clojure.string :as str]
+            [quil.core :as q :include-macros true]
             [missile-command.core :as core]
             [missile-command.world :as world]))
 
@@ -254,6 +255,98 @@
     (q/text-size 18)
     (q/fill 220)
     (q/text "Click or press Enter to start" (/ w 2.0) (+ (/ h 2.0) 48))
+    (q/text-size 15)
+    (q/fill 180)
+    (q/text "O options   H high scores" (/ w 2.0) (+ (/ h 2.0) 80))
+    (q/text-align :left :baseline)))
+
+(defn- dim!
+  [w h]
+  (q/fill 0 0 0 170)
+  (q/no-stroke)
+  (q/rect 0 0 w h))
+
+(defn- high-score-entry-overlay!
+  [state draft]
+  (let [w (core/playfield-width state)
+        h (core/playfield-height state)
+        pending (or (core/pending-high-score state) (core/final-score state) 0)
+        shown (let [d (str (or draft ""))]
+                (if (seq d) d "___"))
+        pad (apply str (repeat (max 0 (- 3 (count shown))) "_"))
+        display (str shown pad)]
+    (dim! w h)
+    (q/text-align :center :center)
+    (q/fill 255 220 80)
+    (q/text-size 36)
+    (q/text "HIGH SCORE" (/ w 2.0) (- (/ h 2.0) 70))
+    (q/fill 220)
+    (q/text-size 20)
+    (q/text (str "Score: " pending) (/ w 2.0) (- (/ h 2.0) 20))
+    (q/fill 255 255 120)
+    (q/text-size 42)
+    (q/text display (/ w 2.0) (+ (/ h 2.0) 30))
+    (q/fill 200)
+    (q/text-size 16)
+    (q/text "Type 3 initials, Enter to save" (/ w 2.0) (+ (/ h 2.0) 80))
+    (q/text-align :left :baseline)))
+
+(defn- high-scores-table-overlay!
+  [state]
+  (let [w (core/playfield-width state)
+        h (core/playfield-height state)
+        table (core/high-score-table state)
+        start-y (- (/ h 2.0) 120)]
+    (dim! w h)
+    (q/text-align :center :center)
+    (q/fill 255 220 80)
+    (q/text-size 36)
+    (q/text "HIGH SCORES" (/ w 2.0) start-y)
+    (q/text-size 18)
+    (if (seq table)
+      (doseq [[i e] (map-indexed vector table)]
+        (let [y (+ start-y 50 (* i 28))
+              rank (inc i)
+              line (str rank ".  " (:initials e) "   " (:score e))]
+          (q/fill 230)
+          (q/text line (/ w 2.0) y)))
+      (do (q/fill 200)
+          (q/text "No scores yet" (/ w 2.0) (+ start-y 60))))
+    (q/fill 180)
+    (q/text-size 16)
+    (q/text "Esc or H to return" (/ w 2.0) (+ start-y 50 (* 11 28)))
+    (q/text-align :left :baseline)))
+
+(defn- options-overlay!
+  [state]
+  (let [w (core/playfield-width state)
+        h (core/playfield-height state)
+        opts (core/game-options state)
+        mute? (boolean (:mute opts))
+        diff (name (or (:difficulty opts) :arcade))
+        left (str/join "," (sort (map str (get-in opts [:keys :fire :left] #{}))))
+        center (str/join "," (sort (map str (get-in opts [:keys :fire :center] #{}))))
+        right (str/join "," (sort (map str (get-in opts [:keys :fire :right] #{}))))
+        pause (str/join "," (sort (map str (get-in opts [:keys :pause] #{}))))]
+    (dim! w h)
+    (q/text-align :center :center)
+    (q/fill 255 220 80)
+    (q/text-size 36)
+    (q/text "OPTIONS" (/ w 2.0) (- (/ h 2.0) 110))
+    (q/fill 230)
+    (q/text-size 18)
+    (q/text (str "Mute: " (if mute? "ON" "OFF") "  (M)")
+            (/ w 2.0) (- (/ h 2.0) 50))
+    (q/text (str "Difficulty: " diff "  (1 easy  2 normal  3 arcade)")
+            (/ w 2.0) (- (/ h 2.0) 15))
+    (q/text (str "Fire L/C/R: " left " / " center " / " right)
+            (/ w 2.0) (+ (/ h 2.0) 25))
+    (q/text (str "Pause: " pause)
+            (/ w 2.0) (+ (/ h 2.0) 55))
+    (q/fill 180)
+    (q/text-size 16)
+    (q/text "Esc or O to return to title"
+            (/ w 2.0) (+ (/ h 2.0) 100))
     (q/text-align :left :baseline)))
 
 (defn- wave-banner-overlay!
@@ -311,67 +404,57 @@
     (q/text-align :left :baseline)))
 
 (defn draw-world!
-  [state]
-  (let [w (core/playfield-width state)
-        h (core/playfield-height state)]
-    (sky! w h)
-    (cond
-      (core/title? state)
-      (do (ground! state) (title-overlay! state))
+  ([state]
+   (draw-world! state ""))
+  ([state initials-draft]
+   (let [w (core/playfield-width state)
+         h (core/playfield-height state)]
+     (sky! w h)
+     (cond
+       (core/title? state)
+       (do (ground! state) (title-overlay! state))
 
-      (core/the-end? state)
-      (do (ground! state)
-          (cities! state)
-          (batteries! state)
-          (the-end-overlay! state)
-          (hud! state))
+       (core/the-end? state)
+       (do (ground! state)
+           (cities! state)
+           (batteries! state)
+           (the-end-overlay! state)
+           (hud! state))
 
-      (core/wave-banner? state)
-      (do (enemies! state)
-          (flyers! state)
-          (missiles! state)
-          (ground! state)
-          (cities! state)
-          (batteries! state)
-          (fireballs! state)
-          (wave-banner-overlay! state)
-          (hud! state))
+       (core/wave-banner? state)
+       (do (enemies! state)
+           (flyers! state)
+           (missiles! state)
+           (ground! state)
+           (cities! state)
+           (batteries! state)
+           (fireballs! state)
+           (wave-banner-overlay! state)
+           (hud! state))
 
-      (core/high-score-entry? state)
-      (do (ground! state)
-          (q/fill 255 220 80)
-          (q/text-align :center :center)
-          (q/text-size 28)
-          (q/text "HIGH SCORE" (/ w 2.0) (/ h 2.0))
-          (q/text-align :left :baseline))
+       (core/high-score-entry? state)
+       (do (ground! state)
+           (high-score-entry-overlay! state initials-draft))
 
-      (core/high-scores-view? state)
-      (do (ground! state)
-          (q/fill 255 220 80)
-          (q/text-align :center :center)
-          (q/text-size 28)
-          (q/text "HIGH SCORES" (/ w 2.0) (/ h 3.0))
-          (q/text-align :left :baseline))
+       (core/high-scores-view? state)
+       (do (ground! state)
+           (high-scores-table-overlay! state))
 
-      (core/options? state)
-      (do (ground! state)
-          (q/fill 255 220 80)
-          (q/text-align :center :center)
-          (q/text-size 28)
-          (q/text "OPTIONS" (/ w 2.0) (/ h 2.0))
-          (q/text-align :left :baseline))
+       (core/options? state)
+       (do (ground! state)
+           (options-overlay! state))
 
-      :else
-      (do (enemies! state)
-          (flyers! state)
-          (missiles! state)
-          (ground! state)
-          (cities! state)
-          (batteries! state)
-          (fireballs! state)
-          (hud! state)
-          (when (core/paused? state)
-            (pause-overlay! state))))))
+       :else
+       (do (enemies! state)
+           (flyers! state)
+           (missiles! state)
+           (ground! state)
+           (cities! state)
+           (batteries! state)
+           (fireballs! state)
+           (hud! state)
+           (when (core/paused? state)
+             (pause-overlay! state)))))))
 
 (defn crosshair-at!
   [x y]
