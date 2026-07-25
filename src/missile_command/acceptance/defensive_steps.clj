@@ -37,6 +37,20 @@
                                    " targeting " target-x "," target-y)))
           world)}
 
+   {:pattern #"^a defensive missile from the <([A-Za-z0-9_]+)> battery targets (-?\d+) (-?\d+)$"
+    :fn (fn [world [_ battery-param x-text y-text] example]
+          (let [battery-id (support/example-battery example battery-param)
+                target-x (support/parse-int x-text "x")
+                target-y (support/parse-int y-text "y")
+                match (first (filter #(and (= battery-id (:battery %))
+                                           (= target-x (:x1 %))
+                                           (= target-y (:y1 %)))
+                                     (core/defensive-missiles (:state world))))]
+            (support/assert-condition match
+                                      (str "no defensive missile from " battery-id
+                                           " targeting " target-x "," target-y)))
+          world)}
+
    {:pattern #"^a defensive missile from the <([A-Za-z0-9_]+)> battery targets <([A-Za-z0-9_]+)> <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ battery-param x-param y-param] example]
           (let [battery-id (support/example-battery example battery-param)
