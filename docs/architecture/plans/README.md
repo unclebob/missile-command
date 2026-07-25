@@ -10,7 +10,7 @@ Hand off **one task at a time** (SwarmForge: complete pipeline before starting t
 | 1 | `wave-start-in-core` | [pr-01-wave-start-in-core.md](pr-01-wave-start-in-core.md) | **Done** (QA merged) |
 | 2 | `sfx-event-contract` | [pr-02-sfx-event-contract.md](pr-02-sfx-event-contract.md) | **Done** (QA merged) |
 | 3 | `extract-bonus-cities` | [pr-03-extract-bonus-cities.md](pr-03-extract-bonus-cities.md) | **Done** (QA merged) |
-| 4 | `extract-combat` | [pr-04-extract-combat.md](pr-04-extract-combat.md) | Queued to coder (prio 53) |
+| 4 | `extract-combat` | [pr-04-extract-combat.md](pr-04-extract-combat.md) | **Done** (QA merged; defensive/fireball slice) |
 | 5 | `extract-shell` | [pr-05-extract-shell.md](pr-05-extract-shell.md) | Queued to coder (prio 54) |
 | 6 | `core-testing-api` | [pr-06-core-testing-api.md](pr-06-core-testing-api.md) | Queued to coder (prio 55) |
 | 7 | `host-input-split` | [pr-07-host-input-split.md](pr-07-host-input-split.md) | Queued to coder (prio 56) |
