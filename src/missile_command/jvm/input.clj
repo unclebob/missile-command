@@ -355,6 +355,9 @@
      (concat [(str "qa-sim t=" (core/sim-time state))
               (str "wave=" (core/wave state))
               (str "wave_complete=" (boolean (core/wave-complete? state)))
+              (str "wave_attack="
+                   (if-let [a (:wave-attack state)] (long a) "none"))
+              (str "wave_attacks_per_wave=3")
               (str "wave_enemy_count=" (:enemy-count metrics))
               (str "wave_enemy_speed=" (:enemy-speed metrics))
               (str "wave_mirv_count=" (long (:mirv-count metrics 0)))
@@ -421,6 +424,13 @@
   [state scenario]
   (if-let [s (:screen scenario)]
     (assoc state :screen (keyword s))
+    state))
+
+(defn- apply-scenario-wave-attack
+  "Optional :wave-attack k begins that sequential salvo (1-based)."
+  [state scenario]
+  (if-let [k (:wave-attack scenario)]
+    (core/begin-wave-attack state (long k))
     state))
 
 (defn- apply-scenario-size
@@ -598,7 +608,8 @@
       (apply-scenario-score-and-bonus scenario)
       (apply-scenario-high-scores scenario)
       (apply-scenario-options scenario)
-      (apply-scenario-screen scenario)))
+      (apply-scenario-screen scenario)
+      (apply-scenario-wave-attack scenario)))
 
 (defn format-fireball-phase-line
   "Phase timing line for one fireball."
