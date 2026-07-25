@@ -589,6 +589,53 @@
            (every? #(and (<= 0.0 %) (< % (double width))) again-xs)
            ;; Extremely unlikely that two independent 3+ random draws match exactly.
            (or (< n 2) (not= origin-xs again-xs))))))
+
+(defspec tick-starts-attack-1-on-empty-playing-sky
+  30
+  (for-all [wave (gen/elements [1 2 5 8 12])
+            width (gen/elements [640 800 1920])
+            height (gen/elements [480 600 1080])]
+    (let [state (-> (core/start-game (core/new-game {:width width :height height}))
+                    (core/set-wave wave)
+                    (assoc :wave-attack nil
+                           :enemy-missiles []
+                           :flyers []
+                           :wave-complete? false))
+          after (:state (core/tick state 0.05))
+          m (core/wave-schedule-metrics-for after wave)
+          ballistics (count (filter #(= core/enemy-kind-ballistic (:enemy-kind %))
+                                    (core/enemy-missiles after)))]
+      (and (core/playing? after)
+           (= 1 (:wave-attack after))
+           (= (long (:enemy-count m)) ballistics)
+           (zero? (count (core/mirv-parents after)))
+           (zero? (count (core/smart-bombs after)))
+           (zero? (count (core/flyers after)))))))
+
+(defspec tick-does-not-start-attack-when-wave-complete
+  20
+  (for-all [wave (gen/elements [1 4 9])]
+    (let [state (-> (core/start-game (core/new-game {:width 800 :height 600}))
+                    (core/set-wave wave)
+                    (assoc :wave-complete? true
+                           :wave-attack nil
+                           :enemy-missiles []
+                           :flyers []))
+          after (:state (core/tick state 0.05))]
+      (and (nil? (:wave-attack after))
+           (empty? (core/enemy-missiles after))
+           (empty? (core/flyers after))))))
+
+(defspec tick-does-not-double-spawn-active-attack
+  25
+  (for-all [wave (gen/elements [1 3 7 11])]
+    (let [state (-> (core/start-game (core/new-game {:width 800 :height 600}))
+                    (core/set-wave wave)
+                    core/activate-wave-schedule)
+          n (count (core/enemy-missiles state))
+          after (:state (core/tick state 0.05))]
+      (and (= 1 (:wave-attack state) (:wave-attack after))
+           (= n (count (core/enemy-missiles after)))))))
 (defspec new-game-starts-at-wave-one-with-full-ammo
   30
   (for-all [width playfield-size-gen

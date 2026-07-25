@@ -25,18 +25,6 @@
     [(max 320 (long (* w scale)))
      (max 240 (long (* h scale)))]))
 
-(defn- ensure-wave-enemies
-  "Start attack 1 when playing with an empty sky and no attack in progress.
-  Attacks 2..N advance inside core/tick after each attack ends."
-  [state]
-  (if (or (not (core/playing? state))
-          (seq (core/enemy-missiles state))
-          (seq (core/flyers state))
-          (:wave-attack state)
-          (core/wave-complete? state))
-    state
-    (core/activate-wave-schedule state)))
-
 (defn- maybe-resize
   "Resize playfield only when the canvas size actually changed."
   [state]
@@ -131,11 +119,8 @@
   (js/setTimeout focus-canvas! 0)
   (let [[w h] (canvas-size)]
     (q/resize-sketch w h)
-    (let [state (-> (core/new-game {:width w :height h})
-                    persist/load-into)]
-      (if (core/playing? state)
-        (ensure-wave-enemies state)
-        state))))
+    (-> (core/new-game {:width w :height h})
+        persist/load-into)))
 
 (defn update-state
   [state]
@@ -146,12 +131,8 @@
                                             :x (q/mouse-x)
                                             :y (q/mouse-y)}))
                 state)
-        was-banner? (core/wave-banner? state)
         ;; Fixed step keeps sim stable in the browser; wall-clock lag only drops FPS.
-        ticked (:state (core/tick state (/ 1.0 60.0)))
-        ticked (if (and was-banner? (core/playing? ticked))
-                 (ensure-wave-enemies ticked)
-                 ticked)]
+        ticked (:state (core/tick state (/ 1.0 60.0)))]
     (play-new-sfx! state ticked)
     ticked))
 
@@ -171,11 +152,7 @@
     (if (and (core/title? state) first-unlock?)
       (do (audio/ensure-title! (core/mute? state))
           state)
-      (let [was-title? (core/title? state)
-            next (apply-handle state {:type :click :x (q/mouse-x) :y (q/mouse-y)})]
-        (if (and was-title? (core/playing? next))
-          (ensure-wave-enemies next)
-          next)))))
+      (apply-handle state {:type :click :x (q/mouse-x) :y (q/mouse-y)})))))
 
 (defn- escape-key?
   [ch]
@@ -214,7 +191,7 @@
   [state]
   (cond
     (core/title? state)
-    (ensure-wave-enemies (apply-handle state {:type :start}))
+    (apply-handle state {:type :start})
 
     (core/the-end? state)
     (do (reset! initials-draft "")
