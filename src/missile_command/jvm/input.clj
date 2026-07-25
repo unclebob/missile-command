@@ -284,6 +284,37 @@
              (str "initials_draft=" (if (seq draft) draft "none"))]
             (high-score-rank-fields state))))
 
+(defn- fire-keys-field
+  [state battery]
+  (str/join "," (sort (map str (get-in (core/game-options state)
+                                       [:keys :fire battery] #{})))))
+
+(defn- options-sim-fields
+  [state]
+  (let [opts (core/game-options state)]
+    [(str "mute=" (boolean (:mute opts)))
+     (str "difficulty=" (name (or (:difficulty opts) :arcade)))
+     (str "fire_key_left=" (fire-keys-field state :left))
+     (str "fire_key_center=" (fire-keys-field state :center))
+     (str "fire_key_right=" (fire-keys-field state :right))
+     (str "pause_keys="
+          (str/join "," (sort (map str (get-in opts [:keys :pause] #{})))))]))
+
+(defn- sfx-type-token
+  [type]
+  (if (namespace type)
+    (str (namespace type) "/" (name type))
+    (name type)))
+
+(defn- sfx-sim-fields
+  [state]
+  (let [events (or (:sfx-events state) [])
+        types (map (comp sfx-type-token :type) (take-last 8 events))]
+    [(str "sfx_count=" (count events))
+     (str "sfx_last=" (if (seq types)
+                        (str/join "," types)
+                        "none"))]))
+
 (defn format-sim-telemetry-line
   "Periodic simulation snapshot line."
   [state]
@@ -291,7 +322,7 @@
         fireballs (core/fireballs state)
         enemies (core/enemy-missiles state)
         targets (core/destroyable-targets state)
-        metrics (core/wave-schedule-metrics (core/wave state))
+        metrics (core/wave-schedule-metrics-for state (core/wave state))
         hud (core/hud state)]
     (str/join
      " "
@@ -326,6 +357,8 @@
               (str "hud_bonus_cities=" (:bonus-cities hud))
               (str "hud_full=" (boolean (:full-playing-hud? hud)))]
              (high-score-sim-fields state)
+             (options-sim-fields state)
+             (sfx-sim-fields state)
              (battery-sim-fields state)
              (fireball-sim-fields fireballs)
              (enemy-sim-fields enemies)
@@ -401,6 +434,19 @@
               (assoc state :high-scores [])
               state)
             entries)))
+
+(defn- apply-scenario-options
+  [state scenario]
+  (cond-> state
+    (contains? scenario :mute)
+    (core/set-mute (:mute scenario))
+    (contains? scenario :difficulty)
+    (core/set-difficulty (:difficulty scenario))
+    (map? (:options scenario))
+    (core/import-settings
+     (merge (core/export-settings state)
+            {:options (merge (core/game-options state)
+                             (:options scenario))}))))
 
 (defn- spawn-scenario-mirv
   [state e]
@@ -488,7 +534,8 @@
       (apply-scenario-enemies scenario)
       (apply-scenario-flyers scenario)
       (apply-scenario-score-and-bonus scenario)
-      (apply-scenario-high-scores scenario)))
+      (apply-scenario-high-scores scenario)
+      (apply-scenario-options scenario)))
 
 (defn format-fireball-phase-line
   "Phase timing line for one fireball."
@@ -558,6 +605,15 @@
    "open-high-scores" (fn [_ _] {:type :open-high-scores})
    "close-high-scores" (fn [_ _] {:type :close-high-scores})
    "initials" (fn [a _] {:type :submit-high-score :initials (str a)})
+   "open-options" (fn [_ _] {:type :open-options})
+   "leave-options" (fn [_ _] {:type :leave-options})
+   "mute" (fn [a _] {:type :set-mute
+                     :mute (contains? #{"true" "1" "yes" "on"}
+                                      (str/lower-case (str a)))})
+   "difficulty" (fn [a _] {:type :set-difficulty :difficulty (str a)})
+   "bind-fire" (fn [a b] {:type :bind-fire-key
+                          :battery (keyword a)
+                          :key (str b)})
    "quit" (fn [_ _] {:type :quit})})
 
 (defn parse-qa-event-line

@@ -61,7 +61,9 @@
   (->> (fs/glob src-root "**/*.cljc")
        (map str)
        (filter #(str/includes? % "/missile_command/"))
-       (remove #(str/includes? % "/acceptance/"))
+       (remove #(or (str/includes? % "/acceptance/")
+                    (str/includes? % "/jvm/")
+                    (str/includes? % "/browser/")))
        sort))
 
 (defn- acceptance-files

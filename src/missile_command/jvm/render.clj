@@ -4,6 +4,7 @@
             [missile-command.core :as core]
             [missile-command.jvm.render-end :as render-end]
             [missile-command.jvm.render-high-scores :as render-hs]
+            [missile-command.jvm.render-options :as render-options]
             [missile-command.jvm.render-pause :as render-pause]
             [missile-command.jvm.render-title :as render-title]
             [missile-command.jvm.render-scenery :as scenery]
@@ -105,6 +106,10 @@
        (core/high-scores-view? state)
        (do (scenery/ground! state)
            (render-hs/table-overlay! state))
+
+       (core/options? state)
+       (do (scenery/ground! state)
+           (render-options/overlay! state))
 
        (core/the-end? state)
        (do (scenery/ground! state)

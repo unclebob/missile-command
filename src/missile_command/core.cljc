@@ -392,8 +392,9 @@
                     :sfx/city-destroyed)))
 
 (defn- enemy-speed-for-state
+  "Enemy missile speed for the current wave, scaled by difficulty."
   [state]
-  (waves/enemy-speed (wave state)))
+  (:enemy-speed (waves/schedule-metrics (wave state) (difficulty state))))
 
 (def enemy-kind-ballistic :ballistic)
 (def enemy-kind-mirv :mirv)
@@ -762,6 +763,7 @@
     (paused? state) (no-events state)
     (high-score-entry? state) (no-events state)
     (high-scores-view? state) (no-events state)
+    (options? state) (no-events state)
     :else (click-fire state x y)))
 
 (defn- unsupported-command
@@ -1313,7 +1315,7 @@
 (defn tick
   "Advance simulation by dt seconds (clamped). Returns {:state s :events [...]}.
   Playing runs combat; THE END expands the end fireball; paused freezes;
-  wave banner animates; other shell screens advance the clock only."
+  wave banner animates; other shell screens (title, high-scores, options) advance the clock only."
   [state dt]
   (let [applied (missiles/clamp-dt dt)]
     (cond

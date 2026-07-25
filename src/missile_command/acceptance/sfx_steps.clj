@@ -4,7 +4,7 @@
             [missile-command.core :as core]))
 
 (def handlers
-  [{:pattern #"^an sfx event <([A-Za-z0-9_/]+)> was emitted$"
+  [{:pattern #"^an sfx event <([A-Za-z0-9_/\-]+)> was emitted$"
     :fn (fn [world [_ event-param] example]
           (let [event (str (support/require-value example event-param))]
             (support/assert-condition
@@ -13,7 +13,7 @@
                   (core/sfx-events (:state world)))))
           world)}
 
-   {:pattern #"^an sfx event ([A-Za-z0-9_/]+) was emitted$"
+   {:pattern #"^an sfx event ([A-Za-z0-9_/\-]+) was emitted$"
     :fn (fn [world [_ event] _]
           (support/assert-condition
            (core/sfx-emitted? (:state world) event)

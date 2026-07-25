@@ -74,6 +74,13 @@
                   (:state world)
                   (support/example-int example ammo-param "spent ammo"))))}
 
+   {:pattern #"^every non-destroyed battery has (\d+) missiles$"
+    :fn (fn [world [_ ammo-text] _]
+          (assoc world :state
+                 (core/set-non-destroyed-battery-ammo
+                  (:state world)
+                  (support/parse-int ammo-text "ammo"))))}
+
    {:pattern #"^the next wave starts$"
     :fn (fn [world _ _]
           (assoc world :state (core/start-next-wave (:state world))))}
@@ -95,6 +102,14 @@
    {:pattern #"^the game is at wave <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ wave-param] example]
           (let [w (support/example-int example wave-param "wave")]
+            (assoc world
+                   :state (core/set-wave (:state world) w)
+                   :high-wave w
+                   :high-wave-metrics (core/wave-schedule-metrics w))))}
+
+   {:pattern #"^the game is at wave (\d+)$"
+    :fn (fn [world [_ wave-text] _]
+          (let [w (support/parse-int wave-text "wave")]
             (assoc world
                    :state (core/set-wave (:state world) w)
                    :high-wave w

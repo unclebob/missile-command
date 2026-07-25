@@ -42,3 +42,7 @@
    (if-let [settings (load-settings path)]
      (core/import-settings state settings)
      state)))
+
+;; clj-mutate-manifest-begin
+;; {:version 1, :tested-at "2026-07-24T16:18:03.81401-05:00", :module-hash "-375298848", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 5, :hash "723552095"} {:id "def/default-settings-filename", :kind "def", :line 7, :end-line 7, :hash "-1411198985"} {:id "defn/default-settings-path", :kind "defn", :line 9, :end-line 13, :hash "2094294583"} {:id "defn/save-settings!", :kind "defn", :line 15, :end-line 23, :hash "-1046365674"} {:id "defn/load-settings", :kind "defn", :line 25, :end-line 35, :hash "1041803837"} {:id "defn/load-into", :kind "defn", :line 37, :end-line 44, :hash "-17450347"}]}
+;; clj-mutate-manifest-end
