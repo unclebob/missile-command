@@ -15,6 +15,7 @@
             [missile-command.rng :as rng]
             [missile-command.sfx :as sfx]
             [missile-command.shell :as shell]
+            [missile-command.testing :as testing]
             [missile-command.wave-banner :as wave-banner]
             [missile-command.wave-lifecycle :as wave-lifecycle]
             [missile-command.wave-schedule :as wave-schedule]
@@ -175,10 +176,6 @@
   "Current score multiplier derived from the active wave."
   [state]
   (waves/multiplier (wave state)))
-
-(defn- long-state
-  [state k default]
-  (long (or (get state k) default)))
 
 (def bonus-cities
   "Bonus cities held in reserve (not yet placed on the playfield)."
@@ -345,12 +342,7 @@
                     (and bat (not (:destroyed? bat)))
                     :sfx/battery-destroyed)))
 
-(defn add-destroyable-target
-  "Test/setup helper: place a fireball-vulnerable stub at x,y."
-  [state x y]
-  (let [[id state] (next-entity-id state)
-        target {:id id :x x :y y :destroyed? target-starts-destroyed?}]
-    (update state :destroyable-targets (fnil conj []) target)))
+(def add-destroyable-target testing/add-destroyable-target)
 
 (defn- update-city
   [state city-id f]
@@ -363,63 +355,24 @@
                     (and c (:alive? c))
                     :sfx/city-destroyed)))
 
-(defn- enemy-speed-for-state
-  "Enemy missile speed for the current wave, scaled by difficulty."
-  [state]
-  (:enemy-speed (waves/schedule-metrics (wave state) (difficulty state))))
+(def enemy-kind-ballistic combat/enemy-kind-ballistic)
+(def enemy-kind-mirv combat/enemy-kind-mirv)
+(def enemy-kind-mirv-child combat/enemy-kind-mirv-child)
+(def enemy-kind-smart combat/enemy-kind-smart)
+(def smart-bomb-edge-inner-factor combat/smart-bomb-edge-inner-factor)
+(def smart-bomb-evade-clearance combat/smart-bomb-evade-clearance)
 
-(def enemy-kind-ballistic :ballistic)
-(def enemy-kind-mirv :mirv)
-(def enemy-kind-mirv-child :mirv-child)
-(def enemy-kind-smart :smart)
-
-;; Edge band for smart-bomb evasion: outer ring of the blast (ratio of radius).
-;; Core (d <= factor*r) is lethal; outer ring dodges once. Wider than a thin rim
-;; so near-misses are readable in play.
-(def smart-bomb-edge-inner-factor 0.45)
-(def ^:private smart-not-yet-evaded false)
-(def smart-bomb-evade-clearance 12.0)
-
-(defn- mirv-parent?
-  [enemy]
-  (= enemy-kind-mirv (:enemy-kind enemy)))
-
-(defn- mirv-child?
-  [enemy]
-  (= enemy-kind-mirv-child (:enemy-kind enemy)))
-
-(defn- smart-bomb?
-  [enemy]
-  (= enemy-kind-smart (:enemy-kind enemy)))
-
-(defn mirv-parents
-  [state]
-  (filterv mirv-parent? (enemy-missiles state)))
-
-(defn mirv-children
-  [state]
-  (filterv mirv-child? (enemy-missiles state)))
-
-(defn smart-bombs
-  [state]
-  (filterv smart-bomb? (enemy-missiles state)))
+(def mirv-parents combat/mirv-parents)
+(def mirv-children combat/mirv-children)
+(def smart-bombs combat/smart-bombs)
 
 (defn spawn-enemy-at
   "Spawn an enemy missile from origin toward a target point.
   Optional attrs merge onto the missile (e.g. MIRV fields)."
   ([state origin target target-kind target-id]
-   (spawn-enemy-at state origin target target-kind target-id nil))
+   (combat/spawn-enemy-at state origin target target-kind target-id nil))
   ([state origin target target-kind target-id attrs]
-   (let [[mid state] (next-entity-id state)
-         missile (merge (missiles/make-enemy mid origin target
-                                             (enemy-speed-for-state state)
-                                             target-kind target-id)
-                        {:enemy-kind enemy-kind-ballistic}
-                        attrs)]
-     (-> state
-         (update :enemy-missiles (fnil conj []) missile)
-         (assoc :wave-had-enemies? wave-flag-on
-                :wave-complete? wave-starts-complete?)))))
+   (combat/spawn-enemy-at state origin target target-kind target-id attrs)))
 
 (defn spawn-enemy-targeting-city-from
   "Spawn an enemy missile from an explicit sky origin toward a city."
@@ -490,7 +443,7 @@
                       {:x (:x c) :y (:y c)}
                       :city city-id
                       {:enemy-kind enemy-kind-smart
-                       :smart-evaded? smart-not-yet-evaded}))))
+                       :smart-evaded? false}))))
 
 (defn with-rng-seed
   "Attach a seedable RNG for deterministic sky origins (QA / tests)."
@@ -543,150 +496,13 @@
   [state flyer-kind]
   (filterv #(= (keyword flyer-kind) (:kind %)) (flyers state)))
 
-(defn add-static-fireball
-  "Test/setup helper: place a fixed-radius fireball."
-  [state x y radius]
-  (let [[fid state] (next-entity-id state)
-        fb (missiles/make-static-fireball fid x y radius)]
-    (update state :fireballs (fnil conj []) fb)))
-
-(defn- enemy-attrs-to-preserve
-  [enemy]
-  (select-keys enemy [:enemy-kind :child-count :split-progress
-                      :smart-evaded? :last-enemy-fate-local]))
-
-(defn- retarget-enemy-from
-  "Rebuild an enemy path starting at x,y while preserving MIRV attrs."
-  [enemy x y]
-  (merge (missiles/make-enemy (:id enemy)
-                              {:x x :y y}
-                              {:x (:x1 enemy) :y (:y1 enemy)}
-                              (:speed enemy)
-                              (:target-kind enemy)
-                              (:target-id enemy))
-         (enemy-attrs-to-preserve enemy)))
-
-(defn- first-enemy-index
-  [ms pred]
-  (first (keep-indexed (fn [i e] (when (pred e) i)) ms)))
-
-(defn- retarget-enemy-at-index
-  [ms idx x y]
-  (assoc (vec ms) idx (retarget-enemy-from (nth ms idx) x y)))
-
-(defn route-first-smart-bomb-through-point
-  "Retarget the first smart bomb so its path starts at the given point."
-  [state x y]
-  (update state :enemy-missiles
-          (fn [ms]
-            (if-let [idx (first-enemy-index ms smart-bomb?)]
-              (retarget-enemy-at-index ms idx x y)
-              (vec ms)))))
-
-(defn route-smart-bomb-centered-in-fireball
-  "Place the smart bomb path through the fireball center (well-centered kill)."
-  [state fb-x fb-y _center-limit]
-  (route-first-smart-bomb-through-point state fb-x fb-y))
-
-(defn route-smart-bomb-edge-band-in-fireball
-  "Place the smart bomb path through the edge band of the fireball (evade once)."
-  [state fb-x fb-y edge-inner radius]
-  (let [mid (/ (+ (double edge-inner) (double radius)) 2.0)
-        ;; Offset east of center so approach is in the edge ring only.
-        px (+ (double fb-x) mid)
-        py (double fb-y)]
-    (route-first-smart-bomb-through-point state px py)))
-
-(defn route-flyer-through-point
-  "Retarget the first flyer so its path starts at the given point."
-  [state x y]
-  (update state :flyers
-          (fn [fs]
-            (if (seq fs)
-              (let [f (first fs)
-                    retargeted (assoc f
-                                      :x0 (double x)
-                                      :y0 (double y)
-                                      :x (double x)
-                                      :y (double y)
-                                      :progress 0.0)]
-                (into [retargeted] (rest fs)))
-              (vec fs)))))
-
-(defn route-enemy-through-point
-  "Retarget the first enemy so its path starts at the given point (e.g. fireball)."
-  [state x y]
-  (update state :enemy-missiles
-          (fn [ms]
-            (if (seq ms)
-              (into [(retarget-enemy-from (first ms) x y)] (rest ms))
-              ms))))
-
-(defn- first-mirv-child-index
-  [enemies]
-  (first-enemy-index enemies mirv-child?))
-
-(defn route-first-mirv-child-through-point
-  "Retarget the first MIRV child so its path starts at the given point."
-  [state x y]
-  (update state :enemy-missiles
-          (fn [ms]
-            (if-let [idx (first-mirv-child-index ms)]
-              (retarget-enemy-at-index ms idx x y)
-              (vec ms)))))
-
-(defn- impact-target
-  [state enemy]
-  (case (:target-kind enemy)
-    :city (destroy-city state (:target-id enemy))
-    :battery (destroy-battery state (:target-id enemy))
-    state))
-
-(defn- enemy-hit-by-fireball?
-  [enemy fireballs]
-  (some #(missiles/point-in-fireball? % (:x enemy) (:y enemy)) fireballs))
-
-(defn- distance-to-fireball
-  [enemy fireball]
-  (let [dx (- (double (:x enemy)) (double (:x fireball)))
-        dy (- (double (:y enemy)) (double (:y fireball)))]
-    (Math/sqrt (+ (* dx dx) (* dy dy)))))
-
-(defn- first-touching-fireball
-  [enemy fireballs]
-  (first (filter #(missiles/point-in-fireball? % (:x enemy) (:y enemy)) fireballs)))
-
-(defn- smart-bomb-edge-band?
-  "True when distance is outside the lethal core but still inside the blast."
-  [d radius]
-  (let [edge-inner (* (double radius) smart-bomb-edge-inner-factor)]
-    (and (> d edge-inner) (<= d (double radius)))))
-
-(defn- evade-smart-bomb
-  "Steer clear of the fireball once; keep original target."
-  [enemy fireball]
-  (let [fx (double (:x fireball))
-        fy (double (:y fireball))
-        r (double (:radius fireball))
-        ex (double (:x enemy))
-        ey (double (:y enemy))
-        dx (- ex fx)
-        dy (- ey fy)
-        dist (max 1.0e-6 (Math/sqrt (+ (* dx dx) (* dy dy))))
-        clear (+ r smart-bomb-evade-clearance)
-        nx (+ fx (* dx (/ clear dist)))
-        ny (+ fy (* dy (/ clear dist)))
-        retargeted (missiles/make-enemy (:id enemy)
-                                        {:x nx :y ny}
-                                        {:x (:x1 enemy) :y (:y1 enemy)}
-                                        (:speed enemy)
-                                        (:target-kind enemy)
-                                        (:target-id enemy))]
-    (merge retargeted
-           (enemy-attrs-to-preserve enemy)
-           {:enemy-kind enemy-kind-smart
-            :smart-evaded? true
-            :smart-evaded-fireball-id (:id fireball)})))
+(def add-static-fireball testing/add-static-fireball)
+(def route-first-smart-bomb-through-point testing/route-first-smart-bomb-through-point)
+(def route-smart-bomb-centered-in-fireball testing/route-smart-bomb-centered-in-fireball)
+(def route-smart-bomb-edge-band-in-fireball testing/route-smart-bomb-edge-band-in-fireball)
+(def route-flyer-through-point testing/route-flyer-through-point)
+(def route-enemy-through-point testing/route-enemy-through-point)
+(def route-first-mirv-child-through-point testing/route-first-mirv-child-through-point)
 
 (defn- fire-battery
   [state battery-id]
@@ -790,15 +606,6 @@
   "Apply a remappable key: fire mapped battery when playing, else no-op result."
   [state key]
   (handle state {:type :key :key key}))
-
-(defn- spawn-fireball-at
-  "Allocate and attach an expanding fireball centered at x,y."
-  [state x y]
-  (combat/spawn-fireball-at state x y))
-
-(defn- assoc-long
-  [state k v]
-  (assoc state k (long v)))
 
 (def set-bonus-city-threshold bc/set-threshold)
 (def set-bonus-city-reserve bc/set-reserve)
@@ -906,175 +713,6 @@
   (-> state
       (assoc :score (long score-value))
       bc/sync-from-score))
-
-(defn- destroy-enemy-by-fireball
-  [state enemy]
-  (-> state
-      (add-score (scoring/enemy-kill-points
-                  (if (smart-bomb? enemy) :smart :ballistic)
-                  (multiplier state)))
-      (assoc :last-enemy-fate :fireball)
-      (sfx/emit :sfx/intercepted)))
-
-(defn- spawn-impact-fireball
-  "Visual/game blast at the impact point (ground strike)."
-  [state enemy]
-  (spawn-fireball-at state (:x1 enemy) (:y1 enemy)))
-
-(defn- resolve-enemy-impact
-  [state enemy]
-  (-> state
-      (impact-target enemy)
-      (spawn-impact-fireball enemy)
-      (assoc :last-enemy-fate :impact)))
-
-(defn- keep-flying-enemy
-  [state enemy]
-  (update state :enemy-missiles (fnil conj []) enemy))
-
-(defn- resolve-fireball-contact
-  "Destroy, evade (smart bombs once), or ignore contact with a fireball."
-  [state enemy fireballs]
-  (if-let [fb (first-touching-fireball enemy fireballs)]
-    (if (and (smart-bomb? enemy)
-             (not (:smart-evaded? enemy))
-             (smart-bomb-edge-band? (distance-to-fireball enemy fb)
-                                    (:radius fb)))
-      (keep-flying-enemy state (evade-smart-bomb enemy fb))
-      (destroy-enemy-by-fireball state enemy))
-    (keep-flying-enemy state enemy)))
-
-(defn- progress-of
-  [enemy-or-result]
-  (if (missiles/arrived? enemy-or-result)
-    1.0
-    (double (:progress enemy-or-result 0.0))))
-
-(defn- index-of-id
-  "Portable index lookup for .cljc (avoids java.util.List/.indexOf)."
-  [xs x]
-  (first (keep-indexed (fn [i v] (when (= v x) i)) xs)))
-
-(defn- mirv-child-target-ids
-  "Prefer starting at preferred city id, then cycle living cities for variety."
-  [state preferred-city-id n]
-  (let [living (mapv :id (living-cities state))]
-    (if (seq living)
-      (let [idx (or (index-of-id living preferred-city-id) 0)
-            ordered (vec (concat (subvec living idx) (subvec living 0 idx)))]
-        (vec (take n (cycle ordered))))
-      [])))
-
-(defn- split-mirv-parent
-  "Remove parent (already not re-queued) and spawn child warheads at split point."
-  [state parent]
-  (let [split-p (double (:split-progress parent 0.5))
-        at (missiles/position-at-progress parent split-p)
-        n (long (:child-count parent 0))
-        targets (mirv-child-target-ids state (:target-id parent) n)
-        origin {:x (:x at) :y (:y at)}]
-    (reduce (fn [s city-id]
-              (let [c (city s city-id)]
-                (if c
-                  (spawn-enemy-at s origin {:x (:x c) :y (:y c)} :city city-id
-                                  {:enemy-kind enemy-kind-mirv-child})
-                  s)))
-            state
-            targets)))
-
-(defn- should-split-mirv?
-  [enemy result]
-  (and (mirv-parent? enemy)
-       (>= (progress-of result)
-           (double (:split-progress enemy 1.0)))))
-
-(defn- resolve-advanced-enemy
-  "Apply MIRV split, impact, fireball kill/evade, or continued flight."
-  [state enemy result fireballs]
-  (cond
-    (should-split-mirv? enemy result)
-    (split-mirv-parent state enemy)
-
-    (missiles/arrived? result)
-    (resolve-enemy-impact state enemy)
-
-    (enemy-hit-by-fireball? result fireballs)
-    (resolve-fireball-contact state result fireballs)
-
-    :else
-    (keep-flying-enemy state result)))
-
-(defn- tick-one-enemy
-  [state enemy dt fireballs]
-  (if (enemy-hit-by-fireball? enemy fireballs)
-    (resolve-fireball-contact state enemy fireballs)
-    (resolve-advanced-enemy state enemy
-                            (missiles/advance-enemy enemy dt)
-                            fireballs)))
-
-(defn- tick-enemy-missiles
-  [state dt]
-  (let [fbs (fireballs state)]
-    (reduce (fn [s enemy]
-              (tick-one-enemy s enemy dt fbs))
-            (assoc state :enemy-missiles [])
-            (enemy-missiles state))))
-
-(defn- destroy-flyer-by-fireball
-  [state]
-  (-> state
-      (add-score (scoring/flyer-kill-points (multiplier state)))
-      (assoc :last-enemy-fate :fireball
-             :last-flyer-fate :fireball)
-      (sfx/emit :sfx/intercepted)))
-
-(defn- apply-flyer-drops
-  [state flyer]
-  (let [drops (flyers/pending-drops flyer (:progress flyer))]
-    (if (seq drops)
-      (let [state (reduce
-                   (fn [s drop]
-                     (let [at (flyers/position-at flyer (:at-progress drop))
-                           [kind id] (:target drop)
-                           c (when (= kind :city) (city s id))]
-                       (if (and (= kind :city) c)
-                         (spawn-enemy-at s at {:x (:x c) :y (:y c)} :city id
-                                         {:dropped-from-flyer? true})
-                         s)))
-                   state
-                   drops)
-            flyer' (update flyer :drops-fired
-                           (fnil into #{}) (map :id drops))]
-        [state flyer'])
-      [state flyer])))
-
-(defn- keep-flying-flyer
-  [state flyer]
-  (update state :flyers (fnil conj []) flyer))
-
-(defn- tick-one-flyer
-  [state flyer dt fireballs]
-  (if (flyers/hit-by-fireball? flyer fireballs)
-    (destroy-flyer-by-fireball state)
-    (let [result (flyers/advance flyer dt)]
-      (cond
-        (= :left result)
-        state
-
-        (flyers/hit-by-fireball? result fireballs)
-        (destroy-flyer-by-fireball state)
-
-        :else
-        (let [[s flyer'] (apply-flyer-drops state result)]
-          (keep-flying-flyer s flyer'))))))
-
-(defn- tick-flyers
-  [state dt]
-  (let [fbs (fireballs state)]
-    (reduce (fn [s flyer]
-              (tick-one-flyer s flyer dt fbs))
-            (assoc state :flyers [])
-            (flyers state))))
 
 (defn- maybe-complete-wave
   "When the last attack of the wave is cleared, mark complete and show banner.
@@ -1210,9 +848,7 @@
       (playing? state)
       (wrap (-> state
                 (advance-clock applied)
-                (combat/tick-defensive-phase applied)
-                (tick-enemy-missiles applied)
-                (tick-flyers applied)
+                (combat/tick-playing-combat applied)
                 (maybe-advance-wave-attack)
                 (maybe-complete-wave)
                 (ensure-wave-attack-started)

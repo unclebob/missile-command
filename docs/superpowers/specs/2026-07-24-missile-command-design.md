@@ -62,22 +62,39 @@ missile-command/
 ├── shadow-cljs.edn          ; or equivalent CLJS config
 ├── src/
 │   ├── missile_command/     ; pure .cljc
-│   │   ├── core.cljc        ; public API: new-game, handle, tick
-│   │   ├── world.cljc       ; state shape, init, resize/layout
+│   │   ├── core.cljc        ; facade: new-game, handle, tick, re-exports
+│   │   ├── combat.cljc      ; defensive/enemy/MIRV/smart/flyer simulation
+│   │   ├── shell.cljc       ; title/pause/options/high-score transitions
+│   │   ├── bonus_cities.cljc
+│   │   ├── testing.cljc     ; spec-only staging (route-*, static fireballs)
+│   │   ├── rng.cljc         ; seedable sky origins
+│   │   ├── sfx.cljc         ; cumulative :sfx-events + take-new/drain
+│   │   ├── world.cljc       ; layout / scenery positions
 │   │   ├── batteries.cljc
-│   │   ├── missiles.cljc    ; enemy + defensive missiles, fireballs
+│   │   ├── missiles.cljc    ; motion + fireballs
+│   │   ├── flyers.cljc
 │   │   ├── cities.cljc
-│   │   ├── waves.cljc
+│   │   ├── waves.cljc       ; counts, speed, multipliers
+│   │   ├── wave_schedule.cljc
+│   │   ├── wave_lifecycle.cljc
+│   │   ├── wave_banner.cljc
 │   │   ├── scoring.cljc
-│   │   ├── input.cljc       ; raw intent → commands; click zone → battery
-│   │   ├── screens.cljc     ; screen state machine
-│   │   └── events.cljc      ; event keywords / helpers
+│   │   ├── game_end.cljc
+│   │   ├── input.cljc       ; click zone → battery preference
+│   │   ├── screens.cljc
+│   │   ├── options.cljc
+│   │   ├── high_scores.cljc
+│   │   └── hud.cljc
 │   ├── missile_command/jvm/
 │   │   ├── main.clj
 │   │   ├── sketch.clj
+│   │   ├── input.clj        ; play keys/mouse (+ re-exports)
+│   │   ├── cli.clj          ; launch args
+│   │   ├── telemetry.clj    ; QA sim/fire lines
+│   │   ├── scenario.clj     ; QA EDN + event files
 │   │   ├── render.clj
 │   │   ├── audio.clj
-│   │   └── storage.clj
+│   │   └── persist.clj
 │   └── missile_command/browser/
 │       ├── main.cljs
 │       ├── sketch.cljs

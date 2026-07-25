@@ -26,41 +26,40 @@ Host frame loop
 
 Enforced by `script/arch_check.bb`.
 
-## Current structure (as of this ADR)
+## Current structure (post-extraction)
 
-### Pure modules (healthy)
+### Pure modules
 
 | Module | Responsibility |
 |--------|----------------|
 | `entities`, `cities`, `batteries` | Scenery entities |
 | `missiles`, `flyers` | Motion / fireballs / flyers |
+| `combat` | Defensive, fireballs, enemies, MIRV, smart bombs, flyers tick |
+| `bonus-cities` | Award on score; place from reserve at wave end |
+| `shell` | Title/pause/options/high-score/THE END shell transitions |
+| `testing` | Spec-only route/static staging helpers |
+| `rng` | Seedable sky-origin RNG |
 | `waves` | Counts, speed, multipliers, sky origins |
-| `wave-schedule` | Sequential attacks, spawn salvos/specials |
+| `wave-schedule` | Sequential attacks, spawn salvos/specials; ensure attack 1 |
 | `wave-lifecycle` | Wave complete, rearm, banner handoff |
 | `wave-banner` | Inter-wave banner state |
 | `scoring`, `game-end`, `sfx`, `screens`, `options`, `high-scores`, `hud`, `input`, `world` | As named |
 
-### Facade pressure
+### Facade (`core`)
 
-`missile-command.core` (~1.3k LOC, ~90 public defns) still holds:
-
-- Combat tick (enemies, MIRVs, smart bombs, flyers, fireballs)
-- Shell transitions (title, pause, options, high scores, THE END)
-- Bonus city award/place
-- Wave wiring (hooks into schedule/lifecycle)
-- Large **test/staging** surface (`route-*`, fixed fireballs, etc.)
+`missile-command.core` is the host-facing facade: `new-game`, `handle`, `tick`, getters, spawn helpers, thin re-exports. Playing `tick` is a short pipeline: clock → `combat/tick-playing-combat` → wave advance/complete → ensure attack → game-over.
 
 ### Hosts
 
-- **JVM:** modular shell renders; `sketch.clj` + fat `input.clj` (CLI, QA telemetry, scenarios).
+- **JVM:** modular shell renders; `jvm.input` (play keys/mouse) + `jvm.cli` + `jvm.telemetry` + `jvm.scenario`.
 - **Browser:** thin `render.cljs` composing combat/scenery/shells.
-- **Shared issue:** both hosts call `ensure-wave-enemies` → `activate-wave-schedule` for attack 1; attacks 2..N advance inside `core/tick`.
+- Wave attack 1 is started inside core (`ensure-attack-started`); hosts need not own that policy.
 
 ### Events
 
-- Design API returns `{:state s :events [...]}`.
-- Production SFX use cumulative `:sfx-events`; hosts play by length delta.
-- Prefer converging on one model (see plan).
+- Production SFX: cumulative `:sfx-events`; hosts play via `sfx-take-new` (cursor = previous log length).
+- Optional `sfx-drain` / `sfx-truncate-to` for long sessions.
+- `handle`/`tick` `:events` is not the SFX log (fire may still return step-local launch events for telemetry).
 
 ### Game rules (normative)
 
