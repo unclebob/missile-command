@@ -921,15 +921,14 @@
         (sfx/emit :sfx/the-end))))
 
 (defn evaluate-game-over
-  "Apply reserve restores; enter THE END when no living cities and no reserve."
+  "Enter THE END when no living cities and no reserve. Does not place reserve."
   [state]
   (if (the-end? state)
     state
-    (let [restored (apply-bonus-cities-from-reserve state)]
-      (if (game-end/should-enter? (count (living-cities restored))
-                                  (bonus-cities restored))
-        (enter-the-end restored)
-        restored))))
+    (if (game-end/should-enter? (count (living-cities state))
+                                (bonus-cities state))
+      (enter-the-end state)
+      state)))
 
 (defn end-fireball-centered?
   [state]
@@ -984,7 +983,7 @@
     state))
 
 (defn- sync-bonus-cities-from-score
-  "Award reserve cities for newly crossed score thresholds and place if room."
+  "Award reserve cities for newly crossed score thresholds (place only at wave end)."
   [state]
   (let [threshold (bonus-city-threshold state)
         already (long (or (:bonus-cities-awarded state) initial-bonus-cities-awarded))
@@ -996,8 +995,7 @@
           (update :bonus-cities (fnil + initial-bonus-cities) new-awards)
           (update :bonus-city-earned-events
                   (fnil + initial-bonus-city-earned-events) new-awards)
-          (sfx/emit :sfx/bonus-city)
-          apply-bonus-cities-from-reserve)
+          (sfx/emit :sfx/bonus-city))
       state)))
 
 (defn- add-score
