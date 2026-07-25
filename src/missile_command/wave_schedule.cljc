@@ -1,5 +1,5 @@
 (ns missile-command.wave-schedule
-  "Activate full wave enemy schedules (ballistics, MIRVs, smart bombs, flyers)."
+  "Sequential wave attacks: ballistics each salvo; specials on the last."
   (:require [missile-command.waves :as waves]))
 
 ;; Defaults for scheduled advanced enemies (arcade-style mid-descent split).
@@ -103,23 +103,113 @@
         (configure-last-flyer-drops (living-cities state)
                                     default-flyer-drop-count))))
 
-(defn activate
-  "Spawn the full current-wave schedule via host-supplied spawn hooks.
-  `hooks` keys: :wave :living-cities :city :playfield-width :playfield-height
-  :set-wave-enemies-active :spawn-enemy-at :spawn-smart-bomb-targeting-city
-  :spawn-flyer :enemy-kind-mirv."
+(defn spawn-specials
+  "MIRVs, smart bombs, and flyers for the current wave (final attack only)."
   [state hooks]
-  (let [{:keys [wave set-wave-enemies-active]} hooks
+  (let [{:keys [wave]} hooks
         m (waves/schedule-metrics-for-state state (wave state))
-        ballistic (long (:enemy-count m 0))
         mirvs (long (:mirv-count m 0))
         smarts (long (:smart-bomb-count m 0))
         bombers (long (:bomber-count m 0))
         sats (long (:satellite-count m 0))]
-    (cond-> (-> state
-                (assoc :flyers [])
-                (set-wave-enemies-active ballistic))
+    (cond-> state
       (pos? mirvs) (spawn-wave-mirvs mirvs hooks)
       (pos? smarts) (spawn-wave-smart-bombs smarts hooks)
       (pos? bombers) (spawn-wave-flyer :bomber hooks)
       (pos? sats) (spawn-wave-flyer :satellite hooks))))
+
+(defn begin-attack
+  "Begin attack k (1-based): ballistic salvo; specials only on the last attack."
+  [state k hooks]
+  (let [{:keys [wave set-wave-enemies-active]} hooks
+        n (long waves/attacks-per-wave)
+        k (long k)
+        m (waves/schedule-metrics-for-state state (wave state))
+        ballistic (long (:enemy-count m 0))
+        state (-> state
+                  (assoc :flyers []
+                         :wave-attack k
+                         :wave-complete? false)
+                  (set-wave-enemies-active ballistic))
+        state (if (= k n)
+                (spawn-specials state hooks)
+                state)]
+    ;; Always mark the attack as started so a cleared (or empty) sky can
+    ;; advance/complete even if no living targets remain.
+    (assoc state
+           :wave-attack k
+           :wave-had-enemies? true)))
+
+(defn activate
+  "Start attack 1 of the current wave (ballistic salvo). Later attacks and
+  final specials are started by the host/core advance loop."
+  [state hooks]
+  (begin-attack state 1 hooks))
+
+(defn set-enemies-active
+  "Replace in-flight enemies with n scheduled wave enemies.
+  hooks: :living-cities :batteries-living :playfield-width
+  :spawn-city-from :spawn-battery-from :wave-starts-complete?"
+  [state n hooks]
+  (let [{:keys [living-cities batteries-living playfield-width
+                spawn-city-from spawn-battery-from wave-starts-complete?]} hooks
+        active? (pos? n)
+        state (assoc state
+                     :enemy-missiles []
+                     :wave-complete? (boolean wave-starts-complete?)
+                     :wave-had-enemies? active?)
+        pool (waves/target-pool (mapv :id (living-cities state))
+                                (mapv :id (batteries-living state)))
+        targets (waves/cycle-targets pool n)
+        width (playfield-width state)
+        spawn (fn [s origin-x target-spec]
+                (let [[kind id] target-spec]
+                  (case kind
+                    :city (spawn-city-from s origin-x 0 id)
+                    :battery (spawn-battery-from s origin-x 0 id)
+                    s)))]
+    (reduce (fn [s [i target-spec]]
+              (spawn s (waves/sky-origin-x width i n) target-spec))
+            state
+            (map-indexed vector targets))))
+
+(defn sky-clear?
+  [state]
+  (and (empty? (or (:enemy-missiles state) []))
+       (empty? (or (:flyers state) []))))
+
+(defn current-attack
+  "1-based salvo index within the wave, or nil if salvos have not started."
+  [state]
+  (when-let [a (:wave-attack state)]
+    (long a)))
+
+(defn attack-cleared?
+  "Sky empty after this attack had enemies."
+  [state]
+  (boolean
+   (and (:wave-had-enemies? state)
+        (not (:wave-complete? state))
+        (sky-clear? state))))
+
+(defn wave-ready-to-complete?
+  "Wave ends after the last sequential attack is cleared.
+  Unset :wave-attack (tests) completes on first clear."
+  [state]
+  (boolean
+   (and (attack-cleared? state)
+        (let [a (current-attack state)
+              n (long waves/attacks-per-wave)]
+          (or (nil? a) (>= a n))))))
+
+(defn maybe-advance-attack
+  "When the current attack is cleared and more remain, start the next attack
+  via begin-attack-fn (state k)."
+  [state begin-attack-fn]
+  (if-not (attack-cleared? state)
+    state
+    (let [a (current-attack state)
+          n (long waves/attacks-per-wave)]
+      (if (and a (< a n))
+        (begin-attack-fn state (inc a))
+        state))))
