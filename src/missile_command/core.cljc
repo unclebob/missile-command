@@ -1,5 +1,6 @@
 (ns missile-command.core
   (:require [missile-command.batteries :as batteries]
+            [missile-command.bonus-cities :as bc]
             [missile-command.cities :as cities]
             [missile-command.flyers :as flyers]
             [missile-command.game-end :as game-end]
@@ -18,9 +19,9 @@
             [missile-command.world :as world]))
 (def initial-score 0)
 (def initial-entity-id 0)
-(def initial-bonus-cities 0)
-(def initial-bonus-cities-awarded 0)
-(def initial-bonus-city-earned-events 0)
+(def initial-bonus-cities bc/initial-reserve)
+(def initial-bonus-cities-awarded bc/initial-awarded)
+(def initial-bonus-city-earned-events bc/initial-earned-events)
 (def wave-flag-off false)
 (def wave-flag-on true)
 (def wave-starts-complete? wave-flag-off)
@@ -176,19 +177,15 @@
   [state k default]
   (long (or (get state k) default)))
 
-(defn bonus-cities
+(def bonus-cities
   "Bonus cities held in reserve (not yet placed on the playfield)."
-  [state]
-  (long-state state :bonus-cities initial-bonus-cities))
+  bc/reserve)
 
-(defn bonus-city-threshold
-  [state]
-  (long-state state :bonus-city-threshold scoring/default-bonus-city-threshold))
+(def bonus-city-threshold bc/threshold)
 
-(defn bonus-city-earned-events
+(def bonus-city-earned-events
   "How many threshold-crossing awards have been recorded this run."
-  [state]
-  (long-state state :bonus-city-earned-events initial-bonus-city-earned-events))
+  bc/earned-events)
 
 (defn wave-complete?
   [state]
@@ -873,41 +870,9 @@
   [state k v]
   (assoc state k (long v)))
 
-(defn set-bonus-city-threshold
-  "Test/setup helper: configure the score interval for bonus city awards."
-  [state threshold]
-  (assoc-long state :bonus-city-threshold threshold))
-
-(defn set-bonus-city-reserve
-  "Test/setup helper: set bonus cities currently held in reserve."
-  [state n]
-  (assoc-long state :bonus-cities n))
-
-(defn- lowest-destroyed-city-id
-  [state]
-  (->> (cities state)
-       (remove :alive?)
-       (map :id)
-       sort
-       first))
-
-(defn apply-bonus-cities-from-reserve
-  "Place reserve cities onto destroyed slots while living cities stay under max.
-  Sets :bonus-city-for-banner? when any city is restored (for wave banner)."
-  [state]
-  (loop [s state
-         placed? false]
-    (let [id (when (and (pos? (bonus-cities s))
-                        (< (count (living-cities s)) world/city-count))
-               (lowest-destroyed-city-id s))]
-      (if id
-        (recur (-> s
-                   (update-city id cities/restore)
-                   (update :bonus-cities dec))
-               true)
-        (if placed?
-          (assoc s :bonus-city-for-banner? true)
-          s)))))
+(def set-bonus-city-threshold bc/set-threshold)
+(def set-bonus-city-reserve bc/set-reserve)
+(def apply-bonus-cities-from-reserve bc/apply-from-reserve)
 
 (defn- make-end-fireball
   [state fireball-id]
@@ -999,34 +964,18 @@
         (update-end-message-reveal (assoc state :end-fireball result))))
     state))
 
-(defn- sync-bonus-cities-from-score
-  "Award reserve cities for newly crossed score thresholds (place only at wave end)."
-  [state]
-  (let [threshold (bonus-city-threshold state)
-        already (long (or (:bonus-cities-awarded state) initial-bonus-cities-awarded))
-        new-awards (scoring/new-bonus-city-awards (score state) threshold already)
-        earned (scoring/thresholds-crossed (score state) threshold)]
-    (if (pos? new-awards)
-      (-> state
-          (assoc :bonus-cities-awarded earned)
-          (update :bonus-cities (fnil + initial-bonus-cities) new-awards)
-          (update :bonus-city-earned-events
-                  (fnil + initial-bonus-city-earned-events) new-awards)
-          (sfx/emit :sfx/bonus-city))
-      state)))
-
 (defn- add-score
   [state points]
   (-> state
       (update :score (fnil + initial-score) (long points))
-      sync-bonus-cities-from-score))
+      bc/sync-from-score))
 
 (defn set-score
   "Test/setup helper: set absolute score and process bonus city thresholds."
   [state score-value]
   (-> state
       (assoc :score (long score-value))
-      sync-bonus-cities-from-score))
+      bc/sync-from-score))
 
 (defn- destroy-enemy-by-fireball
   [state enemy]
