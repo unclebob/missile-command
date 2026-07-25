@@ -47,10 +47,15 @@
 
 (defn- play-new-sfx!
   [prev-state state]
+  (when (and (core/title? prev-state) (core/playing? state))
+    (audio/stop-title!))
   (let [prev (count (or (:sfx-events prev-state) []))
         all (or (:sfx-events state) [])
         fresh (drop prev all)]
-    (audio/play-events! fresh (core/mute? state))))
+    (audio/play-events! fresh (core/mute? state)))
+  ;; After unlock, retry title music if core already emitted :sfx/warning.
+  (when (and (core/title? state) @audio/unlocked?)
+    (audio/ensure-title! (core/mute? state))))
 
 (defn- apply-handle
   "Apply a core command; persist settings when options/scores change."
@@ -156,13 +161,19 @@
 
 (defn mouse-pressed
   [state _]
-  (audio/warm!)
   (focus-canvas!)
-  (let [was-title? (core/title? state)
-        next (apply-handle state {:type :click :x (q/mouse-x) :y (q/mouse-y)})]
-    (if (and was-title? (core/playing? next))
-      (ensure-wave-enemies next)
-      next)))
+  (let [first-unlock? (not @audio/unlocked?)]
+    (audio/unlock!)
+    ;; First click on title only unlocks audio + starts title warning (browsers
+    ;; block autoplay). Second click (or Enter) starts the game.
+    (if (and (core/title? state) first-unlock?)
+      (do (audio/ensure-title! (core/mute? state))
+          state)
+      (let [was-title? (core/title? state)
+            next (apply-handle state {:type :click :x (q/mouse-x) :y (q/mouse-y)})]
+        (if (and was-title? (core/playing? next))
+          (ensure-wave-enemies next)
+          next)))))
 
 (defn- escape-key?
   [ch]
@@ -231,7 +242,9 @@
 
 (defn key-pressed
   [state _]
-  (audio/warm!)
+  (audio/unlock!)
+  (when (core/title? state)
+    (audio/ensure-title! (core/mute? state)))
   (let [ch (q/raw-key)
         kn (key-name ch)]
     (or (when (escape-key? ch) (handle-escape state))

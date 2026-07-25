@@ -814,11 +814,14 @@
   (handle state {:type :key :key key}))
 
 (defn- spawn-fireball-at
-  "Allocate and attach a expanding fireball centered at x,y."
+  "Allocate and attach an expanding fireball centered at x,y.
+  Emits :sfx/boom at onset (defensive intercept or ground impact)."
   [state x y]
   (let [[fid state] (next-entity-id state)
         fireball (missiles/make-fireball fid x y)]
-    (update state :fireballs (fnil conj []) fireball)))
+    (-> state
+        (update :fireballs (fnil conj []) fireball)
+        (sfx/emit :sfx/boom))))
 
 (defn- spawn-fireball-from-missile
   [state missile]
@@ -924,15 +927,14 @@
         (sfx/emit :sfx/the-end))))
 
 (defn evaluate-game-over
-  "Apply reserve restores; enter THE END when no living cities and no reserve."
+  "Enter THE END when no living cities and no reserve. Does not place reserve."
   [state]
   (if (the-end? state)
     state
-    (let [restored (apply-bonus-cities-from-reserve state)]
-      (if (game-end/should-enter? (count (living-cities restored))
-                                  (bonus-cities restored))
-        (enter-the-end restored)
-        restored))))
+    (if (game-end/should-enter? (count (living-cities state))
+                                (bonus-cities state))
+      (enter-the-end state)
+      state)))
 
 (defn end-fireball-centered?
   [state]
@@ -987,7 +989,7 @@
     state))
 
 (defn- sync-bonus-cities-from-score
-  "Award reserve cities for newly crossed score thresholds and place if room."
+  "Award reserve cities for newly crossed score thresholds (place only at wave end)."
   [state]
   (let [threshold (bonus-city-threshold state)
         already (long (or (:bonus-cities-awarded state) initial-bonus-cities-awarded))
@@ -999,8 +1001,7 @@
           (update :bonus-cities (fnil + initial-bonus-cities) new-awards)
           (update :bonus-city-earned-events
                   (fnil + initial-bonus-city-earned-events) new-awards)
-          (sfx/emit :sfx/bonus-city)
-          apply-bonus-cities-from-reserve)
+          (sfx/emit :sfx/bonus-city))
       state)))
 
 (defn- add-score
@@ -1023,7 +1024,7 @@
                   (if (smart-bomb? enemy) :smart :ballistic)
                   (multiplier state)))
       (assoc :last-enemy-fate :fireball)
-      (sfx/emit :sfx/explosion)))
+      (sfx/emit :sfx/intercepted)))
 
 (defn- spawn-impact-fireball
   "Visual/game blast at the impact point (ground strike)."
@@ -1134,7 +1135,8 @@
   (-> state
       (add-score (scoring/flyer-kill-points (multiplier state)))
       (assoc :last-enemy-fate :fireball
-             :last-flyer-fate :fireball)))
+             :last-flyer-fate :fireball)
+      (sfx/emit :sfx/intercepted)))
 
 (defn- apply-flyer-drops
   [state flyer]
@@ -1220,7 +1222,7 @@
                :wave-had-enemies? wave-starts-with-enemies?)
         (update :wave (fnil inc waves/initial-wave))
         (#(wave-banner/enter % (wave %)))
-        (sfx/emit :sfx/wave-clear))
+        (sfx/emit :sfx/wave))
     state))
 
 
@@ -1356,41 +1358,40 @@
   Playing runs combat; wave-banner animates then resumes; THE END expands the
   end fireball; paused freezes; other shells advance the clock only."
   [state dt]
-  (let [applied (missiles/clamp-dt dt)]
+  (let [applied (missiles/clamp-dt dt)
+        wrap (fn [s]
+               {:state (sfx/maybe-title-warning s (title? s))
+                :events []})]
     (cond
       (paused? state)
-      {:state (assoc state :last-applied-dt 0.0)
-       :events []}
+      (wrap (assoc state :last-applied-dt 0.0))
 
       (wave-banner? state)
       ;; Keep combat fireballs/missiles animating during the banner so they do
       ;; not pop out of existence; start-next-wave clears leftovers afterward.
-      {:state (-> state
-                  (advance-clock applied)
-                  (tick-defensive-missiles applied)
-                  (tick-fireballs applied)
-                  (wave-banner/tick applied start-next-wave))
-       :events []}
+      (wrap (-> state
+                (advance-clock applied)
+                (tick-defensive-missiles applied)
+                (tick-fireballs applied)
+                (wave-banner/tick applied start-next-wave)))
 
       (the-end? state)
-      {:state (-> state
-                  (advance-clock applied)
-                  (tick-end-fireball applied))
-       :events []}
+      (wrap (-> state
+                (advance-clock applied)
+                (tick-end-fireball applied)))
 
       (playing? state)
-      (let [state (-> state
-                      (advance-clock applied)
-                      (tick-defensive-missiles applied)
-                      (tick-fireballs applied)
-                      (destroy-targets-in-fireballs)
-                      (tick-enemy-missiles applied)
-                      (tick-flyers applied)
-                      (maybe-complete-wave)
-                      (evaluate-game-over))]
-        {:state state :events []})
+      (wrap (-> state
+                (advance-clock applied)
+                (tick-defensive-missiles applied)
+                (tick-fireballs applied)
+                (destroy-targets-in-fireballs)
+                (tick-enemy-missiles applied)
+                (tick-flyers applied)
+                (maybe-complete-wave)
+                (evaluate-game-over)))
 
       :else
       ;; title, high-score-entry, high-scores view, options
-      {:state (advance-clock state applied) :events []})))
+      (wrap (advance-clock state applied)))))
 

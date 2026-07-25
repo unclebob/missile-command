@@ -4,11 +4,11 @@
 # acceptance-mutation-manifest-end
 
 # Sound events 01 firing emits a launch event
-# Sound events 02 destroying an enemy with a fireball emits an explosion event
+# Sound events 02 destroying an enemy with a fireball emits an intercepted event
 # Sound events 03 destroying a city emits a city destroyed event
 # Sound events 04 destroying a battery emits a battery destroyed event
 # Sound events 05 firing to the low ammo threshold emits a low ammo event
-# Sound events 06 completing a wave emits a wave clear event
+# Sound events 06 completing a wave emits a wave banner event
 # Sound events 07 earning a bonus city emits a bonus city event
 # Sound events 08 entering THE END emits a the end event
 # Sound events 09 mute does not remove core sfx events
@@ -32,7 +32,7 @@ Examples:
   | 800   | 600    | right   | 800            | 600             |
   | 1920  | 1080   | center  | 1920           | 1080            |
 
-Scenario: Sound events 02 destroying an enemy with a fireball emits an explosion event
+Scenario: Sound events 02 destroying an enemy with a fireball emits an intercepted event
   And an enemy missile targeting city 1
   And a fireball at 400 250 with radius 40
   And the enemy missile path passes within distance 40 of that fireball center
@@ -40,7 +40,7 @@ Scenario: Sound events 02 destroying an enemy with a fireball emits an explosion
   Then the playfield width is <expected_width>
   And the playfield height is <expected_height>
   And the enemy missile is destroyed by the fireball
-  And an sfx event sfx/explosion was emitted
+  And an sfx event sfx/intercepted was emitted
 
 Examples:
   | width | height | expected_width | expected_height |
@@ -91,14 +91,14 @@ Examples:
   | 800   | 600    | right   | 800            | 600             |
   | 1920  | 1080   | left    | 1920           | 1080            |
 
-Scenario: Sound events 06 completing a wave emits a wave clear event
+Scenario: Sound events 06 completing a wave emits a wave banner event
   And every non-destroyed battery has 10 missiles
   And the current wave has 1 scheduled enemies still active
   When time advances until all wave enemies are destroyed or have impacted
   Then the playfield width is <expected_width>
   And the playfield height is <expected_height>
   And the wave is complete
-  And an sfx event sfx/wave-clear was emitted
+  And an sfx event sfx/wave was emitted
 
 Examples:
   | width | height | expected_width | expected_height |
