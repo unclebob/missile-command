@@ -7,13 +7,12 @@
     (should= 1 waves/initial-wave)
     (should= 10 waves/full-ammo))
 
-  (it "schedules more enemies on higher waves"
-    (should (> (waves/enemy-count 5) (waves/enemy-count 1)))
+  (it "schedules three ballistic attacks every wave"
+    (should= 3 waves/attacks-per-wave)
     (should= 3 (waves/enemy-count 1))
     (should= 3 (waves/enemy-count 2))
-    (should= 4 (waves/enemy-count 3))
-    (should= 4 (waves/enemy-count 4))
-    (should= 5 (waves/enemy-count 5)))
+    (should= 3 (waves/enemy-count 5))
+    (should= 3 (waves/enemy-count 10)))
 
   (it "uses faster enemies on higher waves"
     ;; Wave 1 is deliberately moderate (~15s sky→ground on 600px) so players can react.

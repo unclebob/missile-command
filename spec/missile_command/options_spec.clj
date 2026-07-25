@@ -57,9 +57,9 @@
           arcade (waves/schedule-metrics 3 :arcade)]
       (should= 2 (:enemy-count easy))
       (should= 28.0 (:enemy-speed easy))
-      (should= 4 (:enemy-count arcade))
+      (should= 3 (:enemy-count arcade))
       (should= 50.0 (:enemy-speed arcade))
-      (should= 3 (opts/scale-enemy-count 4 0.85))
+      (should= 2 (opts/scale-enemy-count 3 0.85))
       (should= 42.5 (opts/scale-enemy-speed 50.0 0.85))
       (should= (:enemy-count (waves/schedule-metrics 3 :normal))
                (:enemy-count normal)))))

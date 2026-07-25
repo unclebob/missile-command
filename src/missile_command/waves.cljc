@@ -10,11 +10,13 @@
 (def base-enemy-speed 40.0)
 (def enemy-speed-wave-factor 0.125)
 
+(def attacks-per-wave 3)
+
 (defn enemy-count
   "Number of ballistic enemies scheduled for a wave (arcade base).
-  Starts at 3; grows by 1 every two waves (half the old +1/wave rate)."
+  Fixed at three attacks per wave; difficulty still ramps via speed/specials."
   [wave]
-  (+ 3 (quot (dec (long wave)) 2)))
+  (long attacks-per-wave))
 
 (defn enemy-speed
   "Enemy missile speed (px/s) for a wave (arcade base)."
