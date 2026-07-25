@@ -763,6 +763,7 @@
     (paused? state) (no-events state)
     (high-score-entry? state) (no-events state)
     (high-scores-view? state) (no-events state)
+    (options? state) (no-events state)
     :else (click-fire state x y)))
 
 (defn- unsupported-command
