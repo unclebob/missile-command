@@ -1,6 +1,6 @@
 # US-18 — High-score table
 
-**Status:** in-specifier  
+**Status:** done  
 **Depends on:** US-14, US-15  
 **Design:** §5.1, §6.4
 

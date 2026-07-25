@@ -315,23 +315,31 @@
                         (str/join "," types)
                         "none"))]))
 
+(defn- inactive-wave-banner-fields
+  []
+  [(str "banner_text=none")
+   (str "banner_phase=none")
+   (str "banner_x=0")
+   (str "banner_y=0")
+   (str "banner_announced_wave=0")])
+
+(defn- active-wave-banner-fields
+  [state]
+  (let [pos (core/wave-banner-text-position state)
+        ph (core/wave-banner-phase state)]
+    [(str "banner_text="
+          (str/replace (or (core/wave-banner-text state) "") #"\s+" "_"))
+     (str "banner_phase=" (if ph (name ph) "none"))
+     (str "banner_x=" (double (:x pos)))
+     (str "banner_y=" (double (:y pos)))
+     (str "banner_announced_wave="
+          (core/wave-banner-announced-wave state))]))
+
 (defn- wave-banner-sim-fields
   [state]
-  (if-not (core/wave-banner? state)
-    [(str "banner_text=none")
-     (str "banner_phase=none")
-     (str "banner_x=0")
-     (str "banner_y=0")
-     (str "banner_announced_wave=0")]
-    (let [pos (core/wave-banner-text-position state)
-          ph (core/wave-banner-phase state)]
-      [(str "banner_text="
-            (str/replace (or (core/wave-banner-text state) "") #"\s+" "_"))
-       (str "banner_phase=" (if ph (name ph) "none"))
-       (str "banner_x=" (double (:x pos)))
-       (str "banner_y=" (double (:y pos)))
-       (str "banner_announced_wave="
-            (core/wave-banner-announced-wave state))])))
+  (if (core/wave-banner? state)
+    (active-wave-banner-fields state)
+    (inactive-wave-banner-fields)))
 
 (defn format-sim-telemetry-line
   "Periodic simulation snapshot line."
@@ -454,18 +462,34 @@
               state)
             entries)))
 
-(defn- apply-scenario-options
+(defn- apply-scenario-mute
   [state scenario]
-  (cond-> state
-    (contains? scenario :mute)
-    (core/set-mute (:mute scenario))
-    (contains? scenario :difficulty)
-    (core/set-difficulty (:difficulty scenario))
-    (map? (:options scenario))
+  (if (contains? scenario :mute)
+    (core/set-mute state (:mute scenario))
+    state))
+
+(defn- apply-scenario-difficulty
+  [state scenario]
+  (if (contains? scenario :difficulty)
+    (core/set-difficulty state (:difficulty scenario))
+    state))
+
+(defn- apply-scenario-options-map
+  [state scenario]
+  (if (map? (:options scenario))
     (core/import-settings
+     state
      (merge (core/export-settings state)
             {:options (merge (core/game-options state)
-                             (:options scenario))}))))
+                             (:options scenario))}))
+    state))
+
+(defn- apply-scenario-options
+  [state scenario]
+  (-> state
+      (apply-scenario-mute scenario)
+      (apply-scenario-difficulty scenario)
+      (apply-scenario-options-map scenario)))
 
 (defn- spawn-scenario-mirv
   [state e]

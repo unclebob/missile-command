@@ -9,8 +9,12 @@
   (first (filter #(= id (:id %)) (or (:batteries state) []))))
 
 (defn- battery-ammo
+  "Remaining missiles; destroyed batteries report 0."
   [state battery-id]
-  (long (or (:missiles (battery state battery-id)) 0)))
+  (let [b (battery state battery-id)]
+    (if (or (nil? b) (:destroyed? b))
+      0
+      (long (or (:missiles b) 0)))))
 
 (defn- battery-ammo-map
   [state]

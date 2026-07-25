@@ -1,6 +1,5 @@
 (ns missile-command.acceptance.steps
-  (:require [clojure.string :as str]
-            [missile-command.acceptance.step-support :as support]
+  (:require [missile-command.acceptance.step-support :as support]
             [missile-command.acceptance.enemy-steps :as enemy-steps]
             [missile-command.acceptance.end-steps :as end-steps]
             [missile-command.acceptance.wave-steps :as wave-steps]
@@ -532,6 +531,14 @@
                 world)
               (assoc world :state
                      (core/destroy-battery (:state world) battery-id)))))}
+
+   {:pattern #"^the <([A-Za-z0-9_]+)> battery is not destroyed$"
+    :fn (fn [world [_ battery-param] example]
+          (let [battery-id (support/example-battery example battery-param)
+                bat (battery world battery-id)]
+            (support/assert-condition (and bat (not (:destroyed? bat)))
+                                      (str "battery " battery-id " is destroyed"))
+            world))}
 
    {:pattern #"^time advances by ([0-9.]+) seconds$"
     :fn (fn [world [_ dt-text] _]

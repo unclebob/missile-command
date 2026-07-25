@@ -8,15 +8,18 @@
     (should= 10 waves/full-ammo))
 
   (it "schedules more enemies on higher waves"
-    (should (> (waves/enemy-count 3) (waves/enemy-count 1)))
+    (should (> (waves/enemy-count 5) (waves/enemy-count 1)))
     (should= 3 (waves/enemy-count 1))
-    (should= 5 (waves/enemy-count 3)))
+    (should= 3 (waves/enemy-count 2))
+    (should= 4 (waves/enemy-count 3))
+    (should= 4 (waves/enemy-count 4))
+    (should= 5 (waves/enemy-count 5)))
 
   (it "uses faster enemies on higher waves"
-    ;; Wave 1 is deliberately moderate (~11s sky→ground on 600px) so players can react.
-    (should= 50.0 (waves/enemy-speed 1))
-    (should= 62.5 (waves/enemy-speed 2))
-    (should= 75.0 (waves/enemy-speed 3))
+    ;; Wave 1 is deliberately moderate (~15s sky→ground on 600px) so players can react.
+    (should= 40.0 (waves/enemy-speed 1))
+    (should= 45.0 (waves/enemy-speed 2))
+    (should= 50.0 (waves/enemy-speed 3))
     (should (> (waves/enemy-speed 3) (waves/enemy-speed 1))))
 
   (it "reports harder metrics for higher waves"
@@ -36,24 +39,24 @@
     (should= 2 (waves/mirv-count 6))
     (should= (:mirv-count (waves/schedule-metrics 4)) (waves/mirv-count 4)))
 
-  (it "schedules bombers and satellites on late waves"
+  (it "schedules bombers and satellites from mid waves"
     (should= 0 (waves/bomber-count 1))
-    (should= 0 (waves/bomber-count 7))
-    (should= 1 (waves/bomber-count 8))
+    (should= 0 (waves/bomber-count 3))
+    (should= 1 (waves/bomber-count 4))
     (should= 1 (waves/bomber-count 10))
-    (should= 0 (waves/satellite-count 8))
-    (should= 1 (waves/satellite-count 9))
+    (should= 0 (waves/satellite-count 4))
+    (should= 1 (waves/satellite-count 5))
     (should= 1 (waves/satellite-count 10)))
 
-  (it "schedules smart bombs only on later waves"
+  (it "schedules smart bombs from wave 4"
     (should= 0 (waves/smart-bomb-count 1))
-    (should= 0 (waves/smart-bomb-count 4))
-    (should= 0 (waves/smart-bomb-count 6))
-    (should= 1 (waves/smart-bomb-count 7))
-    (should= 1 (waves/smart-bomb-count 8))
-    (should= 2 (waves/smart-bomb-count 9))
-    (should= (:smart-bomb-count (waves/schedule-metrics 7))
-             (waves/smart-bomb-count 7)))
+    (should= 0 (waves/smart-bomb-count 3))
+    (should= 1 (waves/smart-bomb-count 4))
+    (should= 1 (waves/smart-bomb-count 5))
+    (should= 2 (waves/smart-bomb-count 6))
+    (should= 3 (waves/smart-bomb-count 8))
+    (should= (:smart-bomb-count (waves/schedule-metrics 4))
+             (waves/smart-bomb-count 4)))
 
   (it "builds a wave target pool from cities and batteries"
     (let [pool (waves/target-pool [0 1 2] [:left :center])]

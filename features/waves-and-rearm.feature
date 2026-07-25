@@ -7,7 +7,7 @@
 # Waves and rearm 02 wave does not complete while enemies remain
 # Waves and rearm 03 wave completes when all enemies are gone
 # Waves and rearm 04 surviving batteries rearm to full after wave
-# Waves and rearm 05 destroyed batteries stay destroyed after rearm
+# Waves and rearm 05 destroyed batteries are restored after rearm
 # Waves and rearm 06 higher waves schedule more or faster enemies
 # Waves and rearm 07 hud shows the current wave number
 Feature: Waves and rearm
@@ -42,9 +42,9 @@ Scenario: Waves and rearm 02 wave does not complete while enemies remain
 
 Examples:
   | width | height | remaining | wave | enemy_count | expected_applied_dt | expected_progress     | expected_width | expected_height |
-  | 800   | 600    | 1         | 1    | 1           | 0.05                | 0.003869969040247678  | 800            | 600             |
-  | 800   | 600    | 3         | 1    | 3           | 0.05                | 0.004376587469505331  | 800            | 600             |
-  | 1920  | 1080   | 2         | 1    | 2           | 0.05                | 0.00236738178373661   | 1920           | 1080            |
+  | 800   | 600    | 1         | 1    | 1           | 0.05                | 0.0030959752321981426 | 800            | 600             |
+  | 800   | 600    | 3         | 1    | 3           | 0.05                | 0.0035012699756042645 | 800            | 600             |
+  | 1920  | 1080   | 2         | 1    | 2           | 0.05                | 0.0018939054269892879 | 1920           | 1080            |
 
 Scenario: Waves and rearm 03 wave completes when all enemies are gone
   Given a new game with width <width> and height <height>
@@ -98,7 +98,7 @@ Examples:
   | 800   | 600    | 7          | 7                   | 1         | 1                  | 10   | 2    | 2             | 800            | 600             |
   | 1920  | 1080   | 0          | 0                   | 1         | 1                  | 10   | 2    | 2             | 1920           | 1080            |
 
-Scenario: Waves and rearm 05 destroyed batteries stay destroyed after rearm
+Scenario: Waves and rearm 05 destroyed batteries are restored after rearm
   Given a new game with width <width> and height <height>
   And the player starts the game
   And the <battery> battery has been destroyed
@@ -108,16 +108,16 @@ Scenario: Waves and rearm 05 destroyed batteries stay destroyed after rearm
   And the next wave starts
   Then the playfield width is <expected_width>
   And the playfield height is <expected_height>
-  And the <battery> battery is destroyed
+  And the <battery> battery is not destroyed
   And each non-destroyed battery has <ammo> missiles
   When the player fires the <battery> battery
   Then there are <missile_count> defensive missiles in flight
 
 Examples:
   | width | height | battery | remaining | expected_remaining | ammo | missile_count | expected_width | expected_height |
-  | 800   | 600    | left    | 1         | 1                  | 10   | 0             | 800            | 600             |
-  | 800   | 600    | center  | 1         | 1                  | 10   | 0             | 800            | 600             |
-  | 800   | 600    | right   | 1         | 1                  | 10   | 0             | 800            | 600             |
+  | 800   | 600    | left    | 1         | 1                  | 10   | 1             | 800            | 600             |
+  | 800   | 600    | center  | 1         | 1                  | 10   | 1             | 800            | 600             |
+  | 800   | 600    | right   | 1         | 1                  | 10   | 1             | 800            | 600             |
 
 Scenario: Waves and rearm 06 higher waves schedule more or faster enemies
   Given a new game with width <width> and height <height>
@@ -132,6 +132,6 @@ Scenario: Waves and rearm 06 higher waves schedule more or faster enemies
 
 Examples:
   | width | height | low_wave | high_wave | low_count | low_speed | high_count | high_speed | expected_width | expected_height |
-  | 800   | 600    | 1        | 2         | 3         | 50.0      | 4          | 62.5       | 800            | 600             |
-  | 800   | 600    | 1        | 3         | 3         | 50.0      | 5          | 75.0       | 800            | 600             |
-  | 1920  | 1080   | 2        | 4         | 4         | 62.5      | 6          | 87.5       | 1920           | 1080            |
+  | 800   | 600    | 1        | 2         | 3         | 40.0      | 3          | 45.0       | 800            | 600             |
+  | 800   | 600    | 1        | 3         | 3         | 40.0      | 4          | 50.0       | 800            | 600             |
+  | 1920  | 1080   | 2        | 4         | 3         | 45.0      | 4          | 55.0       | 1920           | 1080            |
