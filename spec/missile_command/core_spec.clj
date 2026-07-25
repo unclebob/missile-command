@@ -311,6 +311,31 @@
       (should (every? #(= core/enemy-kind-ballistic (:enemy-kind %))
                       (core/enemy-missiles state)))))
 
+  (it "tick starts attack 1 when playing with empty sky and no attack"
+    (let [state (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+          after (:state (core/tick state 0.05))
+          metrics (core/wave-schedule-metrics-for after 1)]
+      (should= 1 (:wave-attack after))
+      (should= (:enemy-count metrics) (count (core/enemy-missiles after)))))
+
+  (it "tick does not double-spawn while attack 1 enemies remain"
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+                    (core/activate-wave-schedule))
+          n (count (core/enemy-missiles state))
+          after (:state (core/tick state 0.05))]
+      (should= 1 (:wave-attack after))
+      (should= n (count (core/enemy-missiles after)))))
+
+  (it "tick does not start an attack when the wave is complete"
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+                    (assoc :wave-complete? true
+                           :wave-attack nil
+                           :enemy-missiles []
+                           :flyers []))
+          after (:state (core/tick state 0.05))]
+      (should-be-nil (:wave-attack after))
+      (should (empty? (core/enemy-missiles after)))))
+
   (it "advances to the next attack only after the current salvo is cleared"
     (let [start (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/activate-wave-schedule))
