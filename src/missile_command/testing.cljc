@@ -5,21 +5,107 @@
   route-*, add-static-fireball, or other scenario-only tools. Production
   hosts should use `handle`/`tick` only (plus start/aim/fire).
 
-  Core re-exports the same symbols for acceptance step stability."
-  (:require [missile-command.core :as core]))
+  Implementations of pure staging transforms live here (or in combat for
+  spawn filters). Core re-exports the same symbols so acceptance steps that
+  call `core/...` remain stable."
+  (:require [missile-command.combat :as combat]
+            [missile-command.missiles :as missiles]))
 
-(def route-enemy-through-point core/route-enemy-through-point)
-(def route-first-smart-bomb-through-point core/route-first-smart-bomb-through-point)
-(def route-smart-bomb-centered-in-fireball core/route-smart-bomb-centered-in-fireball)
-(def route-smart-bomb-edge-band-in-fireball core/route-smart-bomb-edge-band-in-fireball)
-(def route-flyer-through-point core/route-flyer-through-point)
-(def route-first-mirv-child-through-point core/route-first-mirv-child-through-point)
-(def add-static-fireball core/add-static-fireball)
-(def add-destroyable-target core/add-destroyable-target)
-(def set-score core/set-score)
-(def set-bonus-city-reserve core/set-bonus-city-reserve)
-(def set-bonus-city-threshold core/set-bonus-city-threshold)
-(def set-wave-enemies-active core/set-wave-enemies-active)
-(def begin-wave-attack core/begin-wave-attack)
-(def activate-wave-schedule core/activate-wave-schedule)
-(def with-rng-seed core/with-rng-seed)
+(defn- next-entity-id
+  [state]
+  (let [id (long (or (:next-entity-id state) 0))]
+    [id (assoc state :next-entity-id (inc id))]))
+
+(defn- enemy-attrs-to-preserve
+  [enemy]
+  (select-keys enemy [:enemy-kind :child-count :split-progress
+                      :smart-evaded? :last-enemy-fate-local]))
+
+(defn- retarget-enemy-from
+  "Rebuild an enemy path starting at x,y while preserving MIRV attrs."
+  [enemy x y]
+  (merge (missiles/make-enemy (:id enemy)
+                              {:x x :y y}
+                              {:x (:x1 enemy) :y (:y1 enemy)}
+                              (:speed enemy)
+                              (:target-kind enemy)
+                              (:target-id enemy))
+         (enemy-attrs-to-preserve enemy)))
+
+(defn- first-enemy-index
+  [ms pred]
+  (first (keep-indexed (fn [i e] (when (pred e) i)) ms)))
+
+(defn- retarget-enemy-at-index
+  [ms idx x y]
+  (assoc (vec ms) idx (retarget-enemy-from (nth ms idx) x y)))
+
+(defn route-first-smart-bomb-through-point
+  "Retarget the first smart bomb so its path starts at the given point."
+  [state x y]
+  (update state :enemy-missiles
+          (fn [ms]
+            (if-let [idx (first-enemy-index ms combat/smart-bomb?)]
+              (retarget-enemy-at-index ms idx x y)
+              (vec ms)))))
+
+(defn route-smart-bomb-centered-in-fireball
+  "Place the smart bomb path through the fireball center (well-centered kill)."
+  [state fb-x fb-y _center-limit]
+  (route-first-smart-bomb-through-point state fb-x fb-y))
+
+(defn route-smart-bomb-edge-band-in-fireball
+  "Place the smart bomb path through the edge band of the fireball (evade once)."
+  [state fb-x fb-y edge-inner radius]
+  (let [mid (/ (+ (double edge-inner) (double radius)) 2.0)
+        px (+ (double fb-x) mid)
+        py (double fb-y)]
+    (route-first-smart-bomb-through-point state px py)))
+
+(defn route-flyer-through-point
+  "Retarget the first flyer so its path starts at the given point."
+  [state x y]
+  (update state :flyers
+          (fn [fs]
+            (if (seq fs)
+              (let [f (first fs)
+                    retargeted (assoc f
+                                      :x0 (double x)
+                                      :y0 (double y)
+                                      :x (double x)
+                                      :y (double y)
+                                      :progress 0.0)]
+                (into [retargeted] (rest fs)))
+              (vec fs)))))
+
+(defn route-enemy-through-point
+  "Retarget the first enemy so its path starts at the given point (e.g. fireball)."
+  [state x y]
+  (update state :enemy-missiles
+          (fn [ms]
+            (if (seq ms)
+              (into [(retarget-enemy-from (first ms) x y)] (rest ms))
+              ms))))
+
+(defn route-first-mirv-child-through-point
+  "Retarget the first MIRV child so its path starts at the given point."
+  [state x y]
+  (update state :enemy-missiles
+          (fn [ms]
+            (if-let [idx (first-enemy-index ms combat/mirv-child?)]
+              (retarget-enemy-at-index ms idx x y)
+              (vec ms)))))
+
+(defn add-static-fireball
+  "Test/setup helper: place a fixed-radius fireball."
+  [state x y radius]
+  (let [[fid state] (next-entity-id state)
+        fb (missiles/make-static-fireball fid x y radius)]
+    (update state :fireballs (fnil conj []) fb)))
+
+(defn add-destroyable-target
+  "Test/setup helper: place a fireball-vulnerable stub at x,y."
+  [state x y]
+  (let [[id state] (next-entity-id state)
+        target {:id id :x x :y y :destroyed? false}]
+    (update state :destroyable-targets (fnil conj []) target)))

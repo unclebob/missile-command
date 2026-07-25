@@ -1,5 +1,6 @@
 (ns missile-command.core-spec
   (:require [speclj.core :refer :all]
+            [missile-command.combat :as combat]
             [missile-command.core :as core]
             [missile-command.wave-schedule :as wave-schedule]))
 
@@ -1114,12 +1115,12 @@
 
   (it "classifies smart-bomb edge band strictly outside the core"
     ;; Core is d <= 0.45*r (18 at r=40); edge is 18 < d <= r.
-    (should (@#'core/smart-bomb-edge-band? 20.0 40.0))
-    (should (@#'core/smart-bomb-edge-band? 30.0 40.0))
-    (should (@#'core/smart-bomb-edge-band? 40.0 40.0))
-    (should-not (@#'core/smart-bomb-edge-band? 18.0 40.0))
-    (should-not (@#'core/smart-bomb-edge-band? 10.0 40.0))
-    (should-not (@#'core/smart-bomb-edge-band? 40.1 40.0)))
+    (should (combat/smart-bomb-edge-band? 20.0 40.0))
+    (should (combat/smart-bomb-edge-band? 30.0 40.0))
+    (should (combat/smart-bomb-edge-band? 40.0 40.0))
+    (should-not (combat/smart-bomb-edge-band? 18.0 40.0))
+    (should-not (combat/smart-bomb-edge-band? 10.0 40.0))
+    (should-not (combat/smart-bomb-edge-band? 40.1 40.0)))
 )
 
 (describe "title screen"
