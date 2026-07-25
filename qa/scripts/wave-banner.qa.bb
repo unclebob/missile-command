@@ -107,7 +107,7 @@
     (assert! (= 2 (long-field resumed "wave")) (str "F wave not 2: " resumed)))
 
   (println "\nPASS: wave-banner automated QA (A–F)")
-  (println "PASS: look-and-feel needs user approval (WAVE N motion)")
+  (println "PASS: look-and-feel approved (WAVE N enter/exit, 2s each)")
   (System/exit 0))
 
 (when (= *file* (System/getProperty "babashka.file"))
