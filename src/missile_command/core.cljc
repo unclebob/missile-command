@@ -13,6 +13,7 @@
             [missile-command.high-scores :as high-scores]
             [missile-command.options :as options]
             [missile-command.sfx :as sfx]
+            [missile-command.shell :as shell]
             [missile-command.wave-banner :as wave-banner]
             [missile-command.wave-lifecycle :as wave-lifecycle]
             [missile-command.wave-schedule :as wave-schedule]
@@ -215,19 +216,8 @@
 (def open-high-scores high-scores/open-view)
 (def close-high-scores high-scores/close-view)
 
-(defn pause-game
-  "Enter paused from playing only; ignore on title/end/already paused."
-  [state]
-  (if (playing? state)
-    (assoc state :screen screen-paused)
-    state))
-
-(defn resume-game
-  "Return from paused to playing; no-op otherwise."
-  [state]
-  (if (paused? state)
-    (assoc state :screen screen-playing)
-    state))
+(def pause-game shell/pause-game)
+(def resume-game shell/resume-game)
 
 (defn- blank-shell
   "New game shell at the same playfield size as source."
@@ -256,34 +246,13 @@
 (def wave-banner-text-position wave-banner/text-position)
 (def wave-banner-distance-to-center wave-banner/distance-to-center)
 
-(defn export-settings
-  "Serializable high scores and options for host persistence."
-  [state]
-  {:options (game-options state)
-   :high-scores (high-score-table state)
-   :high-score-capacity (high-score-capacity state)})
+(def export-settings shell/export-settings)
+(def import-settings shell/import-settings)
 
-(defn import-settings
-  "Restore high scores and options onto a shell state (e.g. after host restart)."
-  [state settings]
-  (let [settings (or settings {})]
-    (assoc state
-           :options (or (:options settings) options/default-options)
-           :high-scores (vec (or (:high-scores settings) []))
-           :high-score-capacity
-           (long (or (:high-score-capacity settings)
-                     high-scores/default-capacity)))))
-
-
-(defn- apply-shell
-  "High-score shell transition that also carries options."
-  [shell-state source]
-  (options/carry shell-state source))
 (defn start-game
   "Leave title (or any shell) and begin a fresh playing run at current size."
   [state]
-  (-> (high-scores/start-playing (blank-shell state) state)
-      (apply-shell state)))
+  (shell/start-game state blank-shell))
 
 (defn final-score
   "Score frozen at THE END, else current score."
@@ -293,23 +262,20 @@
 (defn confirm-end-screen
   "After THE END: open initials entry if score qualifies, else return to title."
   [state]
-  (apply-shell
-   (high-scores/confirm-end state
+  (shell/confirm-end-screen state
                             (the-end? state)
                             (final-score state)
-                            (blank-shell state))
-   state))
+                            blank-shell))
 
 (defn submit-high-score-initials
   "Insert pending score with initials, then return to title."
   [state initials]
-  (apply-shell
-   (high-scores/submit-entry state
-                             (high-score-entry? state)
-                             (long (or (pending-high-score state) (final-score state)))
-                             initials
-                             (blank-shell state))
-   state))
+  (shell/submit-high-score-initials
+   state
+   (high-score-entry? state)
+   (long (or (pending-high-score state) (final-score state)))
+   initials
+   blank-shell))
 
 (defn end-message
   [state]
