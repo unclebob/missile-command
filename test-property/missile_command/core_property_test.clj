@@ -672,7 +672,7 @@
     (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/destroy-city city-id)
                     (core/set-bonus-city-reserve 1)
-                    (core/set-wave-enemies-active 1)
+                    (core/begin-wave-attack 3)
                     (assoc :wave-had-enemies? true)
                     (assoc :enemy-missiles [] :flyers []))
           after (loop [s state n 0]
