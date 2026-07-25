@@ -354,7 +354,8 @@
   (let [w (core/playfield-width state)
         h (core/playfield-height state)
         pos (core/wave-banner-text-position state)
-        txt (or (core/wave-banner-text state) "")]
+        txt (or (core/wave-banner-text state) "")
+        sub (or (core/wave-banner-subtitle state) "")]
     (q/fill 0 0 0 100)
     (q/no-stroke)
     (q/rect 0 0 w h)
@@ -362,6 +363,10 @@
     (q/text-align :center :center)
     (q/text-size 48)
     (q/text txt (:x pos) (:y pos))
+    (when (seq sub)
+      (q/text-size 28)
+      (q/fill 180 255 160)
+      (q/text sub (:x pos) (+ (:y pos) 42.0)))
     (q/text-align :left :baseline)))
 
 (defn- the-end-overlay!
