@@ -23,7 +23,7 @@
                      speclj/speclj {:mvn/version "3.12.2"}}
         :main-opts ["-m" "speclj.cloverage" "--" "-p" "src" "-s" "spec" "--lcov"
                     "--ns-regex"
-                    "missile-command\\.(core|world|batteries|missiles|input|cities|entities|waves|scoring|flyers|game-end|screens|hud|high-scores|options|sfx|wave-banner|wave-schedule|wave-lifecycle|bonus-cities|combat|shell|acceptance\\..*|jvm\\.input|jvm\\.persist|browser\\.persist)"]}  :mutate {:main-opts ["-m" "clj-mutate.core"]
+                    "missile-command\\.(core|world|batteries|missiles|input|cities|entities|waves|scoring|flyers|game-end|screens|hud|high-scores|options|sfx|wave-banner|wave-schedule|wave-lifecycle|bonus-cities|combat|shell|rng|testing|acceptance\\..*|jvm\\.input|jvm\\.persist|browser\\.persist)"]}  :mutate {:main-opts ["-m" "clj-mutate.core"]
            :extra-deps {io.github.unclebob/clj-mutate
                         {:git/url "https://github.com/unclebob/clj-mutate.git"
                          :git/sha "e27dd5df63c4efdd66438587d1c5f49e73661b69"}

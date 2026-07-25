@@ -83,6 +83,8 @@
                    "missile_command/bonus_cities"
                    "missile_command/combat"
                    "missile_command/shell"
+                   "missile_command/rng"
+                   "missile_command/testing"
                    "missile_command/acceptance"
                    "missile_command/jvm/input"]))}
 
@@ -113,6 +115,8 @@
                    "src/missile_command/bonus_cities.cljc"
                    "src/missile_command/combat.cljc"
                    "src/missile_command/shell.cljc"
+                   "src/missile_command/rng.cljc"
+                   "src/missile_command/testing.cljc"
                    "src/missile_command/acceptance"
                    "src/missile_command/jvm/input.clj"]))}
 
