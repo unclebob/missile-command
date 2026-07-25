@@ -85,14 +85,35 @@ High scores and options persist under `tmp/missile-command-settings.edn`
 
 ### Launch (browser host)
 
+Needs Node/npm once for `shadow-cljs` and Quil’s `p5` dependency:
+
 ```sh
+npm install
 bb browser
 ```
 
-Builds the ClojureScript Quil host (via `shadow-cljs` when available) and
-documents the open path **`index.html`** under `resources/public/index.html`.
-Open that page (or the shadow-cljs dev server URL) for mouse/keyboard play with
-the same pure core. Options and high scores persist in **`localStorage`**.
+Or watch mode (live reload on port 8020):
+
+```sh
+npm install
+npx shadow-cljs watch browser
+# open http://localhost:8020
+```
+
+`bb browser` compiles to `resources/public/js/main.js`. Open
+**`resources/public/index.html`** (or **http://localhost:8020** in watch mode)
+for mouse/keyboard play with the same pure core. Options and high scores
+persist in **`localStorage`**.
+
+### Sound effects
+
+WAVs in `resources/sounds/` (mirrored under `resources/public/sounds/` for the
+browser). Both hosts play them for core SFX events (launch, explosion,
+city/battery destroy, low ammo, wave clear, bonus city, THE END). **Mute** in
+options suppresses playback.
+
+These are **royalty-free free SFX** (Mixkit, etc.), not original Atari ROM
+samples (copyrighted). See `resources/sounds/CREDITS.md`.
 
 ### QA mode (CLI affordances)
 

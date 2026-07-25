@@ -1,6 +1,6 @@
 # US-17 — In-game HUD
 
-**Status:** in-specifier  
+**Status:** done  
 **Depends on:** US-09, US-10  
 **Design:** §6.2, §7
 

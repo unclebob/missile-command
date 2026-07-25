@@ -183,7 +183,7 @@ Both key and click firing are **always available** during `:playing` (not altern
 3. **Enemy missile** that reaches a city or battery destroys that target (single hit). Batteries destroyed have missiles remaining set ineffective (cannot fire).
 4. **Center battery** missiles use higher speed than left/right (required for effective smart-bomb defense at range).
 5. **Wave ends** when all scheduled enemies for the wave are destroyed or have impacted.
-6. **Between waves:** award bonuses; apply bonus cities from reserve to replace dead cities as needed; rearm batteries to 10 if not destroyed (destroyed batteries stay down for the wave / until rules say otherwise — **arcade: destroyed bases stay destroyed for the rest of the game session unless we document repair**; v1 follows arcade: **destroyed batteries remain destroyed** for the run; cities can return via bonus cities).
+6. **Between waves:** award bonuses; apply bonus cities from reserve to replace dead cities as needed; **restore all batteries** (clear destroyed, refill to 10). Cities can also return via bonus cities.
 7. **Game over:** zero living cities and zero bonus cities available to place → transition toward **THE END**.
 8. There is **no win** state.
 

@@ -18,3 +18,10 @@
           updated (batteries/update-battery batteries :left batteries/spend-ammo)]
       (should= 9 (:missiles (first updated)))
       (should= 10 (:missiles (second updated))))))
+
+(describe "restore"
+  (it "clears destroyed and sets ammo"
+    (let [restored (batteries/restore {:destroyed? true :missiles 0} 10)]
+      (should-not (:destroyed? restored))
+      (should= 10 (:missiles restored))
+      (should (batteries/can-fire? restored)))))

@@ -1,0 +1,15 @@
+{
+  "name": "missile-command",
+  "private": true,
+  "scripts": {
+    "watch": "shadow-cljs watch browser",
+    "build": "shadow-cljs compile browser",
+    "release": "shadow-cljs release browser"
+  },
+  "devDependencies": {
+    "shadow-cljs": "3.4.11"
+  },
+  "dependencies": {
+    "p5": "^1.11.3"
+  }
+}

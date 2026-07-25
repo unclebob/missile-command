@@ -70,9 +70,9 @@ Scenario: Fire batteries keys 04 destroyed battery does not fire
 
 Examples:
   | battery | missile_count | ammo |
-  | left    | 0             | 10   |
-  | center  | 0             | 10   |
-  | right   | 0             | 10   |
+  | left    | 0             | 0    |
+  | center  | 0             | 0    |
+  | right   | 0             | 0    |
 
 Scenario: Fire batteries keys 05 center missile is faster than side missiles
   Given a new game with width <width> and height <height>

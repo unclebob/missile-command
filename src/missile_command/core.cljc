@@ -12,6 +12,7 @@
             [missile-command.options :as options]
             [missile-command.sfx :as sfx]
             [missile-command.wave-banner :as wave-banner]
+            [missile-command.wave-schedule :as wave-schedule]
             [missile-command.waves :as waves]
             [missile-command.world :as world]))
 (def initial-score 0)
@@ -402,9 +403,11 @@
 (def enemy-kind-smart :smart)
 
 ;; Edge band for smart-bomb evasion: outer ring of the blast (ratio of radius).
-(def smart-bomb-edge-inner-factor 0.625)
+;; Core (d <= factor*r) is lethal; outer ring dodges once. Wider than a thin rim
+;; so near-misses are readable in play.
+(def smart-bomb-edge-inner-factor 0.45)
 (def ^:private smart-not-yet-evaded false)
-(def smart-bomb-evade-clearance 8.0)
+(def smart-bomb-evade-clearance 12.0)
 
 (defn- mirv-parent?
   [enemy]
@@ -755,15 +758,20 @@
       (fire-battery aimed battery-id)
       (no-events aimed))))
 
+(defn- click-noop-shell?
+  "Screens where a click must not fire (pause, scores, options)."
+  [state]
+  (or (paused? state)
+      (high-score-entry? state)
+      (high-scores-view? state)
+      (options? state)))
+
 (defn- handle-click
   [state x y]
   (cond
     (title? state) (no-events (start-game state))
     (the-end? state) (no-events (confirm-end-screen state))
-    (paused? state) (no-events state)
-    (high-score-entry? state) (no-events state)
-    (high-scores-view? state) (no-events state)
-    (options? state) (no-events state)
+    (click-noop-shell? state) (no-events state)
     :else (click-fire state x y)))
 
 (defn- unsupported-command
@@ -1227,9 +1235,12 @@
             (mapv #(transform-living-battery % f) bs))))
 
 (defn rearm-surviving-batteries
-  "Refill non-destroyed batteries to full ammo."
+  "Restore every battery: clear destroyed and refill to full ammo.
+  (Name kept for call-site compatibility; destroyed bases come back each wave.)"
   [state]
-  (map-living-batteries state #(batteries/set-ammo % waves/full-ammo)))
+  (update state :batteries
+          (fn [bs]
+            (mapv #(batteries/restore % waves/full-ammo) (or bs [])))))
 
 (defn- non-destroyed-batteries
   [state]
@@ -1274,6 +1285,23 @@
             state
             (map-indexed vector targets))))
 
+(defn activate-wave-schedule
+  "Spawn the full current-wave schedule: ballistics, MIRVs, smart bombs, flyers.
+  Hosts call this when the sky is empty and play should continue."
+  [state]
+  (wave-schedule/activate
+   state
+   {:wave wave
+    :living-cities living-cities
+    :city city
+    :playfield-width playfield-width
+    :playfield-height playfield-height
+    :set-wave-enemies-active set-wave-enemies-active
+    :spawn-enemy-at spawn-enemy-at
+    :spawn-smart-bomb-targeting-city spawn-smart-bomb-targeting-city
+    :spawn-flyer spawn-flyer
+    :enemy-kind-mirv enemy-kind-mirv}))
+
 (defn set-non-destroyed-battery-ammo
   "Test helper: set ammo on every non-destroyed battery."
   [state ammo]
@@ -1297,11 +1325,22 @@
          :enemy-missiles []
          :flyers []))
 
+(defn- clear-combat-entities
+  "Remove in-flight combat visuals between waves (defensive missiles + fireballs).
+  Does not restore cities (bonus cities handle that)."
+  [state]
+  (assoc state
+         :defensive-missiles []
+         :fireballs []
+         :destroyable-targets []))
+
 (defn start-next-wave
-  "Begin the next wave: rearm survivors; leave banner; wave number already advanced."
+  "Begin the next wave: restore and rearm all batteries; clear leftover
+  fireballs/missiles; leave banner."
   [state]
   (-> state
       wave-banner/clear
+      clear-combat-entities
       (assoc :wave-complete? wave-starts-complete?
              :wave-had-enemies? wave-starts-with-enemies?)
       (rearm-surviving-batteries)))
@@ -1324,8 +1363,12 @@
        :events []}
 
       (wave-banner? state)
+      ;; Keep combat fireballs/missiles animating during the banner so they do
+      ;; not pop out of existence; start-next-wave clears leftovers afterward.
       {:state (-> state
                   (advance-clock applied)
+                  (tick-defensive-missiles applied)
+                  (tick-fireballs applied)
                   (wave-banner/tick applied start-next-wave))
        :events []}
 

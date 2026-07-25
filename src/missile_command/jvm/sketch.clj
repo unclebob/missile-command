@@ -7,6 +7,7 @@
             [missile-command.core :as core]
             [missile-command.missiles :as missiles]
             [missile-command.jvm.input :as input]
+            [missile-command.jvm.audio :as audio]
             [missile-command.jvm.persist :as persist]
             [missile-command.jvm.render :as render]
             [missile-command.jvm.window :as window]))
@@ -99,12 +100,13 @@
       (emit! (input/format-fireball-phase-line state (:fireball e) (:phase e))))))
 
 (defn- emit-new-sfx!
-  "Emit qa-sfx lines for newly logged core events; honor mute for played=."
+  "Play new SFX clips and emit qa-sfx lines; honor mute for playback."
   [prev-state state]
   (let [prev (count (or (:sfx-events prev-state) []))
         all (or (:sfx-events state) [])
-        fresh (drop prev all)
+        fresh (vec (drop prev all))
         muted? (core/mute? state)]
+    (audio/play-events! fresh muted?)
     (doseq [e fresh]
       (let [kw (:type e)
             t (if (namespace kw)
@@ -181,17 +183,15 @@
     state))
 
 (defn- spawn-scheduled-wave-enemies
-  "Launch the current wave's scheduled enemy count (cities only)."
+  "Launch the current wave's full schedule (ballistics, MIRVs, smart bombs, flyers)."
   [state]
-  (let [n (long (:enemy-count (core/wave-schedule-metrics-for state (core/wave state))))]
-    (if (pos? n)
-      (core/set-wave-enemies-active state n)
-      state)))
+  (core/activate-wave-schedule state))
 
 (defn- ensure-wave-enemies
-  "If no enemies are in flight, spawn this wave's schedule (normal play)."
+  "If no enemies or flyers are in flight, spawn this wave's schedule (normal play)."
   [state]
-  (if (seq (core/enemy-missiles state))
+  (if (or (seq (core/enemy-missiles state))
+          (seq (core/flyers state)))
     state
     (spawn-scheduled-wave-enemies state)))
 
@@ -200,6 +200,7 @@
   (q/frame-rate 60)
   (q/no-cursor)
   (configure-display!)
+  (audio/warm!)
   (reset! last-frame-ms (System/currentTimeMillis))
   (let [state (-> (core/new-game {:width (q/width) :height (q/height)})
                   load-persisted
@@ -441,19 +442,30 @@
                           (core/add-static-fireball state x y radius))
               state)))))))
 
+(defn- ensure-playing-has-wave
+  "If we are playing with an empty sky and the wave is not complete, spawn
+  the schedule. Covers click-to-start and any path that forgot to spawn."
+  [state]
+  (if (and (core/playing? state)
+           (not (core/wave-complete? state))
+           (empty? (core/enemy-missiles state))
+           (empty? (core/flyers state)))
+    (ensure-wave-enemies state)
+    state))
+
 (defn update-state
   [state]
   (let [scripted? (seq @pending-qa-events)
         state (-> state
                   (input/resize-if-needed (q/width) (q/height)
                                           core/resize core/playfield-width core/playfield-height)
-                  tick-state)]
+                  tick-state
+                  ensure-playing-has-wave)]
     (if scripted?
       (drain-one-qa-event state)
       (-> state
           (as-> s (apply-handle s (input/aim-command (q/mouse-x) (q/mouse-y))))
           drain-one-qa-event))))
-
 (defn draw
   [state]
   (render/draw-world! state @initials-draft)
@@ -475,9 +487,13 @@
 (defn mouse-pressed
   [state event]
   (if (left-button? event)
-    (apply-handle state (input/click-command (q/mouse-x) (q/mouse-y)))
+    (let [was-title? (core/title? state)
+          next (apply-handle state (input/click-command (q/mouse-x) (q/mouse-y)))]
+      ;; Click starts from title; host must spawn wave 1 (same as Enter).
+      (if (and was-title? (core/playing? next))
+        (ensure-wave-enemies next)
+        next))
     state))
-
 (defn- initials-char?
   [ch]
   (and ch (re-matches #"[A-Za-z0-9]" (str ch))))
