@@ -26,12 +26,14 @@
      (max 240 (long (* h scale)))]))
 
 (defn- ensure-wave-enemies
-  "Spawn the full wave schedule when playing and sky is empty.
-  Mirrors JVM host continuous-play spawn (not done inside core/tick)."
+  "Start attack 1 when playing with an empty sky and no attack in progress.
+  Attacks 2..N advance inside core/tick after each attack ends."
   [state]
   (if (or (not (core/playing? state))
           (seq (core/enemy-missiles state))
-          (seq (core/flyers state)))
+          (seq (core/flyers state))
+          (:wave-attack state)
+          (core/wave-complete? state))
     state
     (core/activate-wave-schedule state)))
 

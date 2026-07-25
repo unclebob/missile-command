@@ -302,12 +302,36 @@
       (should (core/harder-wave? low high))
       (should-not (core/harder-wave? high low))))
 
-  (it "activate-wave-schedule spawns MIRVs from wave 4"
+  (it "activate-wave-schedule starts attack 1 with a full ballistic salvo"
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+                    (core/activate-wave-schedule))
+          metrics (core/wave-schedule-metrics-for state 1)]
+      (should= 1 (:wave-attack state))
+      (should= (:enemy-count metrics) (count (core/enemy-missiles state)))
+      (should (every? #(= core/enemy-kind-ballistic (:enemy-kind %))
+                      (core/enemy-missiles state)))))
+
+  (it "advances to the next attack only after the current salvo is cleared"
+    (let [start (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+                    (core/activate-wave-schedule))
+          ;; Clear attack 1 without waiting for ground impact: empty the sky.
+          cleared (assoc start :enemy-missiles [] :flyers [])
+          advanced (:state (core/tick cleared 0.05))]
+      (should= 1 (:wave-attack start))
+      (should= 2 (:wave-attack advanced))
+      (should= 3 (count (core/enemy-missiles advanced)))
+      (should (every? #(= core/enemy-kind-ballistic (:enemy-kind %))
+                      (core/enemy-missiles advanced)))))
+
+  (it "final sequential attack on wave 4 includes MIRVs"
+    ;; Start attack 3 with cities intact so specials have targets (free-running
+    ;; earlier salvos can wipe cities before the final attack begins).
     (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/set-wave 4)
-                    (core/activate-wave-schedule))
+                    (core/begin-wave-attack 3))
           parents (core/mirv-parents state)
           metrics (core/wave-schedule-metrics-for state 4)]
+      (should= 3 (:wave-attack state))
       (should= (:enemy-count metrics)
                (count (filter #(= core/enemy-kind-ballistic (:enemy-kind %))
                               (core/enemy-missiles state))))
@@ -318,10 +342,10 @@
                           (double (:split-progress %)))
                       parents))))
 
-  (it "activate-wave-schedule spawns smart bombs and flyers on later waves"
+  (it "final sequential attack spawns smart bombs and flyers on later waves"
     (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/set-wave 9)
-                    (core/activate-wave-schedule))
+                    (core/begin-wave-attack 3))
           metrics (core/wave-schedule-metrics-for state 9)]
       (should= (:smart-bomb-count metrics) (count (core/smart-bombs state)))
       (should= (:bomber-count metrics) (count (core/flyers-of-kind state :bomber)))

@@ -21,6 +21,15 @@
   [state]
   (or (:text (of state)) ""))
 
+(defn subtitle
+  "Optional second line (e.g. Bonus City when a city was restored)."
+  [state]
+  (or (:subtitle (of state)) ""))
+
+(defn bonus-city?
+  [state]
+  (boolean (:bonus-city? (of state))))
+
 (defn announced-wave
   [state]
   (long (or (:announced-wave (of state)) 0)))
@@ -52,6 +61,8 @@
          dy (- (:y p) (:y c))]
      (Math/sqrt (+ (* dx dx) (* dy dy))))))
 
+(def bonus-city-subtitle "Bonus City")
+
 (defn- banner-text-for
   [wave]
   (str "WAVE " (long wave)))
@@ -65,31 +76,42 @@
   (max 0.0 (min 1.0 (double t))))
 
 (defn make
-  [width height announced-wave]
-  (let [c (playfield-center width height)
-        start-x (- 0.0 offscreen-margin)]
-    {:announced-wave (long announced-wave)
-     :text (banner-text-for announced-wave)
-     :phase phase-enter
-     :progress 0.0
-     :x start-x
-     :y (:y c)
-     :enter-start-x start-x
-     :center-x (:x c)
-     :center-y (:y c)
-     :exit-end-x (+ (double width) offscreen-margin)}))
+  ([width height announced-wave]
+   (make width height announced-wave false))
+  ([width height announced-wave bonus-city?]
+   (let [c (playfield-center width height)
+         start-x (- 0.0 offscreen-margin)
+         bonus? (boolean bonus-city?)]
+     {:announced-wave (long announced-wave)
+      :text (banner-text-for announced-wave)
+      :bonus-city? bonus?
+      :subtitle (if bonus? bonus-city-subtitle "")
+      :phase phase-enter
+      :progress 0.0
+      :x start-x
+      :y (:y c)
+      :enter-start-x start-x
+      :center-x (:x c)
+      :center-y (:y c)
+      :exit-end-x (+ (double width) offscreen-margin)})))
 
 (defn enter
-  "Put state on wave-banner screen announcing wave."
+  "Put state on wave-banner screen announcing wave.
+  Optional bonus-city? shows a Bonus City subtitle when a city was restored."
   ([state announced-wave]
+   (enter state announced-wave false))
+  ([state announced-wave bonus-city?]
    (enter state
           (or (:width state) 0)
           (or (:height state) 0)
-          announced-wave))
+          announced-wave
+          bonus-city?))
   ([state width height announced-wave]
+   (enter state width height announced-wave false))
+  ([state width height announced-wave bonus-city?]
    (assoc state
           :screen screens/wave-banner
-          :wave-banner (make width height announced-wave))))
+          :wave-banner (make width height announced-wave bonus-city?))))
 
 (defn clear
   "Leave banner and restore playing screen."
