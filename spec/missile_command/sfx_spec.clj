@@ -124,4 +124,27 @@
                     (core/set-mute true))
           result (core/handle state {:type :fire :battery :left})]
       (should (core/mute? (:state result)))
-      (should (core/sfx-emitted? (:state result) :sfx/launch)))))
+      (should (core/sfx-emitted? (:state result) :sfx/launch))))
+
+  (it "take-new returns only events from the host cursor"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    core/start-game)
+          a (:state (core/handle state {:type :fire :battery :left}))
+          n (count (core/sfx-events a))
+          b (:state (core/handle a {:type :fire :battery :center}))
+          fresh (core/sfx-take-new b n)]
+      (should (pos? n))
+      (should (seq fresh))
+      (should (every? #(= :sfx/launch (:type %)) fresh))
+      (should= (count (core/sfx-events b))
+               (+ n (count fresh)))))
+
+  (it "drain returns all events and clears the log"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    core/start-game
+                    (#(:state (core/handle % {:type :fire :battery :left}))))
+          [ev cleared] (core/sfx-drain state)]
+      (should (seq ev))
+      (should (core/sfx-emitted? state :sfx/launch))
+      (should (empty? (core/sfx-events cleared)))
+      (should-not (core/sfx-emitted? cleared :sfx/launch)))))
