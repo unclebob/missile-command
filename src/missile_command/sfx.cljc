@@ -1,5 +1,21 @@
 (ns missile-command.sfx
-  "Cumulative SFX event log for hosts and acceptance checks.")
+  "SFX event contract for hosts and acceptance checks.
+
+  Source of truth: cumulative vector `:sfx-events` on game state.
+  Each entry is a map with at least `{:type keyword}` (e.g. `:sfx/launch`).
+
+  Hosts (JVM + browser):
+  1. Remember the previous log length (or a cursor).
+  2. Play `(take-new state prev-count)` — the new events since last frame.
+  3. Update the cursor to `(count (events state))`.
+
+  `:events` on `handle`/`tick` results is not the SFX log. Fire may still
+  return step-local launch events for telemetry; prefer `:sfx-events` +
+  take-new for audio.
+
+  Acceptance / unit tests may use the full cumulative log via `events` and
+  `emitted?`. Production hosts should not retain unbounded growth beyond
+  their cursor needs — use `truncate-to` or `drain` if the log must shrink.")
 
 (defn emit
   "Append an SFX event to the state's cumulative log."
@@ -13,6 +29,25 @@
 (defn events
   [state]
   (vec (or (:sfx-events state) [])))
+
+(defn take-new
+  "SFX events from index `from` (inclusive) to the end of the log."
+  [state from]
+  (let [ev (events state)
+        n (count ev)
+        from (long (max 0 (min (long from) n)))]
+    (subvec ev from n)))
+
+(defn truncate-to
+  "Keep only the first `n` log entries (clear when n is 0)."
+  [state n]
+  (assoc state :sfx-events (vec (take (max 0 (long n)) (events state)))))
+
+(defn drain
+  "Return [events state'] with the log cleared after reading all events."
+  [state]
+  (let [ev (events state)]
+    [ev (assoc state :sfx-events [])]))
 
 (defn emitted?
   "True when an event of the given type (keyword or sfx/... string) was logged."
@@ -43,7 +78,3 @@
           (assoc :title-warning-played? true)
           (emit :sfx/warning)))
     (dissoc state :title-warning-played?)))
-
-;; clj-mutate-manifest-begin
-;; {:version 1, :tested-at "2026-07-25T10:05:30.089195-05:00", :module-hash "-1913937778", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 2, :hash "-384622950"} {:id "defn/emit", :kind "defn", :line 4, :end-line 7, :hash "687167721"} {:id "defn/emit-many", :kind "defn", :line 9, :end-line 11, :hash "-1337034557"} {:id "defn/events", :kind "defn", :line 13, :end-line 15, :hash "-501259531"} {:id "defn/emitted?", :kind "defn", :line 17, :end-line 21, :hash "-894919108"} {:id "defn/launch-events", :kind "defn", :line 23, :end-line 28, :hash "2033453565"} {:id "defn/maybe-emit", :kind "defn", :line 30, :end-line 33, :hash "-1495564980"} {:id "defn/maybe-title-warning", :kind "defn", :line 35, :end-line 45, :hash "-1112519407"}]}
-;; clj-mutate-manifest-end
