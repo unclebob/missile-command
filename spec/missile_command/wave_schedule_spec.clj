@@ -4,18 +4,24 @@
             [missile-command.wave-schedule :as wave-schedule]))
 
 (describe "wave-schedule activate"
-  (it "spawns ballistics MIRVs smart bombs and flyers for a late wave"
-    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+  (it "attack 1 is ballistic-only; final attack adds specials on a late wave"
+    (let [first-attack (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+                           (core/set-wave 9)
+                           core/activate-wave-schedule)
+          final (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/set-wave 9)
-                    core/activate-wave-schedule)
-          metrics (core/wave-schedule-metrics-for state 9)]
+                    (core/begin-wave-attack 3))
+          metrics (core/wave-schedule-metrics-for final 9)]
+      (should= 1 (:wave-attack first-attack))
       (should= (:enemy-count metrics)
                (count (filter #(= core/enemy-kind-ballistic (:enemy-kind %))
-                              (core/enemy-missiles state))))
-      (should= (:mirv-count metrics) (count (core/mirv-parents state)))
-      (should= (:smart-bomb-count metrics) (count (core/smart-bombs state)))
-      (should= (:bomber-count metrics) (count (core/flyers-of-kind state :bomber)))
-      (should= (:satellite-count metrics) (count (core/flyers-of-kind state :satellite)))))
+                              (core/enemy-missiles first-attack))))
+      (should= 0 (count (core/mirv-parents first-attack)))
+      (should= 3 (:wave-attack final))
+      (should= (:mirv-count metrics) (count (core/mirv-parents final)))
+      (should= (:smart-bomb-count metrics) (count (core/smart-bombs final)))
+      (should= (:bomber-count metrics) (count (core/flyers-of-kind final :bomber)))
+      (should= (:satellite-count metrics) (count (core/flyers-of-kind final :satellite)))))
 
   (it "uses staggered flyer drop progresses for multiple drops"
     (let [one (#'wave-schedule/flyer-drop-progresses 1)

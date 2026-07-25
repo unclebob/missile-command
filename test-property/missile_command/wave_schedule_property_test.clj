@@ -3,6 +3,7 @@
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :refer [for-all]]
             [missile-command.wave-schedule :as ws]
+            [missile-command.waves :as waves]
             [missile-command.core :as core]))
 
 (defspec flyer-drop-progresses-are-sorted-and-in-range
@@ -29,7 +30,7 @@
            (or (zero? n-cities)
                (every? (set (map :id cities)) ids))))))
 
-(defspec activate-matches-schedule-metrics-counts
+(defspec first-attack-is-ballistic-only
   25
   (for-all [wave (gen/elements [1 3 5 8 9 12])]
     (let [state (-> (core/start-game (core/new-game {:width 800 :height 600}))
@@ -37,12 +38,28 @@
                     core/activate-wave-schedule)
           m (core/wave-schedule-metrics-for state wave)
           ballistics (count (filter #(= core/enemy-kind-ballistic (:enemy-kind %))
+                                    (core/enemy-missiles state)))]
+      (and (= 1 (:wave-attack state))
+           (= (long (:enemy-count m)) ballistics)
+           (zero? (count (core/mirv-parents state)))
+           (zero? (count (core/smart-bombs state)))
+           (zero? (count (core/flyers state)))))))
+
+(defspec final-attack-adds-specials
+  25
+  (for-all [wave (gen/elements [5 8 9 12])]
+    (let [state (-> (core/start-game (core/new-game {:width 800 :height 600}))
+                    (core/set-wave wave)
+                    (core/begin-wave-attack waves/attacks-per-wave))
+          m (core/wave-schedule-metrics-for state wave)
+          ballistics (count (filter #(= core/enemy-kind-ballistic (:enemy-kind %))
                                     (core/enemy-missiles state)))
           mirvs (count (core/mirv-parents state))
           smarts (count (core/smart-bombs state))
           bombers (count (core/flyers-of-kind state :bomber))
           sats (count (core/flyers-of-kind state :satellite))]
-      (and (= (long (:enemy-count m)) ballistics)
+      (and (= waves/attacks-per-wave (:wave-attack state))
+           (= (long (:enemy-count m)) ballistics)
            (= (long (:mirv-count m)) mirvs)
            (= (long (:smart-bomb-count m)) smarts)
            (= (long (:bomber-count m)) bombers)
@@ -60,30 +77,38 @@
            (= 10 (:missiles restored))
            (every? #(= 10 (:missiles %)) (core/batteries state))))))
 
-(defspec activate-empty-sky-then-full-schedule-after-banner
+(defspec clearing-mid-wave-attack-advances-salvo
+  20
+  (for-all []
+    (let [state (-> (core/start-game (core/new-game {:width 800 :height 600}))
+                    (core/set-wave 1)
+                    core/activate-wave-schedule)
+          cleared (assoc state
+                         :enemy-missiles []
+                         :flyers []
+                         :wave-had-enemies? true)
+          after (:state (core/tick cleared 0.05))]
+      (and (= 1 (:wave-attack state))
+           (= 2 (:wave-attack after))
+           (not (core/wave-banner? after))
+           (pos? (count (core/enemy-missiles after)))))))
+
+(defspec last-attack-clear-opens-wave-banner
   15
   (for-all []
     (let [playing (core/start-game (core/new-game {:width 800 :height 600}))
-          after-wave1 (core/activate-wave-schedule (core/set-wave playing 1))
-          ;; Clear sky and complete wave → banner for wave 2
-          empty (assoc after-wave1 :enemy-missiles [] :flyers []
+          last-attack (-> playing
+                          (core/set-wave 1)
+                          (core/begin-wave-attack waves/attacks-per-wave))
+          empty (assoc last-attack
+                       :enemy-missiles []
+                       :flyers []
                        :wave-had-enemies? true)
           completed (loop [s empty n 0]
                       (cond
                         (core/wave-banner? s) s
                         (> n 50) s
-                        :else (recur (:state (core/tick s 0.05)) (inc n))))
-          resumed (loop [s completed n 0]
-                    (cond
-                      (core/playing? s) s
-                      (> n 500) s
-                      :else (recur (:state (core/tick s 0.05)) (inc n))))
-          scheduled (core/activate-wave-schedule resumed)
-          m (core/wave-schedule-metrics-for scheduled (core/wave scheduled))]
+                        :else (recur (:state (core/tick s 0.05)) (inc n))))]
       (and (core/wave-banner? completed)
            (= 2 (core/wave completed))
-           (core/playing? resumed)
-           (pos? (long (:enemy-count m)))
-           (= (long (:enemy-count m))
-              (count (filter #(= core/enemy-kind-ballistic (:enemy-kind %))
-                             (core/enemy-missiles scheduled))))))))
+           (= 2 (core/wave-banner-announced-wave completed))))))
