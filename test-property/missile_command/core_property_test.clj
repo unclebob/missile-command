@@ -654,17 +654,36 @@
            (= n (core/bonus-city-earned-events state))
            (= 6 (count (core/living-cities state)))))))
 
-(defspec bonus-city-restores-destroyed-without-exceeding-six
+(defspec bonus-city-award-stays-in-reserve-mid-wave
   25
   (for-all [city-id city-index-gen]
     (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/destroy-city city-id)
                     (core/set-bonus-city-threshold 10000)
                     (core/set-score 10000))]
-      (and (core/living-city? state city-id)
-           (zero? (core/bonus-cities state))
-           (= 6 (count (core/living-cities state)))
+      (and (not (core/living-city? state city-id))
+           (= 1 (core/bonus-cities state))
+           (= 5 (count (core/living-cities state)))
            (= 1 (core/bonus-city-earned-events state))))))
+
+(defspec wave-end-places-bonus-cities-from-reserve
+  20
+  (for-all [city-id city-index-gen]
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+                    (core/destroy-city city-id)
+                    (core/set-bonus-city-reserve 1)
+                    (core/set-wave-enemies-active 1)
+                    (assoc :wave-had-enemies? true)
+                    (assoc :enemy-missiles [] :flyers []))
+          after (loop [s state n 0]
+                  (cond
+                    (core/wave-banner? s) s
+                    (> n 50) s
+                    :else (recur (:state (core/tick s 0.05)) (inc n))))]
+      (and (core/wave-banner? after)
+           (core/living-city? after city-id)
+           (zero? (core/bonus-cities after))
+           (= 6 (count (core/living-cities after)))))))
 
 (defn- destroy-all-cities
   [state]
@@ -896,8 +915,8 @@
              (core/end-fireball-centered? state)
              (zero? (count (core/living-cities state))))
         (and (not (core/the-end? state))
-             (= reserve (count (core/living-cities state)))
-             (zero? (core/bonus-cities state)))))))
+             (zero? (count (core/living-cities state)))
+             (= reserve (core/bonus-cities state)))))))
 
 (defspec fire-is-blocked-after-the-end
   20
@@ -932,11 +951,14 @@
                     (core/set-bonus-city-threshold 1000)
                     (core/set-score (* n 1000)))
           living (count (core/living-cities state))
-          reserve (core/bonus-cities state)]
-      (and (<= living 6)
-           (= living (min 6 (+ 4 n)))
-           (= reserve (max 0 (- (+ 4 n) 6)))
-           (= n (core/bonus-city-earned-events state))))))
+          reserve (core/bonus-cities state)
+          placed (core/apply-bonus-cities-from-reserve state)]
+      (and (= 4 living)
+           (= n reserve)
+           (= n (core/bonus-city-earned-events state))
+           (<= (count (core/living-cities placed)) 6)
+           (= (count (core/living-cities placed)) (min 6 (+ 4 n)))
+           (= (core/bonus-cities placed) (max 0 (- (+ 4 n) 6)))))))
 
 (defn- advance-until-no-mirv-parents
   [state]

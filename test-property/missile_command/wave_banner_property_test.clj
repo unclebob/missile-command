@@ -64,4 +64,4 @@
       (and (core/wave-banner? completed)
            (= 2 (core/wave-banner-announced-wave completed))
            (= 2 (core/wave completed))
-           (core/sfx-emitted? completed :sfx/wave-clear)))))
+           (core/sfx-emitted? completed :sfx/wave)))))

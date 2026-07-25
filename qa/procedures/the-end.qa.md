@@ -25,7 +25,7 @@ Depends on **US-10**. Out of scope: high-score initials (US-18), title return (U
 | Condition | Result |
 |-----------|--------|
 | Living cities ≥ 1 | Not THE END |
-| Living = 0 and reserve ≥ 1 | Restore from reserve; not THE END while living &gt; 0 |
+| Living = 0 and reserve ≥ 1 | Not THE END; cities stay down until wave-end restore (reserve is not placed mid-wave) |
 | Living = 0 and reserve = 0 | Enter THE END + presentation sequence |
 | After THE END | No defensive launches; score available |
 

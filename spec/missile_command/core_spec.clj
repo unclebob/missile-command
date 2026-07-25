@@ -687,14 +687,14 @@
       (should (core/end-fireball-centered? state))
       (should= 0 (core/final-score state))))
 
-  (it "restores from reserve instead of ending"
+  (it "reserve prevents THE END without mid-wave restore"
     (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (#(reduce core/destroy-city % (map :id (core/cities %))))
                     (core/set-bonus-city-reserve 2)
                     core/evaluate-game-over)]
       (should-not (core/the-end? state))
-      (should= 2 (count (core/living-cities state)))
-      (should= 0 (core/bonus-cities state))))
+      (should= 0 (count (core/living-cities state)))
+      (should= 2 (core/bonus-cities state))))
 
   (it "blocks firing after THE END"
     (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
@@ -874,21 +874,21 @@
       (should= 3 (core/bonus-cities multi))
       (should= 3 (core/bonus-city-earned-events multi))))
 
-  (it "restores the lowest destroyed city when a bonus is earned"
+  (it "does not restore destroyed cities mid-wave when a bonus is earned"
     (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/destroy-city 0)
                     (core/set-score 10000))]
-      (should (core/living-city? state 0))
-      (should= 6 (count (core/living-cities state)))
-      (should= 0 (core/bonus-cities state))))
+      (should-not (core/living-city? state 0))
+      (should= 5 (count (core/living-cities state)))
+      (should= 1 (core/bonus-cities state))))
 
-  (it "never places more than six living cities"
+  (it "keeps stacked threshold awards in reserve until wave end"
     (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/destroy-city 0)
                     (core/destroy-city 1)
                     (core/set-score 30000))]
-      (should= 6 (count (core/living-cities state)))
-      (should= 1 (core/bonus-cities state))))
+      (should= 4 (count (core/living-cities state)))
+      (should= 3 (core/bonus-cities state))))
 
   (it "applies remaining reserve after wave resolution"
     (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
