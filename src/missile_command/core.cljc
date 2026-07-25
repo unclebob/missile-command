@@ -1429,7 +1429,7 @@
       (pos? bombers) (spawn-wave-flyer :bomber)
       (pos? sats) (spawn-wave-flyer :satellite))))
 
-(defn- start-wave-attack
+(defn begin-wave-attack
   "Begin attack k (1-based): a full salvo of ballistics; specials on the last."
   [state k]
   (let [n (attacks-per-wave)
@@ -1454,7 +1454,7 @@
   "Start attack 1 of the current wave (a 3-missile salvo). Attacks 2 and 3
   begin only after the previous attack is fully cleared."
   [state]
-  (start-wave-attack state 1))
+  (begin-wave-attack state 1))
 
 (defn- maybe-advance-wave-attack
   "When the current attack is cleared and more remain, start the next attack."
@@ -1464,7 +1464,7 @@
     (let [a (current-wave-attack state)
           n (attacks-per-wave)]
       (if (and a (< a n))
-        (start-wave-attack state (inc a))
+        (begin-wave-attack state (inc a))
         state))))
 
 (defn set-non-destroyed-battery-ammo

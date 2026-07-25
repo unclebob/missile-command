@@ -310,15 +310,24 @@
       (should (every? #(= core/enemy-kind-ballistic (:enemy-kind %))
                       (core/enemy-missiles state)))))
 
-  (it "final sequential attack on wave 4 includes MIRVs"
+  (it "advances to the next attack only after the current salvo is cleared"
     (let [start (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
-                    (core/set-wave 4)
                     (core/activate-wave-schedule))
-          state (loop [s start n 0]
-                  (cond
-                    (= 3 (:wave-attack s)) s
-                    (> n 50000) s
-                    :else (recur (:state (core/tick s 0.05)) (inc n))))
+          ;; Clear attack 1 without waiting for ground impact: empty the sky.
+          cleared (assoc start :enemy-missiles [] :flyers [])
+          advanced (:state (core/tick cleared 0.05))]
+      (should= 1 (:wave-attack start))
+      (should= 2 (:wave-attack advanced))
+      (should= 3 (count (core/enemy-missiles advanced)))
+      (should (every? #(= core/enemy-kind-ballistic (:enemy-kind %))
+                      (core/enemy-missiles advanced)))))
+
+  (it "final sequential attack on wave 4 includes MIRVs"
+    ;; Start attack 3 with cities intact so specials have targets (free-running
+    ;; earlier salvos can wipe cities before the final attack begins).
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+                    (core/set-wave 4)
+                    (core/begin-wave-attack 3))
           parents (core/mirv-parents state)
           metrics (core/wave-schedule-metrics-for state 4)]
       (should= 3 (:wave-attack state))
@@ -329,14 +338,9 @@
       (should (pos? (count parents)))))
 
   (it "final sequential attack spawns smart bombs and flyers on later waves"
-    (let [start (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/set-wave 9)
-                    (core/activate-wave-schedule))
-          state (loop [s start n 0]
-                  (cond
-                    (= 3 (:wave-attack s)) s
-                    (> n 50000) s
-                    :else (recur (:state (core/tick s 0.05)) (inc n))))
+                    (core/begin-wave-attack 3))
           metrics (core/wave-schedule-metrics-for state 9)]
       (should= (:smart-bomb-count metrics) (count (core/smart-bombs state)))
       (should= (:bomber-count metrics) (count (core/flyers-of-kind state :bomber)))
