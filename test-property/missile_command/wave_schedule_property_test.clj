@@ -33,10 +33,9 @@
 (defspec first-attack-is-ballistic-only
   25
   (for-all [wave (gen/elements [1 3 5 8 9 12])]
-    ;; Specials spawn on the final sequential attack (begin-wave-attack N).
     (let [state (-> (core/start-game (core/new-game {:width 800 :height 600}))
                     (core/set-wave wave)
-                    (core/begin-wave-attack waves/attacks-per-wave))
+                    core/activate-wave-schedule)
           m (core/wave-schedule-metrics-for state wave)
           ballistics (count (filter #(= core/enemy-kind-ballistic (:enemy-kind %))
                                     (core/enemy-missiles state)))]
