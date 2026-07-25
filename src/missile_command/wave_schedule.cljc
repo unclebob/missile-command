@@ -63,17 +63,16 @@
               (vec fs)))))
 
 (defn- spawn-wave-mirvs
-  "Spawn n MIRV parents toward living cities from distributed sky origins."
+  "Spawn n MIRV parents toward living cities from random sky origins."
   [state n {:keys [living-cities city playfield-width spawn-enemy-at
                    enemy-kind-mirv]}]
   (let [city-ids (cycle-living-city-ids (living-cities state) n)
-        width (playfield-width state)
-        total (count city-ids)]
-    (reduce (fn [s [i city-id]]
+        width (playfield-width state)]
+    (reduce (fn [s city-id]
               (let [c (city s city-id)]
                 (if c
                   (spawn-enemy-at s
-                                  {:x (waves/sky-origin-x width i total) :y 0}
+                                  {:x (waves/random-sky-origin-x width) :y 0}
                                   {:x (:x c) :y (:y c)}
                                   :city city-id
                                   {:enemy-kind enemy-kind-mirv
@@ -81,7 +80,7 @@
                                    :split-progress default-mirv-split-progress})
                   s)))
             state
-            (map-indexed vector city-ids))))
+            city-ids)))
 
 (defn- spawn-wave-smart-bombs
   "Spawn n smart bombs toward living cities."
@@ -168,10 +167,10 @@
                     :city (spawn-city-from s origin-x 0 id)
                     :battery (spawn-battery-from s origin-x 0 id)
                     s)))]
-    (reduce (fn [s [i target-spec]]
-              (spawn s (waves/sky-origin-x width i n) target-spec))
+    (reduce (fn [s target-spec]
+              (spawn s (waves/random-sky-origin-x width) target-spec))
             state
-            (map-indexed vector targets))))
+            targets)))
 
 (defn sky-clear?
   [state]
@@ -213,4 +212,3 @@
       (if (and a (< a n))
         (begin-attack-fn state (inc a))
         state))))
-

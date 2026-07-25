@@ -17,16 +17,35 @@
   [
    {:pattern #"^the first enemy missile progress equals <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ p-param] example]
-   (let [expected (support/example-double example p-param "progress")
-   m (first (core/enemy-missiles (:state world)))
-   actual (double (:progress m))]
-   (support/assert-condition m "missing enemy missile")
-   (let [scale 1000000000.0]
-   (support/assert-condition
-   (= (long (Math/round (* actual scale)))
-   (long (Math/round (* expected scale))))
-   (str "enemy progress " actual " expected " expected))))
-   world)}
+          (let [expected (support/example-double example p-param "progress")
+                m (first (core/enemy-missiles (:state world)))
+                actual (double (:progress m))]
+            (support/assert-condition m "missing enemy missile")
+            (let [scale 1000000000.0]
+              (support/assert-condition
+               (= (long (Math/round (* actual scale)))
+                  (long (Math/round (* expected scale))))
+               (str "enemy progress " actual " expected " expected))))
+          world)}
+
+   {:pattern #"^the first enemy missile progress matches last applied dt and path length$"
+    :fn (fn [world _ _]
+          (let [state (:state world)
+                m (first (core/enemy-missiles state))
+                _ (support/assert-condition m "missing enemy missile")
+                dt (double (core/last-applied-dt state))
+                dx (- (double (:x1 m)) (double (:x0 m)))
+                dy (- (double (:y1 m)) (double (:y0 m)))
+                length (Math/sqrt (+ (* dx dx) (* dy dy)))
+                expected (/ (* (double (:speed m)) dt) length)
+                actual (double (:progress m 0.0))
+                scale 1000000000.0]
+            (support/assert-condition
+             (= (long (Math/round (* actual scale)))
+                (long (Math/round (* expected scale))))
+             (str "enemy progress " actual " expected " expected
+                  " for path " length " dt " dt)))
+          world)}
 
    {:pattern #"^an enemy missile targeting city (\d+)$"
     :fn (fn [world [_ city-text] _]
