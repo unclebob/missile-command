@@ -2,6 +2,7 @@
   (:require [missile-command.batteries :as batteries]
             [missile-command.bonus-cities :as bonus-cities]
             [missile-command.cities :as cities]
+            [missile-command.combat :as combat]
             [missile-command.flyers :as flyers]
             [missile-command.game-end :as game-end]
             [missile-command.hud :as hud]
@@ -821,54 +822,21 @@
   (handle state {:type :key :key key}))
 
 (defn- spawn-fireball-at
-  "Allocate and attach an expanding fireball centered at x,y.
-  Emits :sfx/boom at onset (defensive intercept or ground impact)."
+  "Allocate and attach an expanding fireball centered at x,y."
   [state x y]
-  (let [[fid state] (next-entity-id state)
-        fireball (missiles/make-fireball fid x y)]
-    (-> state
-        (update :fireballs (fnil conj []) fireball)
-        (sfx/emit :sfx/boom))))
-
-(defn- spawn-fireball-from-missile
-  [state missile]
-  (spawn-fireball-at state (:x1 missile) (:y1 missile)))
+  (combat/spawn-fireball-at state x y))
 
 (defn- tick-defensive-missiles
   [state dt]
-  (reduce (fn [s missile]
-            (let [result (missiles/advance-defensive missile dt)]
-              (if (missiles/arrived? result)
-                (spawn-fireball-from-missile s missile)
-                (update s :defensive-missiles (fnil conj []) result))))
-          (assoc state :defensive-missiles [])
-          (defensive-missiles state)))
+  (combat/tick-defensive state dt))
 
 (defn- tick-fireballs
   [state dt]
-  (reduce (fn [s fireball]
-            (let [result (missiles/advance-fireball fireball dt)]
-              (if (= missiles/expired result)
-                s
-                (update s :fireballs (fnil conj []) result))))
-          (assoc state :fireballs [])
-          (fireballs state)))
-
-(defn- target-hit-by-fireball?
-  [target fireballs]
-  (some #(missiles/point-in-fireball? % (:x target) (:y target)) fireballs))
+  (combat/tick-fireballs state dt))
 
 (defn- destroy-targets-in-fireballs
   [state]
-  (let [fbs (fireballs state)]
-    (update state :destroyable-targets
-            (fn [targets]
-              (mapv (fn [target]
-                      (if (or (:destroyed? target)
-                              (target-hit-by-fireball? target fbs))
-                        (assoc target :destroyed? true)
-                        target))
-                    (or targets []))))))
+  (combat/destroy-targets-in-fireballs state))
 
 (defn- assoc-long
   [state k v]
@@ -1284,9 +1252,7 @@
       (playing? state)
       (wrap (-> state
                 (advance-clock applied)
-                (tick-defensive-missiles applied)
-                (tick-fireballs applied)
-                (destroy-targets-in-fireballs)
+                (combat/tick-defensive-phase applied)
                 (tick-enemy-missiles applied)
                 (tick-flyers applied)
                 (maybe-advance-wave-attack)
