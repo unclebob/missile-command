@@ -7,7 +7,7 @@ Hand off **one task at a time** (SwarmForge: complete pipeline before starting t
 | Order | Task name | Plan | Status |
 |------:|-----------|------|--------|
 | 0 | `arch-docs-adr` | [pr-00-document-adr.md](pr-00-document-adr.md) | Done (docs landed) |
-| 1 | `wave-start-in-core` | [pr-01-wave-start-in-core.md](pr-01-wave-start-in-core.md) | Queued to coder (prio 50) |
+| 1 | `wave-start-in-core` | [pr-01-wave-start-in-core.md](pr-01-wave-start-in-core.md) | **Done** (QA merged) |
 | 2 | `sfx-event-contract` | [pr-02-sfx-event-contract.md](pr-02-sfx-event-contract.md) | Queued to coder (prio 51) |
 | 3 | `extract-bonus-cities` | [pr-03-extract-bonus-cities.md](pr-03-extract-bonus-cities.md) | Queued to coder (prio 52) |
 | 4 | `extract-combat` | [pr-04-extract-combat.md](pr-04-extract-combat.md) | Queued to coder (prio 53) |
