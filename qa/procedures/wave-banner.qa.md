@@ -13,7 +13,7 @@ Verify that **between waves** the game shows a **banner page** announcing the **
 | Trigger | Wave complete (all threats gone) |
 | Screen | `wave-banner` (banner page between playing waves) |
 | Copy | `WAVE N` where N is the **upcoming** wave number |
-| Motion | Text enters from off-screen → center, then exits back off-screen |
+| Motion | Text enters from off-screen → center (~2s), then exits off-screen (~2s) |
 | After | Screen returns to `playing`; wave number is N; batteries rearmed per US-08 |
 
 ## Preconditions

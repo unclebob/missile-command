@@ -4,8 +4,9 @@
 
 (def phase-enter :enter)
 (def phase-exit :exit)
-(def enter-duration 0.6)
-(def exit-duration 0.6)
+;; Long enough to read WAVE N while sliding (was 0.6 / 0.6).
+(def enter-duration 2.0)
+(def exit-duration 2.0)
 (def offscreen-margin 80.0)
 
 (defn screen?
