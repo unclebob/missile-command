@@ -380,6 +380,13 @@
                   (:state world)
                   (support/example-int example thresh-param "threshold"))))}
 
+   {:pattern #"^the bonus city threshold is (\d+)$"
+    :fn (fn [world [_ thresh-text] _]
+          (assoc world :state
+                 (core/set-bonus-city-threshold
+                  (:state world)
+                  (support/parse-int thresh-text "threshold"))))}
+
    {:pattern #"^the score becomes <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ score-param] example]
           (assoc world :state
