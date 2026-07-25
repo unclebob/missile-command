@@ -1314,8 +1314,8 @@
 
 (defn tick
   "Advance simulation by dt seconds (clamped). Returns {:state s :events [...]}.
-  Playing runs combat; THE END expands the end fireball; paused freezes;
-  wave banner animates; other shell screens (title, high-scores, options) advance the clock only."
+  Playing runs combat; wave-banner animates then resumes; THE END expands the
+  end fireball; paused freezes; other shells advance the clock only."
   [state dt]
   (let [applied (missiles/clamp-dt dt)]
     (cond

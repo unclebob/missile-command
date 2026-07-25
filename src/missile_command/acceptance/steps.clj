@@ -18,6 +18,7 @@
             [missile-command.acceptance.wave-banner-steps :as wave-banner-steps]
             [missile-command.core :as core]
             [missile-command.waves :as waves]))
+
 (defn- assert-playfield-dimension
   [world example param-name label reader]
   (let [expected (support/example-int example param-name label)
