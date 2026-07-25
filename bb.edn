@@ -82,6 +82,7 @@
                    "missile_command/wave_lifecycle"
                    "missile_command/bonus_cities"
                    "missile_command/combat"
+                   "missile_command/shell"
                    "missile_command/acceptance"
                    "missile_command/jvm/input"]))}
 
@@ -111,6 +112,7 @@
                    "src/missile_command/wave_lifecycle.cljc"
                    "src/missile_command/bonus_cities.cljc"
                    "src/missile_command/combat.cljc"
+                   "src/missile_command/shell.cljc"
                    "src/missile_command/acceptance"
                    "src/missile_command/jvm/input.clj"]))}
 
