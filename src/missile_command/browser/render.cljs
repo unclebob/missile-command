@@ -254,7 +254,7 @@
     (q/text (core/title-game-name-of state) (/ w 2.0) (/ h 2.0))
     (q/text-size 18)
     (q/fill 220)
-    (q/text "Click or press Enter to start" (/ w 2.0) (+ (/ h 2.0) 48))
+    (q/text "Click for sound, then click or Enter to start" (/ w 2.0) (+ (/ h 2.0) 48))
     (q/text-size 15)
     (q/fill 180)
     (q/text "O options   H high scores" (/ w 2.0) (+ (/ h 2.0) 80))

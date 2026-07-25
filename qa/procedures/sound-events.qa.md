@@ -13,11 +13,13 @@ Depends on US-06 combat and US-19 mute. Out of scope: licensed samples, backgrou
 | Event | When |
 |-------|------|
 | `sfx/launch` | Defensive missile fired |
-| `sfx/explosion` | Fireball destroys an enemy (or major blast) |
+| `sfx/boom` | Combat fireball starts (defensive arrival or ground impact) |
+| `sfx/intercepted` | Fireball destroys an enemy (intercept) |
+| `sfx/warning` | Title screen (once per visit) |
 | `sfx/city-destroyed` | City hit |
 | `sfx/battery-destroyed` | Battery hit |
 | `sfx/low-ammo` | Fire leaves battery at low threshold (default **2** → after fire **1**) |
-| `sfx/wave-clear` | Wave completed |
+| `sfx/wave` | Wave banner shown |
 | `sfx/bonus-city` | Bonus city threshold crossed |
 | `sfx/the-end` | Enter THE END |
 | `sfx/ui` | Optional menu navigate/confirm |
@@ -41,13 +43,13 @@ Depends on US-06 combat and US-19 mute. Out of scope: licensed samples, backgrou
 
 ### B. Launch — fire battery; assert `sfx/launch` in event log; hear blip if unmuted.
 
-### C. Explosion — intercept enemy; assert `sfx/explosion`.
+### C. Intercepted — intercept enemy with fireball; assert `sfx/intercepted`.
 
 ### D. Impacts — city hit → `sfx/city-destroyed`; battery hit → `sfx/battery-destroyed`.
 
 ### E. Low ammo — set ammo 2; fire; assert `sfx/low-ammo`.
 
-### F. Wave clear — complete wave; assert `sfx/wave-clear`.
+### F. Wave banner — complete wave; assert `sfx/wave` when banner shows.
 
 ### G. Bonus city — score ≥ 10000; assert `sfx/bonus-city`.
 
