@@ -12,10 +12,10 @@ Hand off **one task at a time** (SwarmForge: complete pipeline before starting t
 | 3 | `extract-bonus-cities` | [pr-03-extract-bonus-cities.md](pr-03-extract-bonus-cities.md) | **Done** (QA merged) |
 | 4 | `extract-combat` | [pr-04-extract-combat.md](pr-04-extract-combat.md) | **Done** (QA merged; defensive/fireball slice) |
 | 5 | `extract-shell` | [pr-05-extract-shell.md](pr-05-extract-shell.md) | **Done** (QA merged) |
-| 6 | `core-testing-api` | [pr-06-core-testing-api.md](pr-06-core-testing-api.md) | **Done** (QA merged; testing ns + rng-seed) |
-| 7 | `host-input-split` | [pr-07-host-input-split.md](pr-07-host-input-split.md) | Deferred (hosts already slimmer) |
-| 8 | `seedable-sky-rng` | [pr-08-seedable-sky-rng.md](pr-08-seedable-sky-rng.md) | **Done** (landed with core-testing-api) |
-| 9 | `arch-docs-invariants` | [pr-09-arch-docs-invariants.md](pr-09-arch-docs-invariants.md) | Queued / partial (index + rng tests) |
+| 6 | `core-testing-api` | [pr-06-core-testing-api.md](pr-06-core-testing-api.md) | **Done** (QA merged) |
+| 7 | `host-input-split` | [pr-07-host-input-split.md](pr-07-host-input-split.md) | **Done** (QA: deferred full split; pure jvm.input confirmed) |
+| 8 | `seedable-sky-rng` | [pr-08-seedable-sky-rng.md](pr-08-seedable-sky-rng.md) | **Done** (QA merged) |
+| 9 | `arch-docs-invariants` | [pr-09-arch-docs-invariants.md](pr-09-arch-docs-invariants.md) | **Done** (QA merged) |
 
 ## Rules for every PR
 
