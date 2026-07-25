@@ -1,21 +1,27 @@
 (ns missile-command.jvm.audio
   "Play short SFX clips for core :sfx/* events (javax.sound)."
   (:require [clojure.java.io :as io])
-  (:import [javax.sound.sampled AudioSystem Clip DataLine$Info]
+  (:import [javax.sound.sampled AudioSystem Clip DataLine$Info
+            LineEvent LineEvent$Type LineListener]
            [java.io ByteArrayInputStream ByteArrayOutputStream File]))
 
 (def ^:private type->file
   {:sfx/launch "launch.wav"
+   :sfx/boom "boom.wav"
    :sfx/explosion "explosion.wav"
-   :sfx/city-destroyed "city-destroyed.wav"
-   :sfx/battery-destroyed "battery-destroyed.wav"
+   :sfx/intercepted "intercepted.wav"
+   :sfx/city-destroyed "city.wav"
+   :sfx/battery-destroyed "city.wav"
    :sfx/low-ammo "low-ammo.wav"
+   :sfx/wave "wave.wav"
    :sfx/wave-clear "wave-clear.wav"
    :sfx/bonus-city "bonus-city.wav"
    :sfx/the-end "the-end.wav"
+   :sfx/warning "warning.wav"
    :sfx/ui "ui.wav"})
 
 (defonce ^:private bytes-cache (atom {}))
+(defonce ^:private active-title-clips (atom #{}))
 
 (defn- load-bytes
   [filename]
@@ -50,6 +56,29 @@
           (.open clip ais2)
           clip)))))
 
+(defn- track-title-clip!
+  "Remember title warning clip so it can be stopped when play starts."
+  [^Clip clip]
+  (swap! active-title-clips conj clip)
+  (.addLineListener
+   clip
+   (reify LineListener
+     (update [_ event]
+       (when (or (= LineEvent$Type/STOP (.getType event))
+                 (= LineEvent$Type/CLOSE (.getType event)))
+         (swap! active-title-clips disj clip)
+         (try (.close clip) (catch Exception _ nil)))))))
+
+(defn stop-title!
+  "Stop any in-flight title warning sound."
+  []
+  (doseq [^Clip c @active-title-clips]
+    (try
+      (when (.isRunning c) (.stop c))
+      (.close c)
+      (catch Exception _ nil)))
+  (reset! active-title-clips #{}))
+
 (defn play!
   "Play SFX for event type unless muted. Safe no-op if clip missing."
   [type muted?]
@@ -59,6 +88,8 @@
             filename (get type->file kw)]
         (when filename
           (when-let [^Clip clip (open-clip filename)]
+            (when (= kw :sfx/warning)
+              (track-title-clip! clip))
             ;; Fresh clip per play so overlapping SFX work.
             (doto clip
               (.setFramePosition 0)

@@ -65,21 +65,21 @@ Examples:
 
 Scenario: THE END 04 reserve cities prevent THE END when all living cities are gone
   And all cities have been destroyed
-  And the bonus city reserve is set to <starting_reserve>
+  And the bonus city reserve is set to <reserve>
   And there are 0 living cities
   When game over conditions are evaluated
   Then the playfield width is <expected_width>
   And the playfield height is <expected_height>
   And the game is not at THE END
-  And there are <living_cities> living cities
+  And there are 0 living cities
   And the bonus city reserve is <reserve>
 
 Examples:
-  | width | height | starting_reserve | living_cities | reserve | expected_width | expected_height |
-  | 800   | 600    | 1                | 1             | 0       | 800            | 600             |
-  | 800   | 600    | 2                | 2             | 0       | 800            | 600             |
-  | 800   | 600    | 3                | 3             | 0       | 800            | 600             |
-  | 1920  | 1080   | 1                | 1             | 0       | 1920           | 1080            |
+  | width | height | reserve | expected_width | expected_height |
+  | 800   | 600    | 1       | 800            | 600             |
+  | 800   | 600    | 2       | 800            | 600             |
+  | 800   | 600    | 3       | 800            | 600             |
+  | 1920  | 1080   | 1       | 1920           | 1080            |
 
 Scenario: THE END 05 THE END uses the THE END message not Game Over
   And all cities have been destroyed

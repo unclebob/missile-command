@@ -102,6 +102,8 @@
 (defn- emit-new-sfx!
   "Play new SFX clips and emit qa-sfx lines; honor mute for playback."
   [prev-state state]
+  (when (and (core/title? prev-state) (core/playing? state))
+    (audio/stop-title!))
   (let [prev (count (or (:sfx-events prev-state) []))
         all (or (:sfx-events state) [])
         fresh (vec (drop prev all))
