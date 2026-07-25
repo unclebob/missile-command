@@ -44,5 +44,5 @@
      :title-game-name (screens/title-game-name-of state)}))
 
 ;; clj-mutate-manifest-begin
-;; {:version 1, :tested-at "2026-07-24T15:57:26.98598-05:00", :module-hash "415219160", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 5, :hash "-1606708647"} {:id "defn-/battery", :kind "defn-", :line 7, :end-line 9, :hash "-913679822"} {:id "defn-/battery-ammo", :kind "defn-", :line 11, :end-line 13, :hash "-1440797484"} {:id "defn-/battery-ammo-map", :kind "defn-", :line 15, :end-line 19, :hash "335275764"} {:id "defn/projection", :kind "defn", :line 21, :end-line 40, :hash "597622685"}]}
+;; {:version 1, :tested-at "2026-07-24T21:14:30.725398-05:00", :module-hash "-484243791", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 5, :hash "-1606708647"} {:id "defn-/battery", :kind "defn-", :line 7, :end-line 9, :hash "-913679822"} {:id "defn-/battery-ammo", :kind "defn-", :line 11, :end-line 17, :hash "880246023"} {:id "defn-/battery-ammo-map", :kind "defn-", :line 19, :end-line 23, :hash "335275764"} {:id "defn/projection", :kind "defn", :line 25, :end-line 44, :hash "597622685"}]}
 ;; clj-mutate-manifest-end

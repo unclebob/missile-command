@@ -1,3 +1,7 @@
+# acceptance-mutation-manifest-begin
+# {"version":1,"tested_at":"2026-07-25T02:15:03.028423Z","feature_name":"Smart bombs","feature_path":"features/smart-bombs.feature","background_hash":"2ad6c53e758cb94bd90a7e42d0ca6dc51bfdcaa4e3368f8e8c551a4cb55a221c","implementation_hash":"sha256:c3c8d8e67ca3fa08f40eaaa5ecf64c3b7d02769213aebe83e00f472ae438d6db","scenarios":[{"index":5,"name":"Smart bombs 06 an unintercepted smart bomb destroys its target city","scenario_hash":"6087763b412998ed3b0b2962cd2c32cc6fb10b3be019c56379e2444f36d8713c","mutation_count":18,"result":{"Total":18,"Killed":18,"Survived":0,"Errors":0},"tested_at":"2026-07-25T02:15:03.028423Z"}]}
+# acceptance-mutation-manifest-end
+
 # Smart bombs 01 a smart bomb advances toward its target
 # Smart bombs 02 a well centered fireball destroys a smart bomb
 # Smart bombs 03 an edge of blast fireball is evaded once
