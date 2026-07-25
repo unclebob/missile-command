@@ -188,6 +188,7 @@ bb play --qa --qa-speed 10 --qa-scenario tmp/wave-rearm-depleted.edn --qa-events
 | `:high-score-capacity` | Max table length (default 10) |
 | `:high-scores` | Seed table vector of `{:initials "AAA" :score 1000}` (replaces loaded table when present) |
 | `:screen` | Optional shell/play screen keyword (e.g. `:playing`) for staged host setups |
+| `:wave-attack` | Begin sequential wave attack `k` (1–3) after setup (ballistics; specials on last) |
 
 Examples for common setups:
 
@@ -288,7 +289,9 @@ qa-sim t=1.5 missiles_in_flight=0 fireballs=1 enemy_missiles=1 center_x=200 cent
 | `cities_alive=` / battery destroyed flags | Living cities / battery state |
 | `battery_*_ammo=` | Remaining missiles per battery |
 | `wave=` / `wave_complete=` | Wave lifecycle |
-| `wave_enemy_count=` / `wave_enemy_speed=` | Scheduled ballistic hardness metrics for current wave |
+| `wave_attack=` | Current sequential salvo within the wave (`1`–`3`, or `none`) |
+| `wave_attacks_per_wave=` | Number of sequential attacks per wave (3) |
+| `wave_enemy_count=` / `wave_enemy_speed=` | Ballistics **per attack** (salvo size) and speed |
 | `wave_mirv_count=` / `wave_smart_bomb_count=` | Scheduled MIRV / smart-bomb counts |
 | `wave_bomber_count=` / `wave_satellite_count=` | Scheduled flyer counts |
 | `ballistic_missiles=` | Live ballistic enemies only (excludes MIRV/smart) |
