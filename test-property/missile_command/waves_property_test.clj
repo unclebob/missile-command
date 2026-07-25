@@ -30,8 +30,8 @@
 (defspec bomber-and-satellite-schedule-gates
   40
   (for-all [w (gen/large-integer* {:min 1 :max 20})]
-    (and (= (if (>= w 8) 1 0) (waves/bomber-count w))
-         (= (if (>= w 9) 1 0) (waves/satellite-count w)))))
+    (and (= (if (>= w 4) 1 0) (waves/bomber-count w))
+         (= (if (>= w 5) 1 0) (waves/satellite-count w)))))
 
 (defspec cycle-targets-covers-pool-then-wraps
   40
@@ -52,8 +52,8 @@
   (for-all [w (gen/large-integer* {:min 1 :max 25})]
     (let [m (waves/smart-bomb-count w)]
       (and (>= m 0)
-           (= m (max 0 (quot (- w 5) 2)))
-           (if (<= w 6) (zero? m) (pos? m))
+           (= m (max 0 (quot (- w 2) 2)))
+           (if (<= w 3) (zero? m) (pos? m))
            (<= m (waves/smart-bomb-count (inc w)))))))
 
 (defspec mirv-count-zero-early-then-nondecreasing

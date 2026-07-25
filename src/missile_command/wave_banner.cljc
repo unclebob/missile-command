@@ -98,31 +98,49 @@
          :screen screens/playing
          :wave-banner nil))
 
+(defn- phase-duration
+  [ph]
+  (if (= ph phase-enter) enter-duration exit-duration))
+
+(defn- complete-enter
+  [state b]
+  (assoc state :wave-banner
+         (assoc b
+                :phase phase-exit
+                :progress 0.0
+                :x (:center-x b)
+                :y (:center-y b))))
+
+(defn- advance-banner-x
+  [state b ph progress']
+  (let [x (if (= ph phase-enter)
+            (lerp (:enter-start-x b) (:center-x b) progress')
+            (lerp (:center-x b) (:exit-end-x b) progress'))]
+    (assoc state :wave-banner
+           (assoc b :progress progress' :x x :y (:center-y b)))))
+
+(defn- finish-phase
+  [state b ph finish-fn]
+  (if (= ph phase-enter)
+    (complete-enter state b)
+    (finish-fn state)))
+
+(defn- tick-banner
+  [state b dt finish-fn]
+  (let [ph (:phase b)
+        progress (double (or (:progress b) 0.0))
+        progress' (clamp01 (+ progress (/ (double dt) (phase-duration ph))))]
+    (if (>= progress' 1.0)
+      (finish-phase state b ph finish-fn)
+      (advance-banner-x state b ph progress'))))
+
 (defn tick
   "Advance banner animation; returns updated state.
   When finished, calls finish-fn with state (no banner)."
   [state dt finish-fn]
-  (let [b (of state)]
-    (if-not b
-      (finish-fn state)
-      (let [ph (:phase b)
-            progress (double (or (:progress b) 0.0))
-            dur (if (= ph phase-enter) enter-duration exit-duration)
-            progress' (clamp01 (+ progress (/ (double dt) dur)))]
-        (if (and (= ph phase-enter) (>= progress' 1.0))
-          (assoc state :wave-banner
-                 (assoc b
-                        :phase phase-exit
-                        :progress 0.0
-                        :x (:center-x b)
-                        :y (:center-y b)))
-          (if (and (= ph phase-exit) (>= progress' 1.0))
-            (finish-fn state)
-            (let [x (if (= ph phase-enter)
-                      (lerp (:enter-start-x b) (:center-x b) progress')
-                      (lerp (:center-x b) (:exit-end-x b) progress'))]
-              (assoc state :wave-banner
-                     (assoc b :progress progress' :x x :y (:center-y b))))))))))
+  (if-let [b (of state)]
+    (tick-banner state b dt finish-fn)
+    (finish-fn state)))
 
 ;; clj-mutate-manifest-begin
 ;; {:version 1, :tested-at "2026-07-24T16:26:40.312112-05:00", :module-hash "-1757701544", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 3, :hash "-1156496799"} {:id "def/phase-enter", :kind "def", :line 5, :end-line 5, :hash "-1325013704"} {:id "def/phase-exit", :kind "def", :line 6, :end-line 6, :hash "571724543"} {:id "def/enter-duration", :kind "def", :line 7, :end-line 7, :hash "969557294"} {:id "def/exit-duration", :kind "def", :line 8, :end-line 8, :hash "-1906795612"} {:id "def/offscreen-margin", :kind "def", :line 9, :end-line 9, :hash "-1275849371"} {:id "defn/screen?", :kind "defn", :line 11, :end-line 13, :hash "-626378302"} {:id "defn/of", :kind "defn", :line 15, :end-line 17, :hash "-981582658"} {:id "defn/text", :kind "defn", :line 19, :end-line 21, :hash "1107135439"} {:id "defn/announced-wave", :kind "defn", :line 23, :end-line 25, :hash "-1105766107"} {:id "defn/phase", :kind "defn", :line 27, :end-line 29, :hash "-496719693"} {:id "defn/text-position", :kind "defn", :line 31, :end-line 35, :hash "1102855509"} {:id "defn-/playfield-center", :kind "defn-", :line 37, :end-line 40, :hash "-466748197"} {:id "defn/distance-to-center", :kind "defn", :line 42, :end-line 52, :hash "737446024"} {:id "defn-/banner-text-for", :kind "defn-", :line 54, :end-line 56, :hash "-1082966793"} {:id "defn-/lerp", :kind "defn-", :line 58, :end-line 60, :hash "-1528249028"} {:id "defn-/clamp01", :kind "defn-", :line 62, :end-line 64, :hash "2048038306"} {:id "defn/make", :kind "defn", :line 66, :end-line 79, :hash "-963403718"} {:id "defn/enter", :kind "defn", :line 81, :end-line 91, :hash "-1932914319"} {:id "defn/clear", :kind "defn", :line 93, :end-line 98, :hash "725549826"} {:id "defn/tick", :kind "defn", :line 100, :end-line 124, :hash "-455791148"}]}

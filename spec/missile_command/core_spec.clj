@@ -1,6 +1,7 @@
 (ns missile-command.core-spec
   (:require [speclj.core :refer :all]
-            [missile-command.core :as core]))
+            [missile-command.core :as core]
+            [missile-command.wave-schedule :as wave-schedule]))
 
 (describe "new-game"
   (it "records the playfield width and height"
@@ -137,7 +138,7 @@
                     (core/destroy-battery :center))
           after (:state (core/handle state {:type :fire :battery :center}))]
       (should= 0 (count (core/defensive-missiles after)))
-      (should= 10 (:missiles (core/battery after :center)))
+      (should= 0 (:missiles (core/battery after :center)))
       (should (:destroyed? (core/battery after :center)))))
 
   (it "gives center missiles higher speed than side missiles"
@@ -284,14 +285,14 @@
       (doseq [b (core/batteries state)]
         (should= 10 (:missiles b)))))
 
-  (it "rearms surviving batteries but not destroyed ones"
+  (it "rearm restores destroyed batteries and refills all ammo"
     (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
                     (core/set-battery-ammo :left 3)
                     (core/destroy-battery :left)
                     (core/set-non-destroyed-battery-ammo 2)
                     (core/rearm-surviving-batteries))]
-      (should (:destroyed? (core/battery state :left)))
-      (should= 3 (:missiles (core/battery state :left)))
+      (should-not (:destroyed? (core/battery state :left)))
+      (should= 10 (:missiles (core/battery state :left)))
       (should= 10 (:missiles (core/battery state :center)))
       (should= 10 (:missiles (core/battery state :right)))))
 
@@ -300,6 +301,32 @@
           high (core/wave-schedule-metrics 3)]
       (should (core/harder-wave? low high))
       (should-not (core/harder-wave? high low))))
+
+  (it "activate-wave-schedule spawns MIRVs from wave 4"
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+                    (core/set-wave 4)
+                    (core/activate-wave-schedule))
+          parents (core/mirv-parents state)
+          metrics (core/wave-schedule-metrics-for state 4)]
+      (should= (:enemy-count metrics)
+               (count (filter #(= core/enemy-kind-ballistic (:enemy-kind %))
+                              (core/enemy-missiles state))))
+      (should= (:mirv-count metrics) (count parents))
+      (should (pos? (count parents)))
+      (should (every? #(= wave-schedule/default-mirv-child-count (:child-count %)) parents))
+      (should (every? #(= (double wave-schedule/default-mirv-split-progress)
+                          (double (:split-progress %)))
+                      parents))))
+
+  (it "activate-wave-schedule spawns smart bombs and flyers on later waves"
+    (let [state (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+                    (core/set-wave 9)
+                    (core/activate-wave-schedule))
+          metrics (core/wave-schedule-metrics-for state 9)]
+      (should= (:smart-bomb-count metrics) (count (core/smart-bombs state)))
+      (should= (:bomber-count metrics) (count (core/flyers-of-kind state :bomber)))
+      (should= (:satellite-count metrics) (count (core/flyers-of-kind state :satellite)))
+      (should (pos? (count (core/mirv-parents state))))))
 
   (it "throws on unknown city or battery spawn targets"
     (let [state (assoc (core/new-game {:width 800 :height 600}) :screen :playing)]
@@ -1037,11 +1064,13 @@
       (should= 200.0 (double (:y0 m)))))
 
   (it "classifies smart-bomb edge band strictly outside the core"
+    ;; Core is d <= 0.45*r (18 at r=40); edge is 18 < d <= r.
+    (should (@#'core/smart-bomb-edge-band? 20.0 40.0))
     (should (@#'core/smart-bomb-edge-band? 30.0 40.0))
     (should (@#'core/smart-bomb-edge-band? 40.0 40.0))
-    (should-not (@#'core/smart-bomb-edge-band? 25.0 40.0))
-    (should-not (@#'core/smart-bomb-edge-band? 40.1 40.0))
-    (should-not (@#'core/smart-bomb-edge-band? 20.0 40.0)))
+    (should-not (@#'core/smart-bomb-edge-band? 18.0 40.0))
+    (should-not (@#'core/smart-bomb-edge-band? 10.0 40.0))
+    (should-not (@#'core/smart-bomb-edge-band? 40.1 40.0)))
 )
 
 (describe "title screen"
