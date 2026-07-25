@@ -21,7 +21,25 @@
       (should= 2 (core/wave state))
       (should= 2 (core/wave-banner-announced-wave state))
       (should= "WAVE 2" (core/wave-banner-text state))
+      (should= "" (core/wave-banner-subtitle state))
+      (should-not (core/wave-banner-bonus-city? state))
       (should= :enter (core/wave-banner-phase state))))
+
+  (it "shows Bonus City subtitle when a city is restored at wave end"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    core/start-game
+                    (core/destroy-city 0)
+                    (core/set-bonus-city-reserve 1)
+                    (core/set-wave-enemies-active 1)
+                    (#(loop [s % n 0]
+                        (cond
+                          (core/wave-banner? s) s
+                          (> n 10000) s
+                          :else (recur (:state (core/tick s 0.05)) (inc n))))))]
+      (should (core/wave-banner? state))
+      (should (core/wave-banner-bonus-city? state))
+      (should= "Bonus City" (core/wave-banner-subtitle state))
+      (should (core/living-city? state 0))))
 
   (it "moves text toward center during enter, then exits, then resumes play"
     (let [start (clear-one-enemy-wave)

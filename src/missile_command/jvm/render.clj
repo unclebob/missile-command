@@ -195,6 +195,7 @@
            (fireballs! state)
            (let [pos (core/wave-banner-text-position state)
                  txt (core/wave-banner-text state)
+                 sub (core/wave-banner-subtitle state)
                  w (core/playfield-width state)
                  h (core/playfield-height state)]
              (q/fill 0 0 0 100)
@@ -204,6 +205,10 @@
              (q/text-align :center :center)
              (q/text-size 48)
              (q/text txt (:x pos) (:y pos))
+             (when (seq sub)
+               (q/text-size 28)
+               (q/fill 180 255 160)
+               (q/text sub (:x pos) (+ (:y pos) 42.0)))
              (q/text-align :left :baseline))
            (hud! state))
 

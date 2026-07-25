@@ -10,13 +10,17 @@
 (def base-enemy-speed 40.0)
 (def enemy-speed-wave-factor 0.125)
 
+;; Each wave has this many sequential salvos; the next starts only when the
+;; previous salvo is fully cleared.
 (def attacks-per-wave 3)
+;; Ballistic missiles in each salvo (one "attack").
+(def missiles-per-attack 3)
 
 (defn enemy-count
-  "Number of ballistic enemies scheduled for a wave (arcade base).
-  Fixed at three attacks per wave; difficulty still ramps via speed/specials."
+  "Ballistic missiles per attack (salvo). A full wave is
+  attacks-per-wave sequential salvos of this many missiles."
   [wave]
-  (long attacks-per-wave))
+  (long missiles-per-attack))
 
 (defn enemy-speed
   "Enemy missile speed (px/s) for a wave (arcade base)."
