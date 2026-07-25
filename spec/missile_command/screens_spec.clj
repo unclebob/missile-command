@@ -23,4 +23,14 @@
               :title-start-affordance "start"}))
     (should-not (screens/title-shows-start-affordance?
                  {:screen screens/playing
-                  :title-start-affordance "start"}))))
+                  :title-start-affordance "start"})))
+
+  (it "opens a screen only from title and returns to title when predicate holds"
+    (should= {:screen screens/options}
+             (screens/open-from-title {:screen screens/title} screens/options))
+    (should= {:screen screens/playing}
+             (screens/open-from-title {:screen screens/playing} screens/options))
+    (should= {:screen screens/title}
+             (screens/return-to-title-when {:screen screens/options} screens/options?))
+    (should= {:screen screens/playing}
+             (screens/return-to-title-when {:screen screens/playing} screens/options?))))

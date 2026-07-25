@@ -1,3 +1,7 @@
+# acceptance-mutation-manifest-begin
+# {"version":1,"tested_at":"2026-07-25T02:14:55.834938Z","feature_name":"Bombers and satellites","feature_path":"features/bombers-and-satellites.feature","background_hash":"2ad6c53e758cb94bd90a7e42d0ca6dc51bfdcaa4e3368f8e8c551a4cb55a221c","implementation_hash":"sha256:f0bcd573abc2d2d59eceda81c9c09da22d773cc4c7c7cf84cabe6cd5dbd92ed9","scenarios":[]}
+# acceptance-mutation-manifest-end
+
 # Bombers and satellites 01 a flyer moves across the playfield
 # Bombers and satellites 02 a flyer drops enemy missiles during its pass
 # Bombers and satellites 03 a fireball destroys a flyer
