@@ -12,6 +12,7 @@
             [missile-command.screens :as screens]
             [missile-command.high-scores :as high-scores]
             [missile-command.options :as options]
+            [missile-command.rng :as rng]
             [missile-command.sfx :as sfx]
             [missile-command.shell :as shell]
             [missile-command.wave-banner :as wave-banner]
@@ -486,12 +487,23 @@
   (let [c (city state city-id)]
     (when-not c
       (throw (ex-info (str "unknown city " city-id) {:city-id city-id})))
-    (spawn-enemy-at state
-                    {:x (waves/random-sky-origin-x (playfield-width state)) :y 0}
-                    {:x (:x c) :y (:y c)}
-                    :city city-id
-                    {:enemy-kind enemy-kind-smart
-                     :smart-evaded? smart-not-yet-evaded})))
+    (let [width (playfield-width state)
+          [ox state] (if-let [r (rng/of-state state)]
+                       (let [[u r'] (rng/next-unit r)]
+                         [(waves/random-sky-origin-x width (constantly u))
+                          (assoc state :rng r')])
+                       [(waves/random-sky-origin-x width) state])]
+      (spawn-enemy-at state
+                      {:x ox :y 0}
+                      {:x (:x c) :y (:y c)}
+                      :city city-id
+                      {:enemy-kind enemy-kind-smart
+                       :smart-evaded? smart-not-yet-evaded}))))
+
+(defn with-rng-seed
+  "Attach a seedable RNG for deterministic sky origins (QA / tests)."
+  [state seed]
+  (rng/with-seed state seed))
 
 (defn spawn-flyer
   "Spawn a bomber or satellite traversing from start to end at speed."

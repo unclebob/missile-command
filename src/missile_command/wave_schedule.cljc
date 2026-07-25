@@ -1,6 +1,7 @@
 (ns missile-command.wave-schedule
   "Sequential wave attacks: ballistics each salvo; specials on the last."
-  (:require [missile-command.waves :as waves]))
+  (:require [missile-command.rng :as rng]
+            [missile-command.waves :as waves]))
 
 ;; Defaults for scheduled advanced enemies (arcade-style mid-descent split).
 (def default-mirv-child-count 3)
@@ -62,6 +63,15 @@
                                      :drops-fired #{})))
               (vec fs)))))
 
+(defn- next-sky-x
+  "Random sky origin x; advances :rng on state when present."
+  [state width]
+  (if-let [r (rng/of-state state)]
+    (let [[u r'] (rng/next-unit r)]
+      [(waves/random-sky-origin-x width (constantly u))
+       (assoc state :rng r')])
+    [(waves/random-sky-origin-x width) state]))
+
 (defn- spawn-wave-mirvs
   "Spawn n MIRV parents toward living cities from random sky origins."
   [state n {:keys [living-cities city playfield-width spawn-enemy-at
@@ -71,13 +81,14 @@
     (reduce (fn [s city-id]
               (let [c (city s city-id)]
                 (if c
-                  (spawn-enemy-at s
-                                  {:x (waves/random-sky-origin-x width) :y 0}
-                                  {:x (:x c) :y (:y c)}
-                                  :city city-id
-                                  {:enemy-kind enemy-kind-mirv
-                                   :child-count default-mirv-child-count
-                                   :split-progress default-mirv-split-progress})
+                  (let [[ox s] (next-sky-x s width)]
+                    (spawn-enemy-at s
+                                    {:x ox :y 0}
+                                    {:x (:x c) :y (:y c)}
+                                    :city city-id
+                                    {:enemy-kind enemy-kind-mirv
+                                     :child-count default-mirv-child-count
+                                     :split-progress default-mirv-split-progress}))
                   s)))
             state
             city-ids)))
@@ -168,7 +179,8 @@
                     :battery (spawn-battery-from s origin-x 0 id)
                     s)))]
     (reduce (fn [s target-spec]
-              (spawn s (waves/random-sky-origin-x width) target-spec))
+              (let [[ox s] (next-sky-x s width)]
+                (spawn s ox target-spec)))
             state
             targets)))
 
