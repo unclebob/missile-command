@@ -295,6 +295,16 @@
                        (str "enemy progress " actual " not less than " bound)))
           world)}
 
+   {:pattern #"^the first enemy missile progress is less than ([0-9.]+)$"
+    :fn (fn [world [_ progress-text] _]
+          (let [bound (support/parse-number progress-text "split progress")
+                m (first (core/enemy-missiles (:state world)))
+                actual (double (:progress m 0.0))]
+            (support/assert-condition m "missing enemy missile")
+            (support/assert-lt actual bound
+                       (str "enemy progress " actual " not less than " bound)))
+          world)}
+
    {:pattern #"^there is (\d+) MIRV parent in flight$"
     :fn (fn [world [_ count-text] _]
           (support/assert-count (count (core/mirv-parents (:state world)))
@@ -354,6 +364,14 @@
                   (:fireball-x world)
                   (:fireball-y world))))}
 
+   {:pattern #"^the first MIRV child warhead path passes within distance (\d+) of that fireball center$"
+    :fn (fn [world _ _]
+          (assoc world :state
+                 (core/route-first-mirv-child-through-point
+                  (:state world)
+                  (:fireball-x world)
+                  (:fireball-y world))))}
+
    {:pattern #"^time advances until the first MIRV child is inside the fireball radius or has impacted$"
     :fn (fn [world _ _]
           (loop [s (:state world) n 0]
@@ -380,6 +398,16 @@
                                    " expected " expected)))
           world)}
 
+   {:pattern #"^wave (\d+) MIRV schedule count is (\d+)$"
+    :fn (fn [world [_ wave-text count-text] _]
+          (let [w (support/parse-int wave-text "wave")
+                expected (support/parse-int count-text "mirv count")
+                actual (core/wave-mirv-count w)]
+            (support/assert-condition (= expected actual)
+                              (str "wave " w " mirv count " actual
+                                   " expected " expected)))
+          world)}
+
    {:pattern #"^a MIRV enemy missile targeting city <([A-Za-z0-9_]+)> that splits into <([A-Za-z0-9_]+)> warheads at progress <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ city-param count-param progress-param] example]
           (assoc world :state
@@ -388,6 +416,15 @@
                   (support/example-int example city-param "city")
                   (support/example-int example count-param "child count")
                   (support/example-double example progress-param "split progress"))))}
+
+   {:pattern #"^a MIRV enemy missile targeting city (\d+) that splits into (\d+) warheads at progress ([0-9.]+)$"
+    :fn (fn [world [_ city-text count-text progress-text] _]
+          (assoc world :state
+                 (core/spawn-mirv-targeting-city
+                  (:state world)
+                  (support/parse-int city-text "city")
+                  (support/parse-int count-text "child count")
+                  (support/parse-number progress-text "split progress"))))}
 
    {:pattern #"^there is (\d+) smart bomb in flight$"
     :fn (fn [world [_ count-text] _]

@@ -51,15 +51,24 @@
 
   (let [readme (slurp "docs/architecture/plans/README.md")
         input (slurp "src/missile_command/jvm/input.clj")
+        cli (slurp "src/missile_command/jvm/cli.clj")
+        telemetry (slurp "src/missile_command/jvm/telemetry.clj")
+        scenario (slurp "src/missile_command/jvm/scenario.clj")
         sketch (slurp "src/missile_command/jvm/sketch.clj")]
-    (assert! (re-find #"(?i)host-input-split.*Deferred" readme)
-             "B plan index should mark host-input-split Deferred")
+    (assert! (re-find #"(?i)host-input-split.*Done" readme)
+             "B plan index should mark host-input-split Done")
     (assert! (re-find #"No Quil" input) "B input should document pure/no Quil")
     (assert! (not (re-find #"quil\.|quil/" input)) "B input must not require Quil")
     (assert! (re-find #"missile-command\.jvm\.input" sketch)
              "B sketch must require jvm.input")
+    (assert! (re-find #"missile-command\.jvm\.cli" cli)
+             "B cli ns must exist")
+    (assert! (re-find #"format-sim-telemetry-line" telemetry)
+             "B telemetry must own sim telemetry")
+    (assert! (re-find #"apply-scenario" scenario)
+             "B scenario must own apply-scenario")
     (assert! (re-find #"apply-scenario|load-scenario|format-sim-telemetry" input)
-             "B input must own scenario/telemetry"))
+             "B input must re-export scenario/telemetry for sketch"))
 
   (write-edn! "tmp/his.edn" {:screen :playing :wave 1})
   (write-events! "tmp/his.txt" ["wait 0.2" "quit"])
@@ -75,7 +84,7 @@
     (print out) (flush)
     (assert! a1 (str "C scenario path failed: " (mapv #(field % "screen") lines))))
 
-  (println "\nPASS: host-input-split automated QA (A–C; split deferred by plan)")
+  (println "\nPASS: host-input-split automated QA (A–C; full cli/telemetry/scenario split)")
   (println "PASS: look-and-feel deferred per user")
   (System/exit 0))
 
