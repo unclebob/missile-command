@@ -524,7 +524,6 @@
         (core/title? state) (apply-handle state {:type :open-options})
         (core/options? state) (apply-handle state {:type :leave-options})
         :else state)
->>>>>>> d7768eb105
 
       (or (= \p ch) (= \P ch)
           (and key-name (core/pause-key-includes? state key-name)))

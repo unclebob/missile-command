@@ -117,6 +117,24 @@
            (render-end/overlay! state)
            (hud! state))
 
+       (core/wave-banner? state)
+       (do (scenery/ground! state)
+           (scenery/cities! state)
+           (scenery/batteries! state)
+           (let [pos (core/wave-banner-text-position state)
+                 txt (core/wave-banner-text state)
+                 w (core/playfield-width state)
+                 h (core/playfield-height state)]
+             (q/fill 0 0 0 100)
+             (q/no-stroke)
+             (q/rect 0 0 w h)
+             (q/fill 255 220 80)
+             (q/text-align :center :center)
+             (q/text-size 48)
+             (q/text txt (:x pos) (:y pos))
+             (q/text-align :left :baseline))
+           (hud! state))
+
        :else
        (do (enemies! state)
            (missiles! state)

@@ -271,7 +271,7 @@ qa-sim t=1.5 missiles_in_flight=0 fireballs=1 enemy_missiles=1 center_x=200 cent
 | `final_score=` | Score frozen at THE END (else current score) |
 | `multiplier=` | Score multiplier for the current wave (1–6) |
 | `bonus_cities=` | Usable bonus-city reserve |
-| `screen=` | `title`, `playing`, `paused`, `the-end`, `high-score-entry`, or `high-scores` |
+| `screen=` | `title`, `playing`, `paused`, `the-end`, `high-score-entry`, `high-scores`, `options`, or `wave-banner` |
 | `title_game_name=` | Title copy token (e.g. `Missile_Command`) |
 | `hud_score=` / `hud_wave=` / `hud_multiplier=` | HUD projection of score/wave/mult |
 | `hud_living_cities=` / `hud_bonus_cities=` | HUD living/bonus city counts |
@@ -290,6 +290,9 @@ qa-sim t=1.5 missiles_in_flight=0 fireballs=1 enemy_missiles=1 center_x=200 cent
 | `pause_keys=` | Bound pause keys |
 | `sfx_count=` / `sfx_last=` | Cumulative SFX log size and recent types |
 | `qa-sfx type=… played=true\|false mute=…` | Host play attempt per new core SFX event |
+| `banner_text=` / `banner_phase=` | Between-wave banner copy (`WAVE_N`) and `enter`/`exit` |
+| `banner_x=` / `banner_y=` | Banner text position while on `wave-banner` |
+| `banner_announced_wave=` | Next wave number announced by the banner |
 | Destroyable targets | position and `destroyed=true\|false` |
 
 Fireball phase order for one blast: `start.t` ≤ `max.t` ≤ `shrink.t` ≤ `end.t`.

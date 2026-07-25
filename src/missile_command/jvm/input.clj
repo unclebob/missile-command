@@ -315,6 +315,24 @@
                         (str/join "," types)
                         "none"))]))
 
+(defn- wave-banner-sim-fields
+  [state]
+  (if-not (core/wave-banner? state)
+    [(str "banner_text=none")
+     (str "banner_phase=none")
+     (str "banner_x=0")
+     (str "banner_y=0")
+     (str "banner_announced_wave=0")]
+    (let [pos (core/wave-banner-text-position state)
+          ph (core/wave-banner-phase state)]
+      [(str "banner_text="
+            (str/replace (or (core/wave-banner-text state) "") #"\s+" "_"))
+       (str "banner_phase=" (if ph (name ph) "none"))
+       (str "banner_x=" (double (:x pos)))
+       (str "banner_y=" (double (:y pos)))
+       (str "banner_announced_wave="
+            (core/wave-banner-announced-wave state))])))
+
 (defn format-sim-telemetry-line
   "Periodic simulation snapshot line."
   [state]
@@ -359,6 +377,7 @@
              (high-score-sim-fields state)
              (options-sim-fields state)
              (sfx-sim-fields state)
+             (wave-banner-sim-fields state)
              (battery-sim-fields state)
              (fireball-sim-fields fireballs)
              (enemy-sim-fields enemies)

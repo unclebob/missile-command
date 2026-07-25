@@ -15,6 +15,7 @@
             [missile-command.acceptance.sfx-steps :as sfx-steps]
             [missile-command.acceptance.desktop-host-steps :as desktop-host-steps]
             [missile-command.acceptance.browser-host-steps :as browser-host-steps]
+            [missile-command.acceptance.wave-banner-steps :as wave-banner-steps]
             [missile-command.core :as core]
             [missile-command.high-scores :as high-scores]
             [missile-command.options :as options]))
@@ -1736,6 +1737,7 @@
 
 
 
+
    {:pattern #"^time advances until the enemy missile is inside the fireball radius or has impacted$"
     :fn (fn [world _ _]
           (loop [s (:state world) n 0]
@@ -2147,7 +2149,9 @@
    options-steps/handlers
    sfx-steps/handlers
    desktop-host-steps/handlers
-   browser-host-steps/handlers)))
+   browser-host-steps/handlers
+   wave-banner-steps/handlers)))
+
 
 
 
