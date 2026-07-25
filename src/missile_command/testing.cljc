@@ -22,3 +22,4 @@
 (def set-wave-enemies-active core/set-wave-enemies-active)
 (def begin-wave-attack core/begin-wave-attack)
 (def activate-wave-schedule core/activate-wave-schedule)
+(def with-rng-seed core/with-rng-seed)
