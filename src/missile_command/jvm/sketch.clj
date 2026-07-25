@@ -100,13 +100,13 @@
       (emit! (input/format-fireball-phase-line state (:fireball e) (:phase e))))))
 
 (defn- emit-new-sfx!
-  "Play new SFX clips and emit qa-sfx lines; honor mute for playback."
+  "Play new SFX clips and emit qa-sfx lines; honor mute for playback.
+  Uses sfx-take-new (cursor = previous log length)."
   [prev-state state]
   (when (and (core/title? prev-state) (core/playing? state))
     (audio/stop-title!))
-  (let [prev (count (or (:sfx-events prev-state) []))
-        all (or (:sfx-events state) [])
-        fresh (vec (drop prev all))
+  (let [prev (count (core/sfx-events prev-state))
+        fresh (core/sfx-take-new state prev)
         muted? (core/mute? state)]
     (audio/play-events! fresh muted?)
     (doseq [e fresh]
@@ -117,7 +117,7 @@
         (emit! (str "qa-sfx type=" t
                     " played=" (if muted? "false" "true")
                     " mute=" muted?))))
-    (reset! sfx-emitted-count (count all))))
+    (reset! sfx-emitted-count (count (core/sfx-events state)))))
 
 (defn- apply-handle
   [state command]
