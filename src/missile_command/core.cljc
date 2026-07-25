@@ -822,18 +822,6 @@
   [state x y]
   (combat/spawn-fireball-at state x y))
 
-(defn- tick-defensive-missiles
-  [state dt]
-  (combat/tick-defensive state dt))
-
-(defn- tick-fireballs
-  [state dt]
-  (combat/tick-fireballs state dt))
-
-(defn- destroy-targets-in-fireballs
-  [state]
-  (combat/destroy-targets-in-fireballs state))
-
 (defn- assoc-long
   [state k v]
   (assoc state k (long v)))
@@ -1259,10 +1247,11 @@
       (wave-banner? state)
       ;; Keep combat fireballs/missiles animating during the banner so they do
       ;; not pop out of existence; start-next-wave clears leftovers afterward.
+      ;; Skip destroyable-target phase: banner only animates existing combat FX.
       (wrap (-> state
                 (advance-clock applied)
-                (tick-defensive-missiles applied)
-                (tick-fireballs applied)
+                (combat/tick-defensive applied)
+                (combat/tick-fireballs applied)
                 (wave-banner/tick applied start-next-wave)))
 
       (the-end? state)
