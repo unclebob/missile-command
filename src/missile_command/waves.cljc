@@ -88,12 +88,23 @@
                     (options/difficulty (options/of state))))
 
 (defn sky-origin-x
-  "Deterministic sky entry x for the i-th of n wave enemies across playfield width."
+  "Deterministic sky entry x for the i-th of n wave enemies across playfield width.
+  Kept for tests and single-target helpers; wave salvos use random-sky-origin-x."
   [width i n]
   (let [w (double width)]
     (if (pos? n)
       (* w (/ (+ (double i) 0.5) (double n)))
       0.0)))
+
+(defn random-sky-origin-x
+  "Random sky entry x in [0, width). Optional rand-fn returns a value in [0, 1)."
+  ([width]
+   (random-sky-origin-x width rand))
+  ([width rand-fn]
+   (let [w (double width)]
+     (if (pos? w)
+       (* w (double (rand-fn)))
+       0.0))))
 
 (defn target-pool
   "Eligible wave targets from living city ids and non-destroyed battery ids."

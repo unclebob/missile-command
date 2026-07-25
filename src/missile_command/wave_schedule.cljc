@@ -63,17 +63,16 @@
               (vec fs)))))
 
 (defn- spawn-wave-mirvs
-  "Spawn n MIRV parents toward living cities from distributed sky origins."
+  "Spawn n MIRV parents toward living cities from random sky origins."
   [state n {:keys [living-cities city playfield-width spawn-enemy-at
                    enemy-kind-mirv]}]
   (let [city-ids (cycle-living-city-ids (living-cities state) n)
-        width (playfield-width state)
-        total (count city-ids)]
-    (reduce (fn [s [i city-id]]
+        width (playfield-width state)]
+    (reduce (fn [s city-id]
               (let [c (city s city-id)]
                 (if c
                   (spawn-enemy-at s
-                                  {:x (waves/sky-origin-x width i total) :y 0}
+                                  {:x (waves/random-sky-origin-x width) :y 0}
                                   {:x (:x c) :y (:y c)}
                                   :city city-id
                                   {:enemy-kind enemy-kind-mirv
@@ -81,7 +80,7 @@
                                    :split-progress default-mirv-split-progress})
                   s)))
             state
-            (map-indexed vector city-ids))))
+            city-ids)))
 
 (defn- spawn-wave-smart-bombs
   "Spawn n smart bombs toward living cities."
@@ -168,10 +167,10 @@
                     :city (spawn-city-from s origin-x 0 id)
                     :battery (spawn-battery-from s origin-x 0 id)
                     s)))]
-    (reduce (fn [s [i target-spec]]
-              (spawn s (waves/sky-origin-x width i n) target-spec))
+    (reduce (fn [s target-spec]
+              (spawn s (waves/random-sky-origin-x width) target-spec))
             state
-            (map-indexed vector targets))))
+            targets)))
 
 (defn sky-clear?
   [state]
@@ -213,7 +212,3 @@
       (if (and a (< a n))
         (begin-attack-fn state (inc a))
         state))))
-
-;; clj-mutate-manifest-begin
-;; {:version 1, :tested-at "2026-07-25T10:11:15.324456-05:00", :module-hash "-1846768277", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 3, :hash "-1360993118"} {:id "def/default-mirv-child-count", :kind "def", :line 6, :end-line 6, :hash "-516913395"} {:id "def/default-mirv-split-progress", :kind "def", :line 7, :end-line 7, :hash "-269347852"} {:id "def/default-flyer-speed", :kind "def", :line 8, :end-line 8, :hash "-2137731203"} {:id "def/default-flyer-altitude-fraction", :kind "def", :line 9, :end-line 9, :hash "1472640603"} {:id "def/default-flyer-drop-count", :kind "def", :line 10, :end-line 10, :hash "-1460211508"} {:id "def/default-flyer-drop-progress-start", :kind "def", :line 12, :end-line 12, :hash "-1304756995"} {:id "def/default-flyer-drop-progress-end", :kind "def", :line 13, :end-line 13, :hash "-1753249803"} {:id "defn-/living-city-ids", :kind "defn-", :line 15, :end-line 17, :hash "2005102832"} {:id "defn-/cycle-living-city-ids", :kind "defn-", :line 19, :end-line 25, :hash "1190419124"} {:id "defn-/flyer-drop-progresses", :kind "defn-", :line 27, :end-line 37, :hash "342736878"} {:id "defn-/configure-last-flyer-drops", :kind "defn-", :line 39, :end-line 63, :hash "1805775182"} {:id "defn-/spawn-wave-mirvs", :kind "defn-", :line 65, :end-line 84, :hash "1498891949"} {:id "defn-/spawn-wave-smart-bombs", :kind "defn-", :line 86, :end-line 92, :hash "-1586756820"} {:id "defn-/spawn-wave-flyer", :kind "defn-", :line 94, :end-line 104, :hash "-319641269"} {:id "defn/spawn-specials", :kind "defn", :line 106, :end-line 119, :hash "-1760819477"} {:id "defn/begin-attack", :kind "defn", :line 121, :end-line 141, :hash "-1922612972"} {:id "defn/activate", :kind "defn", :line 143, :end-line 147, :hash "329539922"} {:id "defn/set-enemies-active", :kind "defn", :line 149, :end-line 174, :hash "1606007106"} {:id "defn/sky-clear?", :kind "defn", :line 176, :end-line 179, :hash "341231588"} {:id "defn/current-attack", :kind "defn", :line 181, :end-line 185, :hash "-508533250"} {:id "defn/attack-cleared?", :kind "defn", :line 187, :end-line 193, :hash "193790999"} {:id "defn/wave-ready-to-complete?", :kind "defn", :line 195, :end-line 203, :hash "813015252"} {:id "defn/maybe-advance-attack", :kind "defn", :line 205, :end-line 215, :hash "2044026275"}]}
-;; clj-mutate-manifest-end
