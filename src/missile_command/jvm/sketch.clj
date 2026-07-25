@@ -31,6 +31,7 @@
 (defonce fireball-phases (atom {}))
 (defonce last-frame-ms (atom nil))
 (defonce initials-draft (atom ""))
+(defonce sfx-emitted-count (atom 0))
 
 (defn configure!
   [opts]
@@ -51,7 +52,8 @@
             []))
   (reset! fireball-phases {})
   (reset! last-frame-ms nil)
-  (reset! initials-draft ""))
+  (reset! initials-draft "")
+  (reset! sfx-emitted-count 0))
 
 (defn- settings-path
   "QA --scores-file overrides host settings path; else MC_SETTINGS_PATH/default."
@@ -96,16 +98,36 @@
     (doseq [e events]
       (emit! (input/format-fireball-phase-line state (:fireball e) (:phase e))))))
 
+(defn- emit-new-sfx!
+  "Emit qa-sfx lines for newly logged core events; honor mute for played=."
+  [prev-state state]
+  (let [prev (count (or (:sfx-events prev-state) []))
+        all (or (:sfx-events state) [])
+        fresh (drop prev all)
+        muted? (core/mute? state)]
+    (doseq [e fresh]
+      (let [kw (:type e)
+            t (if (namespace kw)
+                (str (namespace kw) "/" (name kw))
+                (name kw))]
+        (emit! (str "qa-sfx type=" t
+                    " played=" (if muted? "false" "true")
+                    " mute=" muted?))))
+    (reset! sfx-emitted-count (count all))))
+
 (defn- apply-handle
   [state command]
   (let [result (core/handle state command)
         state' (:state result)]
-    (when (#{:fire :click} (:type command))
+    (when (#{:fire :click :key} (:type command))
       (emit-telemetry-fire! result))
+    (emit-new-sfx! state state')
     (when (and (= :submit-high-score (:type command))
                (not (core/high-score-entry? state'))
                (core/high-score-entry? state))
       (reset! initials-draft "")
+      (persist-settings! state'))
+    (when (#{:set-mute :set-difficulty :bind-fire-key :leave-options} (:type command))
       (persist-settings! state'))
     state'))
 
@@ -161,7 +183,7 @@
 (defn- spawn-scheduled-wave-enemies
   "Launch the current wave's scheduled enemy count (cities only)."
   [state]
-  (let [n (long (:enemy-count (core/wave-schedule-metrics (core/wave state))))]
+  (let [n (long (:enemy-count (core/wave-schedule-metrics-for state (core/wave state))))]
     (if (pos? n)
       (core/set-wave-enemies-active state n)
       state)))
@@ -193,7 +215,9 @@
                 (ensure-wave-enemies state)
                 state)]
     (when (:qa-telemetry? @launch-options)
-      (emit-sim! state))
+      (emit-sim! state)
+      ;; Surface SFX already logged during setup (e.g. THE END on zero cities).
+      (emit-new-sfx! (assoc state :sfx-events []) state))
     state))
 
 (defn- frame-dt-seconds
@@ -246,6 +270,7 @@
         ;; THE END screen-fill fireball lives on :end-fireball, not :fireballs.
         end-sequence? (core/the-end? state')]
     (emit-fireball-phases! state')
+    (emit-new-sfx! state state')
     (when (and (:qa-telemetry? @launch-options)
                (or active? completed-any? wave-changed? end-sequence?
                    screen-changed?))
@@ -343,37 +368,76 @@
                                            :initials (:initials ev)})]
                 (when (:qa-telemetry? @launch-options) (emit-sim! s))
                 s)
-              :key (cond
-                     (input/key-char->command (:ch ev))
-                     (apply-handle state (input/key-char->command (:ch ev)))
-                     (or (= \p (:ch ev)) (= \P (:ch ev)))
-                     (toggle-pause state)
-                     (or (= \h (:ch ev)) (= \H (:ch ev)))
+              :open-options
+              (let [s (apply-handle state {:type :open-options})]
+                (when (:qa-telemetry? @launch-options) (emit-sim! s))
+                s)
+              :leave-options
+              (let [s (apply-handle state {:type :leave-options})]
+                (when (:qa-telemetry? @launch-options) (emit-sim! s))
+                s)
+              :set-mute
+              (let [s (apply-handle state {:type :set-mute :mute (:mute ev)})]
+                (when (:qa-telemetry? @launch-options) (emit-sim! s))
+                s)
+              :set-difficulty
+              (let [s (apply-handle state {:type :set-difficulty
+                                           :difficulty (:difficulty ev)})]
+                (when (:qa-telemetry? @launch-options) (emit-sim! s))
+                s)
+              :bind-fire-key
+              (let [s (apply-handle state {:type :bind-fire-key
+                                           :battery (:battery ev)
+                                           :key (:key ev)})]
+                (when (:qa-telemetry? @launch-options) (emit-sim! s))
+                s)
+              :key (let [ch (:ch ev)
+                         key-name (str/lower-case (str ch))
+                         s (apply-handle state {:type :key :key key-name})
+                         fired? (not= (count (core/defensive-missiles s))
+                                      (count (core/defensive-missiles state)))]
                      (cond
-                       (core/title? state)
-                       (let [s (apply-handle state {:type :open-high-scores})]
-                         (when (:qa-telemetry? @launch-options) (emit-sim! s))
-                         s)
-                       (core/high-scores-view? state)
-                       (let [s (apply-handle state {:type :close-high-scores})]
-                         (when (:qa-telemetry? @launch-options) (emit-sim! s))
-                         s)
-                       :else state)
-                     (or (= \newline (:ch ev)) (= \return (:ch ev)))
-                     (cond
-                       (core/title? state)
-                       (ensure-wave-enemies (apply-handle state {:type :start}))
-                       (core/the-end? state) (apply-handle state {:type :confirm})
-                       (core/high-score-entry? state)
-                       (let [draft @initials-draft
-                             s (if (seq draft)
-                                 (apply-handle state {:type :submit-high-score
-                                                      :initials draft})
-                                 state)]
-                         (when (:qa-telemetry? @launch-options) (emit-sim! s))
-                         s)
-                       :else state)
-                     :else state)
+                       fired? s
+                       (or (= \p ch) (= \P ch)
+                           (core/pause-key-includes? state key-name))
+                       (toggle-pause state)
+                       (or (= \o ch) (= \O ch))
+                       (cond
+                         (core/title? state)
+                         (let [s2 (apply-handle state {:type :open-options})]
+                           (when (:qa-telemetry? @launch-options) (emit-sim! s2))
+                           s2)
+                         (core/options? state)
+                         (let [s2 (apply-handle state {:type :leave-options})]
+                           (when (:qa-telemetry? @launch-options) (emit-sim! s2))
+                           s2)
+                         :else state)
+                       (or (= \h ch) (= \H ch))
+                       (cond
+                         (core/title? state)
+                         (let [s2 (apply-handle state {:type :open-high-scores})]
+                           (when (:qa-telemetry? @launch-options) (emit-sim! s2))
+                           s2)
+                         (core/high-scores-view? state)
+                         (let [s2 (apply-handle state {:type :close-high-scores})]
+                           (when (:qa-telemetry? @launch-options) (emit-sim! s2))
+                           s2)
+                         :else state)
+                       (or (= \newline ch) (= \return ch))
+                       (cond
+                         (core/title? state)
+                         (ensure-wave-enemies (apply-handle state {:type :start}))
+                         (core/the-end? state) (apply-handle state {:type :confirm})
+                         (core/high-score-entry? state)
+                         (let [draft @initials-draft
+                               s2 (if (seq draft)
+                                    (apply-handle state {:type :submit-high-score
+                                                         :initials draft})
+                                    state)]
+                           (when (:qa-telemetry? @launch-options) (emit-sim! s2))
+                           s2)
+                         :else state)
+                       :else s))
               :enemy (apply-enemy-spec state (:spec ev))
               :fireball (let [{:keys [x y radius]} (:spec ev)]
                           (core/add-static-fireball state x y radius))
@@ -429,7 +493,8 @@
 
 (defn key-pressed
   [state _event]
-  (let [ch (q/raw-key)]
+  (let [ch (q/raw-key)
+        key-name (when ch (str/lower-case (str ch)))]
     (cond
       (input/escape-key? ch)
       (cond
@@ -437,12 +502,33 @@
         (toggle-pause state)
         (core/high-scores-view? state)
         (apply-handle state {:type :close-high-scores})
+        (core/options? state)
+        (apply-handle state {:type :leave-options})
         (core/high-score-entry? state)
         state
         :else
         (do (persist-settings! state) (q/exit) state))
 
-      (or (= \p ch) (= \P ch))
+      (and (core/options? state) (or (= \m ch) (= \M ch)))
+      (apply-handle state {:type :set-mute :mute (not (core/mute? state))})
+
+      (and (core/options? state) (= \1 ch))
+      (apply-handle state {:type :set-difficulty :difficulty "easy"})
+
+      (and (core/options? state) (= \2 ch))
+      (apply-handle state {:type :set-difficulty :difficulty "normal"})
+
+      (and (core/options? state) (= \3 ch))
+      (apply-handle state {:type :set-difficulty :difficulty "arcade"})
+
+      (or (= \o ch) (= \O ch))
+      (cond
+        (core/title? state) (apply-handle state {:type :open-options})
+        (core/options? state) (apply-handle state {:type :leave-options})
+        :else state)
+
+      (or (= \p ch) (= \P ch)
+          (and key-name (core/pause-key-includes? state key-name)))
       (toggle-pause state)
 
       (or (= \h ch) (= \H ch))
@@ -475,8 +561,8 @@
                     (if (seq d) (subs d 0 (dec (count d))) d)))
           state)
 
-      (input/key-char->command ch)
-      (apply-handle state (input/key-char->command ch))
+      (and key-name (core/playing? state))
+      (apply-handle state {:type :key :key key-name})
 
       :else state)))
 
