@@ -36,12 +36,12 @@
       state)))
 
 (defn- play-new-sfx!
+  "Play SFX appended since prev-state (official contract: sfx-take-new)."
   [prev-state state]
   (when (and (core/title? prev-state) (core/playing? state))
     (audio/stop-title!))
-  (let [prev (count (or (:sfx-events prev-state) []))
-        all (or (:sfx-events state) [])
-        fresh (drop prev all)]
+  (let [prev (count (core/sfx-events prev-state))
+        fresh (core/sfx-take-new state prev)]
     (audio/play-events! fresh (core/mute? state)))
   ;; After unlock, retry title music if core already emitted :sfx/warning.
   (when (and (core/title? state) @audio/unlocked?)
