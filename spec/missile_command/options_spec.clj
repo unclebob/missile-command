@@ -32,24 +32,24 @@
     (let [base-c (waves/enemy-count 1)
           base-s (waves/enemy-speed 1)]
       (should= 3 base-c)
-      (should= 50.0 base-s)
+      (should= 40.0 base-s)
       (should= 3 (opts/scale-enemy-count base-c 1.0))
       (should= 2 (opts/scale-enemy-count base-c 0.85))
       (should= 2 (opts/scale-enemy-count base-c 0.7))
-      (should= 50.0 (opts/scale-enemy-speed base-s 1.0))
-      (should= 42.5 (opts/scale-enemy-speed base-s 0.85))
-      (should= 35.0 (opts/scale-enemy-speed base-s 0.7))))
+      (should= 40.0 (opts/scale-enemy-speed base-s 1.0))
+      (should= 34.0 (opts/scale-enemy-speed base-s 0.85))
+      (should= 28.0 (opts/scale-enemy-speed base-s 0.7))))
 
   (it "scales schedule metrics through waves/schedule-metrics"
     (let [easy (waves/schedule-metrics 1 :easy)
           normal (waves/schedule-metrics 3 :normal)
           arcade (waves/schedule-metrics 3 :arcade)]
       (should= 2 (:enemy-count easy))
-      (should= 35.0 (:enemy-speed easy))
-      (should= 5 (:enemy-count arcade))
-      (should= 75.0 (:enemy-speed arcade))
-      (should= 4 (opts/scale-enemy-count 5 0.85))
-      (should= 63.75 (opts/scale-enemy-speed 75.0 0.85))
+      (should= 28.0 (:enemy-speed easy))
+      (should= 4 (:enemy-count arcade))
+      (should= 50.0 (:enemy-speed arcade))
+      (should= 3 (opts/scale-enemy-count 4 0.85))
+      (should= 42.5 (opts/scale-enemy-speed 50.0 0.85))
       (should= (:enemy-count (waves/schedule-metrics 3 :normal))
                (:enemy-count normal)))))
 
@@ -100,4 +100,4 @@
           metrics (core/wave-schedule-metrics-for state 1)]
       (should= :easy (core/difficulty state))
       (should= 2 (:enemy-count metrics))
-      (should= 35.0 (:enemy-speed metrics)))))
+      (should= 28.0 (:enemy-speed metrics)))))

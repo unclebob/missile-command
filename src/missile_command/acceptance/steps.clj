@@ -533,6 +533,14 @@
               (assoc world :state
                      (core/destroy-battery (:state world) battery-id)))))}
 
+   {:pattern #"^the <([A-Za-z0-9_]+)> battery is not destroyed$"
+    :fn (fn [world [_ battery-param] example]
+          (let [battery-id (support/example-battery example battery-param)
+                bat (battery world battery-id)]
+            (support/assert-condition (and bat (not (:destroyed? bat)))
+                                      (str "battery " battery-id " is destroyed"))
+            world))}
+
    {:pattern #"^time advances by ([0-9.]+) seconds$"
     :fn (fn [world [_ dt-text] _]
           (let [dt (Double/parseDouble dt-text)

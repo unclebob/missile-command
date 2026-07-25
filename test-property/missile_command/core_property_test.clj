@@ -1112,7 +1112,7 @@
            (= 2 (:wave (core/hud after)))
            (empty? (core/enemy-missiles after))))))
 
-(defspec rearm-fills-survivors-and-leaves-destroyed
+(defspec rearm-restores-destroyed-and-refills-all
   20
   (for-all [battery-id battery-id-gen]
     (let [before (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
@@ -1122,12 +1122,11 @@
           after (-> before
                     advance-enemies-until-gone
                     core/start-next-wave)
-          destroyed (core/battery after battery-id)
-          survivors (remove #(= battery-id (:id %)) (core/batteries after))]
-      (and (:destroyed? destroyed)
-           (every? #(= 10 (:missiles %)) survivors)
-           (zero? (count (core/defensive-missiles
-                          (:state (fire after battery-id)))))))))
+          restored (core/battery after battery-id)]
+      (and (not (:destroyed? restored))
+           (every? #(= 10 (:missiles %)) (core/batteries after))
+           (pos? (count (core/defensive-missiles
+                         (:state (fire after battery-id)))))))))
 
 (defspec higher-waves-are-harder-by-count-or-speed
   40
