@@ -63,11 +63,6 @@
                                      :drops-fired #{})))
               (vec fs)))))
 
-(defn- next-sky-x
-  "Random sky origin x; advances :rng on state when present."
-  [state width]
-  (rng/next-sky-origin-x state width))
-
 (defn- spawn-wave-mirvs
   "Spawn n MIRV parents toward living cities from random sky origins."
   [state n {:keys [living-cities city playfield-width spawn-enemy-at
@@ -77,7 +72,7 @@
     (reduce (fn [s city-id]
               (let [c (city s city-id)]
                 (if c
-                  (let [[ox s] (next-sky-x s width)]
+                  (let [[ox s] (rng/next-sky-origin-x s width)]
                     (spawn-enemy-at s
                                     {:x ox :y 0}
                                     {:x (:x c) :y (:y c)}
@@ -175,7 +170,7 @@
                     :battery (spawn-battery-from s origin-x 0 id)
                     s)))]
     (reduce (fn [s target-spec]
-              (let [[ox s] (next-sky-x s width)]
+              (let [[ox s] (rng/next-sky-origin-x s width)]
                 (spawn s ox target-spec)))
             state
             targets)))
