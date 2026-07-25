@@ -516,12 +516,11 @@
     (when-not c
       (throw (ex-info (str "unknown city " city-id) {:city-id city-id})))
     (spawn-enemy-at state
-                    {:x (:x c) :y 0}
+                    {:x (waves/random-sky-origin-x (playfield-width state)) :y 0}
                     {:x (:x c) :y (:y c)}
                     :city city-id
                     {:enemy-kind enemy-kind-smart
                      :smart-evaded? smart-not-yet-evaded})))
-
 (defn spawn-flyer
   "Spawn a bomber or satellite traversing from start to end at speed."
   [state flyer-kind start-x start-y end-x end-y speed]
