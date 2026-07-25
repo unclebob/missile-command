@@ -177,10 +177,6 @@
   [state]
   (waves/multiplier (wave state)))
 
-(defn- long-state
-  [state k default]
-  (long (or (get state k) default)))
-
 (def bonus-cities
   "Bonus cities held in reserve (not yet placed on the playfield)."
   bc/reserve)
@@ -610,15 +606,6 @@
   "Apply a remappable key: fire mapped battery when playing, else no-op result."
   [state key]
   (handle state {:type :key :key key}))
-
-(defn- spawn-fireball-at
-  "Allocate and attach an expanding fireball centered at x,y."
-  [state x y]
-  (combat/spawn-fireball-at state x y))
-
-(defn- assoc-long
-  [state k v]
-  (assoc state k (long v)))
 
 (def set-bonus-city-threshold bc/set-threshold)
 (def set-bonus-city-reserve bc/set-reserve)

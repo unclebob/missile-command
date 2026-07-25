@@ -54,11 +54,23 @@
 
 (defn- update-city
   [state city-id f]
-  (update state :cities
-          (fn [cs]
-            (mapv (fn [c]
-                    (if (= city-id (:id c)) (f c) c))
-                  (or cs [])))))
+  (update state :cities #(cities/update-city % city-id f)))
+
+(defn- can-place-from-reserve?
+  [state cities]
+  (and (pos? (reserve state))
+       (< (living-count cities) world/city-count)))
+
+(defn- place-one-from-reserve
+  [state city-id]
+  (-> state
+      (update-city city-id cities/restore)
+      (update :bonus-cities dec)))
+
+(defn- mark-banner-if-placed
+  [state placed?]
+  (cond-> state
+    placed? (assoc :bonus-city-for-banner? true)))
 
 (defn apply-from-reserve
   "Place reserve cities onto destroyed slots while living cities stay under max.
@@ -67,17 +79,11 @@
   (loop [s state
          placed? false]
     (let [cs (or (:cities s) [])
-          id (when (and (pos? (reserve s))
-                        (< (living-count cs) world/city-count))
+          id (when (can-place-from-reserve? s cs)
                (lowest-destroyed-city-id cs))]
       (if id
-        (recur (-> s
-                   (update-city id cities/restore)
-                   (update :bonus-cities dec))
-               true)
-        (if placed?
-          (assoc s :bonus-city-for-banner? true)
-          s)))))
+        (recur (place-one-from-reserve s id) true)
+        (mark-banner-if-placed s placed?)))))
 
 (defn sync-from-score
   "Award reserve cities for newly crossed score thresholds (no mid-wave place)."

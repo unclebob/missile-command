@@ -40,14 +40,19 @@
   [ms idx x y]
   (assoc (vec ms) idx (retarget-enemy-from (nth ms idx) x y)))
 
+(defn- route-first-enemy-matching
+  "Retarget the first enemy matching pred so its path starts at x,y."
+  [state pred x y]
+  (update state :enemy-missiles
+          (fn [ms]
+            (if-let [idx (first-enemy-index ms pred)]
+              (retarget-enemy-at-index ms idx x y)
+              (vec ms)))))
+
 (defn route-first-smart-bomb-through-point
   "Retarget the first smart bomb so its path starts at the given point."
   [state x y]
-  (update state :enemy-missiles
-          (fn [ms]
-            (if-let [idx (first-enemy-index ms combat/smart-bomb?)]
-              (retarget-enemy-at-index ms idx x y)
-              (vec ms)))))
+  (route-first-enemy-matching state combat/smart-bomb? x y))
 
 (defn route-smart-bomb-centered-in-fireball
   "Place the smart bomb path through the fireball center (well-centered kill)."
@@ -90,12 +95,7 @@
 (defn route-first-mirv-child-through-point
   "Retarget the first MIRV child so its path starts at the given point."
   [state x y]
-  (update state :enemy-missiles
-          (fn [ms]
-            (if-let [idx (first-enemy-index ms combat/mirv-child?)]
-              (retarget-enemy-at-index ms idx x y)
-              (vec ms)))))
-
+  (route-first-enemy-matching state combat/mirv-child? x y))
 (defn add-static-fireball
   "Test/setup helper: place a fixed-radius fireball."
   [state x y radius]
