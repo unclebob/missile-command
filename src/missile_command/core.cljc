@@ -1276,6 +1276,11 @@
   [state]
   (wave-schedule/maybe-advance-attack state begin-wave-attack))
 
+(defn- ensure-wave-attack-started
+  "Start attack 1 when sky is clear, no attack is active, and wave incomplete."
+  [state]
+  (wave-schedule/ensure-attack-started state activate-wave-schedule))
+
 (defn set-non-destroyed-battery-ammo
   "Test helper: set ammo on every non-destroyed battery."
   [state ammo]
@@ -1330,6 +1335,7 @@
                 (tick-flyers applied)
                 (maybe-advance-wave-attack)
                 (maybe-complete-wave)
+                (ensure-wave-attack-started)
                 (evaluate-game-over)))
 
       (wave-banner? state)
