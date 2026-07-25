@@ -337,8 +337,8 @@
                               (core/enemy-missiles state))))
       (should= (:mirv-count metrics) (count parents))
       (should (pos? (count parents)))
-      (should (every? #(= wave-schedule/default-mirv-child-count (:child-count %)) parents))
-      (should (every? #(= (double wave-schedule/default-mirv-split-progress)
+      (should (every? #(= core/default-mirv-child-count (:child-count %)) parents))
+      (should (every? #(= (double core/default-mirv-split-progress)
                           (double (:split-progress %)))
                       parents))))
 

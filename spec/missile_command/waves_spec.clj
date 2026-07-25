@@ -77,7 +77,7 @@
     (should= 6 (waves/multiplier 13))
     (should= 6 (waves/multiplier 20)))
 
-  (it "spreads sky entry origins across the playfield"
+  (it "spreads deterministic sky entry origins across the playfield"
     (let [width 800.0
           xs (mapv #(waves/sky-origin-x width % 3) [0 1 2])]
       (should= (* width (/ 0.5 3.0)) (nth xs 0))
@@ -85,4 +85,16 @@
       (should= (* width (/ 2.5 3.0)) (nth xs 2))
       (should (every? #(and (<= 0.0 %) (< % width)) xs))
       (should= 3 (count (set xs)))
-      (should= 0.0 (waves/sky-origin-x width 0 0)))))
+      (should= 0.0 (waves/sky-origin-x width 0 0))))
+
+  (it "random sky origins stay in the playfield and honor rand-fn"
+    (let [width 800.0
+          x0 (waves/random-sky-origin-x width (constantly 0.0))
+          x1 (waves/random-sky-origin-x width (constantly 0.5))
+          x2 (waves/random-sky-origin-x width (constantly 0.999))]
+      (should= 0.0 x0)
+      (should= (* width 0.5) x1)
+      (should= (* width 0.999) x2)
+      (should= 0.0 (waves/random-sky-origin-x 0.0))
+      (let [xs (mapv (fn [_] (waves/random-sky-origin-x width)) (range 20))]
+        (should (every? #(and (<= 0.0 %) (< % width)) xs))))))

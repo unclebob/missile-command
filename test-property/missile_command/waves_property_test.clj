@@ -85,3 +85,13 @@
            (= n (count (set xs)))
            (= (waves/sky-origin-x width 0 n)
               (* (double width) (/ 0.5 (double n))))))))
+
+(defspec random-sky-origin-x-stays-in-playfield
+  50
+  (for-all [width (gen/large-integer* {:min 100 :max 4000})
+            u (gen/double* {:min 0.0 :max 0.999999 :NaN? false :infinite? false})]
+    (let [x (waves/random-sky-origin-x width (constantly u))]
+      (and (<= 0.0 x)
+           (< x (double width))
+           (= x (* (double width) u))))))
+
