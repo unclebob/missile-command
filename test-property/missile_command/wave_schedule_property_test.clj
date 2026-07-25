@@ -112,3 +112,39 @@
       (and (core/wave-banner? completed)
            (= 2 (core/wave completed))
            (= 2 (core/wave-banner-announced-wave completed))))))
+
+(defspec needs-attack-start-only-when-idle-sky-incomplete
+  40
+  (for-all [attack (gen/one-of [(gen/return nil)
+                                (gen/elements [1 2 3])])
+            complete? gen/boolean
+            has-enemy? gen/boolean
+            has-flyer? gen/boolean]
+    (let [state (assoc (core/start-game (core/new-game {:width 800 :height 600}))
+                       :wave-attack attack
+                       :wave-complete? complete?
+                       :enemy-missiles (if has-enemy? [{:id 0}] [])
+                       :flyers (if has-flyer? [{:id 1}] []))
+          need? (ws/needs-attack-start? state)
+          expected (boolean (and (nil? attack)
+                                 (not complete?)
+                                 (not has-enemy?)
+                                 (not has-flyer?)))]
+      (= need? expected))))
+
+(defspec ensure-attack-started-is-idempotent-once-active
+  25
+  (for-all [wave (gen/elements [1 3 8 12])]
+    (let [base (-> (core/start-game (core/new-game {:width 800 :height 600}))
+                   (core/set-wave wave)
+                   (assoc :wave-attack nil
+                          :enemy-missiles []
+                          :flyers []
+                          :wave-complete? false))
+          once (ws/ensure-attack-started base core/activate-wave-schedule)
+          twice (ws/ensure-attack-started once core/activate-wave-schedule)
+          m (core/wave-schedule-metrics-for once wave)]
+      (and (= 1 (:wave-attack once) (:wave-attack twice))
+           (= (count (core/enemy-missiles once))
+              (count (core/enemy-missiles twice))
+              (long (:enemy-count m)))))))
