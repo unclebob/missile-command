@@ -571,20 +571,24 @@
            (= :impact (core/last-enemy-fate after))
            (= 6 (count (core/living-cities after)))))))
 
-(defspec wave-enemies-use-varied-sky-origins
+(defspec wave-enemies-use-random-sky-origins
   30
   (for-all [n (gen/elements [2 3 4 5])
             width (gen/elements [800 1920])]
     (let [state (core/set-wave-enemies-active
                  (assoc (core/new-game {:width width :height 600}) :screen :playing) n)
           enemies (core/enemy-missiles state)
-          origin-xs (mapv #(double (:x0 %)) enemies)]
+          origin-xs (mapv #(double (:x0 %)) enemies)
+          ;; Independent salvos should not share the old fixed grid pattern.
+          again (core/set-wave-enemies-active
+                 (assoc (core/new-game {:width width :height 600}) :screen :playing) n)
+          again-xs (mapv #(double (:x0 %)) (core/enemy-missiles again))]
       (and (= n (count enemies))
            (every? #(= 0.0 (double (:y0 %))) enemies)
            (every? #(and (<= 0.0 %) (< % (double width))) origin-xs)
-           (< 1 (count (set origin-xs)))
-           (some #(not= (double (:x0 %)) (double (:x1 %))) enemies)))))
-
+           (every? #(and (<= 0.0 %) (< % (double width))) again-xs)
+           ;; Extremely unlikely that two independent 3+ random draws match exactly.
+           (or (< n 2) (not= origin-xs again-xs))))))
 (defspec new-game-starts-at-wave-one-with-full-ammo
   30
   (for-all [width playfield-size-gen
