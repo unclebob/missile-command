@@ -1,6 +1,7 @@
 (ns missile-command.wave-schedule
   "Sequential wave attacks: ballistics each salvo; specials on the last."
-  (:require [missile-command.waves :as waves]))
+  (:require [missile-command.rng :as rng]
+            [missile-command.waves :as waves]))
 
 ;; Defaults for scheduled advanced enemies (arcade-style mid-descent split).
 (def default-mirv-child-count 3)
@@ -71,13 +72,14 @@
     (reduce (fn [s city-id]
               (let [c (city s city-id)]
                 (if c
-                  (spawn-enemy-at s
-                                  {:x (waves/random-sky-origin-x width) :y 0}
-                                  {:x (:x c) :y (:y c)}
-                                  :city city-id
-                                  {:enemy-kind enemy-kind-mirv
-                                   :child-count default-mirv-child-count
-                                   :split-progress default-mirv-split-progress})
+                  (let [[ox s] (rng/next-sky-origin-x s width)]
+                    (spawn-enemy-at s
+                                    {:x ox :y 0}
+                                    {:x (:x c) :y (:y c)}
+                                    :city city-id
+                                    {:enemy-kind enemy-kind-mirv
+                                     :child-count default-mirv-child-count
+                                     :split-progress default-mirv-split-progress}))
                   s)))
             state
             city-ids)))
@@ -168,7 +170,8 @@
                     :battery (spawn-battery-from s origin-x 0 id)
                     s)))]
     (reduce (fn [s target-spec]
-              (spawn s (waves/random-sky-origin-x width) target-spec))
+              (let [[ox s] (rng/next-sky-origin-x s width)]
+                (spawn s ox target-spec)))
             state
             targets)))
 
