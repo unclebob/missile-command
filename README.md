@@ -216,6 +216,10 @@ quit
 | `confirm` | Confirm THE END → high-score-entry if score qualifies, else title |
 | `open-high-scores` / `close-high-scores` | View table from title / return to title (`H` also toggles) |
 | `initials ABC` | Submit 3-char initials on high-score-entry (normalized A–Z/0–9) |
+| `open-options` / `leave-options` | Options from title / return to title (`O` also toggles) |
+| `mute true\|false` | Set mute on options (or any shell; stored in options) |
+| `difficulty easy\|normal\|arcade` | Set difficulty scaling for wave metrics |
+| `bind-fire left\|center\|right <key>` | Remap a fire battery to a single key |
 | `pause` / `resume` | Pause/resume play (`P` / Esc also toggle while playing) |
 | `quit` | Exit cleanly |
 
@@ -281,6 +285,11 @@ qa-sim t=1.5 missiles_in_flight=0 fireballs=1 enemy_missiles=1 center_x=200 cent
 | `submitted_initials=` | Last submitted initials (`none` if none) |
 | `initials_draft=` | Host typing buffer while entering (`none` if empty) |
 | `hs_rankN_initials=` / `hs_rankN_score=` | Ranked rows 1–10 when present |
+| `mute=` / `difficulty=` | Options mute flag and difficulty preset |
+| `fire_key_left=` / `fire_key_center=` / `fire_key_right=` | Bound fire keys (comma-separated) |
+| `pause_keys=` | Bound pause keys |
+| `sfx_count=` / `sfx_last=` | Cumulative SFX log size and recent types |
+| `qa-sfx type=… played=true\|false mute=…` | Host play attempt per new core SFX event |
 | Destroyable targets | position and `destroyed=true\|false` |
 
 Fireball phase order for one blast: `start.t` ≤ `max.t` ≤ `shrink.t` ≤ `end.t`.

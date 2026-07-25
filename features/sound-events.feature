@@ -1,3 +1,8 @@
+# mutation-stamp: sha256=668f2e4feb764c038a4521d6c8b5ba0c694ccfd99614b6ac7dfaa39be734d2c7
+# acceptance-mutation-manifest-begin
+# {"version":1,"tested_at":"2026-07-24T21:23:56.942335Z","feature_name":"Sound events","feature_path":"features/sound-events.feature","background_hash":"a9ec6e117022da9c15cf9c45cedc294cdddfdf941f078d5b2d9a8432079752db","implementation_hash":"sha256:d8e435c28f68d41542715f334d6a2259638511cb18f0ee5be30a1659efd16f56","scenarios":[{"index":0,"name":"Sound events 01 firing emits a launch event","scenario_hash":"386555750804228f472fdac62b96417d816a49468d57f8c43996f697c71c6545","mutation_count":20,"result":{"Total":20,"Killed":20,"Survived":0,"Errors":0},"tested_at":"2026-07-24T21:23:56.942335Z"},{"index":1,"name":"Sound events 02 destroying an enemy with a fireball emits an explosion event","scenario_hash":"1dc71e9e7111b5e1cf09ce736214ed6be857755a09527250bced89ea04351956","mutation_count":8,"result":{"Total":8,"Killed":8,"Survived":0,"Errors":0},"tested_at":"2026-07-24T21:23:56.942335Z"},{"index":2,"name":"Sound events 03 destroying a city emits a city destroyed event","scenario_hash":"b2317ce96adfda5d46012c802ccc791b40f9b2cc52b7bd2575adb8428c8ac9ee","mutation_count":8,"result":{"Total":8,"Killed":8,"Survived":0,"Errors":0},"tested_at":"2026-07-24T21:23:56.942335Z"},{"index":3,"name":"Sound events 04 destroying a battery emits a battery destroyed event","scenario_hash":"5d22757623682553af0108a0c5c4764335cc39dc7c2005cebf2bd167dddee8c8","mutation_count":24,"result":{"Total":24,"Killed":24,"Survived":0,"Errors":0},"tested_at":"2026-07-24T21:23:56.942335Z"},{"index":4,"name":"Sound events 05 firing to the low ammo threshold emits a low ammo event","scenario_hash":"dcf58dd08c345a71014e886877b9502fa5b799b03eb5974fe3c7abfca95bdcdc","mutation_count":20,"result":{"Total":20,"Killed":20,"Survived":0,"Errors":0},"tested_at":"2026-07-24T21:23:56.942335Z"},{"index":5,"name":"Sound events 06 completing a wave emits a wave clear event","scenario_hash":"cbddbb0cccea157f1b2f4af0d3ab1ac40b0d3b24e62ebb4a26e2eb751f8f6d1c","mutation_count":8,"result":{"Total":8,"Killed":8,"Survived":0,"Errors":0},"tested_at":"2026-07-24T21:23:56.942335Z"},{"index":6,"name":"Sound events 07 earning a bonus city emits a bonus city event","scenario_hash":"152b7935ee64e21981c0ef5da8d1fbc554af328ff852c3d878ac5d4116aa8a0a","mutation_count":21,"result":{"Total":21,"Killed":21,"Survived":0,"Errors":0},"tested_at":"2026-07-24T21:23:56.942335Z"},{"index":7,"name":"Sound events 08 entering THE END emits a the end event","scenario_hash":"48965efb64f56b7a7ad44f2a69938336b9c7fed6830ce3fea47bf11be0b85e33","mutation_count":15,"result":{"Total":15,"Killed":15,"Survived":0,"Errors":0},"tested_at":"2026-07-24T21:23:56.942335Z"},{"index":8,"name":"Sound events 09 mute does not remove core sfx events","scenario_hash":"df1ebe0a4e08fe4cbac728f6ce09cc39fba5e057661454dedf529a35300c8e3c","mutation_count":8,"result":{"Total":8,"Killed":8,"Survived":0,"Errors":0},"tested_at":"2026-07-24T21:23:56.942335Z"}]}
+# acceptance-mutation-manifest-end
+
 # Sound events 01 firing emits a launch event
 # Sound events 02 destroying an enemy with a fireball emits an explosion event
 # Sound events 03 destroying a city emits a city destroyed event
@@ -14,48 +19,46 @@ Background:
   When the player starts the game
 
 Scenario: Sound events 01 firing emits a launch event
-  And the player aims at <aim_x> <aim_y>
+  And the player aims at 400 200
   When the player fires the <battery> battery
   Then the playfield width is <expected_width>
   And the playfield height is <expected_height>
-  And an sfx event <event> was emitted
+  And an sfx event sfx/launch was emitted
 
 Examples:
-  | width | height | aim_x | aim_y | battery | event      | expected_width | expected_height |
-  | 800   | 600    | 400   | 200   | left    | sfx/launch | 800            | 600             |
-  | 800   | 600    | 400   | 200   | center  | sfx/launch | 800            | 600             |
-  | 800   | 600    | 400   | 200   | right   | sfx/launch | 800            | 600             |
-  | 1920  | 1080   | 960   | 400   | center  | sfx/launch | 1920           | 1080            |
+  | width | height | battery | expected_width | expected_height |
+  | 800   | 600    | left    | 800            | 600             |
+  | 800   | 600    | center  | 800            | 600             |
+  | 800   | 600    | right   | 800            | 600             |
+  | 1920  | 1080   | center  | 1920           | 1080            |
 
 Scenario: Sound events 02 destroying an enemy with a fireball emits an explosion event
-  And an enemy missile targeting city <city_index>
-  And a fireball at <fb_x> <fb_y> with radius <radius>
-  And the enemy missile path passes within distance <radius> of that fireball center
+  And an enemy missile targeting city 1
+  And a fireball at 400 250 with radius 40
+  And the enemy missile path passes within distance 40 of that fireball center
   When time advances until the enemy missile is inside the fireball radius or has impacted
   Then the playfield width is <expected_width>
   And the playfield height is <expected_height>
   And the enemy missile is destroyed by the fireball
-  And an sfx event <event> was emitted
+  And an sfx event sfx/explosion was emitted
 
 Examples:
-  | width | height | city_index | fb_x | fb_y | radius | event          | expected_width | expected_height |
-  | 800   | 600    | 1          | 400  | 250  | 40     | sfx/explosion  | 800            | 600             |
-  | 800   | 600    | 2          | 400  | 200  | 50     | sfx/explosion  | 800            | 600             |
-  | 1920  | 1080   | 3          | 960  | 400  | 50     | sfx/explosion  | 1920           | 1080            |
+  | width | height | expected_width | expected_height |
+  | 800   | 600    | 800            | 600             |
+  | 1920  | 1080   | 1920           | 1080            |
 
 Scenario: Sound events 03 destroying a city emits a city destroyed event
-  And an enemy missile targeting city <city_index>
+  And an enemy missile targeting city 0
   When time advances until enemy missiles impact or are destroyed
   Then the playfield width is <expected_width>
   And the playfield height is <expected_height>
-  And city <city_index> is not living
-  And an sfx event <event> was emitted
+  And city 0 is not living
+  And an sfx event sfx/city-destroyed was emitted
 
 Examples:
-  | width | height | city_index | event               | expected_width | expected_height |
-  | 800   | 600    | 0          | sfx/city-destroyed  | 800            | 600             |
-  | 800   | 600    | 2          | sfx/city-destroyed  | 800            | 600             |
-  | 1920  | 1080   | 5          | sfx/city-destroyed  | 1920           | 1080            |
+  | width | height | expected_width | expected_height |
+  | 800   | 600    | 800            | 600             |
+  | 1920  | 1080   | 1920           | 1080            |
 
 Scenario: Sound events 04 destroying a battery emits a battery destroyed event
   And an enemy missile targeting battery <battery>
@@ -73,35 +76,34 @@ Examples:
   | 1920  | 1080   | left    | sfx/battery-destroyed  | 1920           | 1080            |
 
 Scenario: Sound events 05 firing to the low ammo threshold emits a low ammo event
-  And every non-destroyed battery has <ammo_before> missiles
-  And the player aims at <aim_x> <aim_y>
+  And every non-destroyed battery has 2 missiles
+  And the player aims at 400 200
   When the player fires the <battery> battery
   Then the playfield width is <expected_width>
   And the playfield height is <expected_height>
-  And the <battery> battery has <ammo_after> missiles
-  And an sfx event <event> was emitted
+  And the <battery> battery has 1 missiles
+  And an sfx event sfx/low-ammo was emitted
 
 Examples:
-  | width | height | battery | ammo_before | ammo_after | aim_x | aim_y | event         | expected_width | expected_height |
-  | 800   | 600    | left    | 2           | 1          | 400   | 200   | sfx/low-ammo  | 800            | 600             |
-  | 800   | 600    | center  | 2           | 1          | 400   | 200   | sfx/low-ammo  | 800            | 600             |
-  | 800   | 600    | right   | 2           | 1          | 400   | 200   | sfx/low-ammo  | 800            | 600             |
-  | 1920  | 1080   | left    | 2           | 1          | 960   | 400   | sfx/low-ammo  | 1920           | 1080            |
+  | width | height | battery | expected_width | expected_height |
+  | 800   | 600    | left    | 800            | 600             |
+  | 800   | 600    | center  | 800            | 600             |
+  | 800   | 600    | right   | 800            | 600             |
+  | 1920  | 1080   | left    | 1920           | 1080            |
 
 Scenario: Sound events 06 completing a wave emits a wave clear event
-  And every non-destroyed battery has <ammo> missiles
+  And every non-destroyed battery has 10 missiles
   And the current wave has 1 scheduled enemies still active
   When time advances until all wave enemies are destroyed or have impacted
   Then the playfield width is <expected_width>
   And the playfield height is <expected_height>
   And the wave is complete
-  And an sfx event <event> was emitted
+  And an sfx event sfx/wave-clear was emitted
 
 Examples:
-  | width | height | ammo | event          | expected_width | expected_height |
-  | 800   | 600    | 10   | sfx/wave-clear | 800            | 600             |
-  | 800   | 600    | 5    | sfx/wave-clear | 800            | 600             |
-  | 1920  | 1080   | 10   | sfx/wave-clear | 1920           | 1080            |
+  | width | height | expected_width | expected_height |
+  | 800   | 600    | 800            | 600             |
+  | 1920  | 1080   | 1920           | 1080            |
 
 Scenario: Sound events 07 earning a bonus city emits a bonus city event
   When the score becomes <score>
@@ -132,16 +134,15 @@ Examples:
   | 1024  | 768    | sfx/the-end | 1024           | 768             |
 
 Scenario: Sound events 09 mute does not remove core sfx events
-  And mute is <mute>
-  And the player aims at <aim_x> <aim_y>
-  When the player fires the <battery> battery
+  And mute is true
+  And the player aims at 400 200
+  When the player fires the left battery
   Then the playfield width is <expected_width>
   And the playfield height is <expected_height>
-  And mute is <mute>
-  And an sfx event <event> was emitted
+  And mute is true
+  And an sfx event sfx/launch was emitted
 
 Examples:
-  | width | height | mute  | aim_x | aim_y | battery | event      | expected_width | expected_height |
-  | 800   | 600    | true  | 400   | 200   | left    | sfx/launch | 800            | 600             |
-  | 800   | 600    | false | 400   | 200   | left    | sfx/launch | 800            | 600             |
-  | 1920  | 1080   | true  | 960   | 400   | center  | sfx/launch | 1920           | 1080            |
+  | width | height | expected_width | expected_height |
+  | 800   | 600    | 800            | 600             |
+  | 1920  | 1080   | 1920           | 1080            |

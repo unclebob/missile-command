@@ -185,8 +185,9 @@
       (assert! (= "ZED" (field title "hs_rank1_initials"))
                (str "H write rank: " title))
       (assert! (.exists (io/file scores-path)) "H scores file not written")
-      (let [disk (edn/read-string (slurp scores-path))]
-        (assert! (= "ZED" (:initials (first (:high-scores disk))))
+      (let [disk (edn/read-string (slurp scores-path))
+            table (or (:high-scores disk) [])]
+        (assert! (= "ZED" (:initials (first table)))
                  (str "H disk content: " disk))))
     (write-edn! "tmp/hs-persist-reread.edn" {})
     (write-events! "tmp/hs-persist-read.txt"

@@ -31,3 +31,7 @@
   "Emit type when pred is truthy; otherwise return state unchanged."
   [state pred type]
   (if pred (emit state type) state))
+
+;; clj-mutate-manifest-begin
+;; {:version 1, :tested-at "2026-07-24T16:17:43.490776-05:00", :module-hash "443994014", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 2, :hash "-384622950"} {:id "defn/emit", :kind "defn", :line 4, :end-line 7, :hash "687167721"} {:id "defn/emit-many", :kind "defn", :line 9, :end-line 11, :hash "-1337034557"} {:id "defn/events", :kind "defn", :line 13, :end-line 15, :hash "-501259531"} {:id "defn/emitted?", :kind "defn", :line 17, :end-line 21, :hash "-894919108"} {:id "defn/launch-events", :kind "defn", :line 23, :end-line 28, :hash "2033453565"} {:id "defn/maybe-emit", :kind "defn", :line 30, :end-line 33, :hash "-1495564980"}]}
+;; clj-mutate-manifest-end
