@@ -6,9 +6,9 @@ Hand off **one task at a time** (SwarmForge: complete pipeline before starting t
 
 | Order | Task name | Plan | Status |
 |------:|-----------|------|--------|
-| 0 | `arch-docs-adr` | [pr-00-document-adr.md](pr-00-document-adr.md) | Spec ready (docs in repo) |
-| 1 | `wave-start-in-core` | [pr-01-wave-start-in-core.md](pr-01-wave-start-in-core.md) | **Next handoff** |
-| 2 | `sfx-event-contract` | [pr-02-sfx-event-contract.md](pr-02-sfx-event-contract.md) | Queued |
+| 0 | `arch-docs-adr` | [pr-00-document-adr.md](pr-00-document-adr.md) | Done (docs landed) |
+| 1 | `wave-start-in-core` | [pr-01-wave-start-in-core.md](pr-01-wave-start-in-core.md) | **In handoff → coder** |
+| 2 | `sfx-event-contract` | [pr-02-sfx-event-contract.md](pr-02-sfx-event-contract.md) | Queued (after PR1 chain) |
 | 3 | `extract-bonus-cities` | [pr-03-extract-bonus-cities.md](pr-03-extract-bonus-cities.md) | Queued |
 | 4 | `extract-combat` | [pr-04-extract-combat.md](pr-04-extract-combat.md) | Queued |
 | 5 | `extract-shell` | [pr-05-extract-shell.md](pr-05-extract-shell.md) | Queued |
