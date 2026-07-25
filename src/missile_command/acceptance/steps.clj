@@ -15,6 +15,7 @@
             [missile-command.acceptance.sfx-steps :as sfx-steps]
             [missile-command.acceptance.desktop-host-steps :as desktop-host-steps]
             [missile-command.acceptance.browser-host-steps :as browser-host-steps]
+            [missile-command.acceptance.wave-banner-steps :as wave-banner-steps]
             [missile-command.core :as core]))
 
 (defn- assert-playfield-dimension
@@ -1048,7 +1049,9 @@
         options-steps/handlers
         sfx-steps/handlers
         desktop-host-steps/handlers
-        browser-host-steps/handlers)))
+        browser-host-steps/handlers
+        wave-banner-steps/handlers)))
+
 (defn- match-handler
   [text]
   (some (fn [handler]
