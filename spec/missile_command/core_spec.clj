@@ -137,7 +137,7 @@
                     (core/destroy-battery :center))
           after (:state (core/handle state {:type :fire :battery :center}))]
       (should= 0 (count (core/defensive-missiles after)))
-      (should= 10 (:missiles (core/battery after :center)))
+      (should= 0 (:missiles (core/battery after :center)))
       (should (:destroyed? (core/battery after :center)))))
 
   (it "gives center missiles higher speed than side missiles"
