@@ -70,6 +70,9 @@
   {:state state :events []})
 
 (def sfx-events sfx/events)
+(def sfx-take-new sfx/take-new)
+(def sfx-truncate-to sfx/truncate-to)
+(def sfx-drain sfx/drain)
 (def sfx-emitted? sfx/emitted?)
 
 (defn new-game
