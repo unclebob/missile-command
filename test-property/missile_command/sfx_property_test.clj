@@ -61,3 +61,46 @@
           types (mapv :type (core/sfx-events twice))]
       (and (core/sfx-emitted? once :sfx/city-destroyed)
            (= 1 (count (filter #{:sfx/city-destroyed} types)))))))
+
+(defspec take-new-is-suffix-of-log-clamped-to-bounds
+  40
+  (for-all [types (gen/vector
+                   (gen/elements [:sfx/launch :sfx/boom :sfx/wave :sfx/warning])
+                   0 12)
+            from (gen/large-integer* {:min -3 :max 20})]
+    (let [state (reduce sfx/emit {:sfx-events []} types)
+          log (sfx/events state)
+          n (count log)
+          fresh (sfx/take-new state from)
+          clamped (max 0 (min (long from) n))]
+      (and (= fresh (subvec log clamped n))
+           (= (count fresh) (- n clamped))
+           (= log (into (vec (take clamped log)) fresh))))))
+
+(defspec drain-returns-all-and-clears
+  30
+  (for-all [types (gen/vector
+                   (gen/elements [:sfx/launch :sfx/explosion :sfx/city-destroyed])
+                   0 10)]
+    (let [state (reduce sfx/emit {:sfx-events []} types)
+          [ev cleared] (sfx/drain state)]
+      (and (= ev (sfx/events state))
+           (= (count types) (count ev))
+           (empty? (sfx/events cleared))
+           (every? #(not (sfx/emitted? cleared %)) (set types))))))
+
+(defspec truncate-to-keeps-prefix
+  40
+  (for-all [types (gen/vector
+                   (gen/elements [:sfx/launch :sfx/wave :sfx/the-end])
+                   0 10)
+            keep (gen/large-integer* {:min -2 :max 15})]
+    (let [state (reduce sfx/emit {:sfx-events []} types)
+          full (sfx/events state)
+          n (count full)
+          kept (max 0 (long keep))
+          after (sfx/truncate-to state keep)
+          log (sfx/events after)]
+      (and (= log (vec (take (min kept n) full)))
+           (<= (count log) n)
+           (<= (count log) kept)))))
