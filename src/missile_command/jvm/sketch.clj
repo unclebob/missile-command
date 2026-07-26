@@ -10,8 +10,11 @@
             [missile-command.testing :as testing]
             [missile-command.jvm.input :as input]
             [missile-command.jvm.audio :as audio]
+            [missile-command.jvm.frame :as frame]
             [missile-command.jvm.persist :as persist]
+            [missile-command.jvm.qa-runner :as qa-runner]
             [missile-command.jvm.render :as render]
+            [missile-command.jvm.telemetry-emitter :as telemetry-emitter]
             [missile-command.jvm.window :as window]))
 
 (def default-width 800)
@@ -66,12 +69,6 @@
   (or (:scores-file @launch-options)
       (persist/default-settings-path)))
 
-(defn- emit!
-  [line]
-  (when (:qa-telemetry? @launch-options)
-    (println line)
-    (flush)))
-
 (defn- no-keyfocus-qa?
   []
   (and (:qa-telemetry? @launch-options)
@@ -81,10 +78,18 @@
   []
   (not (no-keyfocus-qa?)))
 
+(defn- telemetry-context
+  []
+  {:launch-options launch-options
+   :initials-draft initials-draft
+   :fireball-phases fireball-phases
+   :sfx-emitted-count sfx-emitted-count
+   :stop-title! audio/stop-title!
+   :play-events! audio/play-events!})
+
 (defn- emit-sim!
   [state]
-  (emit! (input/format-sim-telemetry-line
-          (assoc state :initials-draft @initials-draft))))
+  (telemetry-emitter/emit-sim! (telemetry-context) state))
 
 (defn- persist-settings!
   [state]
@@ -101,36 +106,15 @@
 
 (defn- emit-telemetry-fire!
   [result]
-  (emit! (input/format-telemetry-line result)))
+  (telemetry-emitter/emit-telemetry-fire! (telemetry-context) result))
 
 (defn- emit-fireball-phases!
   [state]
-  (let [[events next-map] (input/detect-fireball-phase-events
-                           @fireball-phases
-                           (core/fireballs state))]
-    (reset! fireball-phases next-map)
-    (doseq [e events]
-      (emit! (input/format-fireball-phase-line state (:fireball e) (:phase e))))))
+  (telemetry-emitter/emit-fireball-phases! (telemetry-context) state))
 
 (defn- emit-new-sfx!
-  "Play new SFX clips and emit qa-sfx lines; honor mute for playback.
-  Uses sfx-take-new (cursor = previous log length)."
   [prev-state state]
-  (when (and (core/title? prev-state) (core/playing? state))
-    (audio/stop-title!))
-  (let [prev (count (core/sfx-events prev-state))
-        fresh (core/sfx-take-new state prev)
-        muted? (core/mute? state)]
-    (audio/play-events! fresh muted?)
-    (doseq [e fresh]
-      (let [kw (:type e)
-            t (if (namespace kw)
-                (str (namespace kw) "/" (name kw))
-                (name kw))]
-        (emit! (str "qa-sfx type=" t
-                    " played=" (if muted? "false" "true")
-                    " mute=" muted?))))
-    (reset! sfx-emitted-count (count (core/sfx-events state)))))
+  (telemetry-emitter/emit-new-sfx! (telemetry-context) prev-state state))
 
 (defn- apply-handle
   [state command]
@@ -221,15 +205,8 @@
     state))
 
 (defn- frame-dt-seconds
-  "Wall-clock seconds since last frame, clamped. Multiplied by :qa-speed."
   []
-  (let [now (System/currentTimeMillis)
-        prev (or @last-frame-ms now)
-        raw (/ (double (- now prev)) 1000.0)
-        wall (max 0.0 (min raw 0.25))
-        speed (double (or (:qa-speed @launch-options) 1.0))]
-    (reset! last-frame-ms now)
-    (* wall speed)))
+  (frame/next-dt! last-frame-ms @launch-options))
 
 (defn- advance-one-step
   "One core tick. Core starts attack 1 when the sky is empty."
@@ -246,16 +223,7 @@
   (let [budget (frame-dt-seconds)
         wave-before (core/wave state)
         screen-before (core/screen state)
-        step-max (double missiles/max-dt)
-        [state' completed-any?]
-        (loop [s state
-               remaining budget
-               completed-any? false]
-          (if (<= remaining 1.0e-12)
-            [s completed-any?]
-            (let [step (min remaining step-max)
-                  [s' completed?] (advance-one-step s step)]
-              (recur s' (- remaining step) (or completed-any? completed?)))))
+        [state' completed-any?] (frame/advance-substeps state budget missiles/max-dt advance-one-step)
         active? (or (seq (core/fireballs state'))
                     (seq (core/enemy-missiles state'))
                     (seq (core/destroyable-targets state')))
@@ -313,147 +281,19 @@
 
 (defn- drain-one-qa-event
   [state]
-  (let [events @pending-qa-events]
-    (if (empty? events)
-      state
-      (let [ev (first events)]
-        (case (:type ev)
-          :wait
-          (let [until (or (:until-ms ev)
-                          (+ (System/currentTimeMillis)
-                             (long (* 1000.0 (double (:seconds ev))))))]
-            (if (nil? (:until-ms ev))
-              (do
-                (reset! pending-qa-events
-                        (vec (cons (assoc ev :until-ms until) (rest events))))
-                state)
-              (if (>= (System/currentTimeMillis) until)
-                (do (reset! pending-qa-events (vec (rest events))) state)
-                state)))
-
-          :quit
-          (do (reset! pending-qa-events [])
-              (persist-settings! state)
-              (q/exit)
-              state)
-
-          (do
-            (reset! pending-qa-events (vec (rest events)))
-            (case (:type ev)
-              :click (let [s (apply-handle state (input/click-command (:x ev) (:y ev)))
-                           s (if (and (core/playing? s) (not (core/playing? state)))
-                               (apply-destroy-options s)
-                               s)]
-                       (when (and (:qa-telemetry? @launch-options)
-                                  (not= (core/screen state) (core/screen s)))
-                         (emit-sim! s))
-                       s)
-              :aim (apply-handle state (input/aim-command (:x ev) (:y ev)))
-              :start (let [s (apply-handle state {:type :start})
-                           s (cond-> s
-                               (core/playing? s) apply-destroy-options)]
-                       (when (:qa-telemetry? @launch-options)
-                         (emit-sim! s))
-                       s)
-              :confirm (let [s (apply-handle state {:type :confirm})]
-                         (when (:qa-telemetry? @launch-options)
-                           (emit-sim! s))
-                         s)
-              :pause (let [s (apply-handle state {:type :pause})]
-                       (when (:qa-telemetry? @launch-options)
-                         (emit-sim! s))
-                       s)
-              :resume (let [s (apply-handle state {:type :resume})]
-                        (when (:qa-telemetry? @launch-options)
-                          (emit-sim! s))
-                        s)
-              :open-high-scores
-              (let [s (apply-handle state {:type :open-high-scores})]
-                (when (:qa-telemetry? @launch-options) (emit-sim! s))
-                s)
-              :close-high-scores
-              (let [s (apply-handle state {:type :close-high-scores})]
-                (when (:qa-telemetry? @launch-options) (emit-sim! s))
-                s)
-              :submit-high-score
-              (let [s (apply-handle state {:type :submit-high-score
-                                           :initials (:initials ev)})]
-                (when (:qa-telemetry? @launch-options) (emit-sim! s))
-                s)
-              :open-options
-              (let [s (apply-handle state {:type :open-options})]
-                (when (:qa-telemetry? @launch-options) (emit-sim! s))
-                s)
-              :leave-options
-              (let [s (apply-handle state {:type :leave-options})]
-                (when (:qa-telemetry? @launch-options) (emit-sim! s))
-                s)
-              :set-mute
-              (let [s (apply-handle state {:type :set-mute :mute (:mute ev)})]
-                (when (:qa-telemetry? @launch-options) (emit-sim! s))
-                s)
-              :set-difficulty
-              (let [s (apply-handle state {:type :set-difficulty
-                                           :difficulty (:difficulty ev)})]
-                (when (:qa-telemetry? @launch-options) (emit-sim! s))
-                s)
-              :bind-fire-key
-              (let [s (apply-handle state {:type :bind-fire-key
-                                           :battery (:battery ev)
-                                           :key (:key ev)})]
-                (when (:qa-telemetry? @launch-options) (emit-sim! s))
-                s)
-              :key (let [ch (:ch ev)
-                         key-name (str/lower-case (str ch))
-                         s (apply-handle state {:type :key :key key-name})
-                         fired? (not= (count (core/defensive-missiles s))
-                                      (count (core/defensive-missiles state)))]
-                     (cond
-                       fired? s
-                       (or (= \p ch) (= \P ch)
-                           (core/pause-key-includes? state key-name))
-                       (toggle-pause state)
-                       (or (= \o ch) (= \O ch))
-                       (cond
-                         (core/title? state)
-                         (let [s2 (apply-handle state {:type :open-options})]
-                           (when (:qa-telemetry? @launch-options) (emit-sim! s2))
-                           s2)
-                         (core/options? state)
-                         (let [s2 (apply-handle state {:type :leave-options})]
-                           (when (:qa-telemetry? @launch-options) (emit-sim! s2))
-                           s2)
-                         :else state)
-                       (or (= \h ch) (= \H ch))
-                       (cond
-                         (core/title? state)
-                         (let [s2 (apply-handle state {:type :open-high-scores})]
-                           (when (:qa-telemetry? @launch-options) (emit-sim! s2))
-                           s2)
-                         (core/high-scores-view? state)
-                         (let [s2 (apply-handle state {:type :close-high-scores})]
-                           (when (:qa-telemetry? @launch-options) (emit-sim! s2))
-                           s2)
-                         :else state)
-                       (or (= \newline ch) (= \return ch))
-                       (cond
-                         (core/title? state)
-                         (apply-handle state {:type :start})
-                         (core/the-end? state) (apply-handle state {:type :confirm})
-                         (core/high-score-entry? state)
-                         (let [draft @initials-draft
-                               s2 (if (seq draft)
-                                    (apply-handle state {:type :submit-high-score
-                                                         :initials draft})
-                                    state)]
-                           (when (:qa-telemetry? @launch-options) (emit-sim! s2))
-                           s2)
-                         :else state)
-                       :else s))
-              :enemy (apply-enemy-spec state (:spec ev))
-              :fireball (let [{:keys [x y radius]} (:spec ev)]
-                          (testing/add-static-fireball state x y radius))
-              state)))))))
+  (qa-runner/drain-one-event
+   {:pending-events pending-qa-events
+    :now-ms #(System/currentTimeMillis)
+    :qa-telemetry? (:qa-telemetry? @launch-options)
+    :emit-sim! emit-sim!
+    :persist-settings! persist-settings!
+    :exit! q/exit
+    :apply-handle apply-handle
+    :apply-destroy-options apply-destroy-options
+    :apply-enemy-spec apply-enemy-spec
+    :toggle-pause toggle-pause
+    :initials-draft initials-draft}
+   state))
 
 (defn update-state
   [state]
