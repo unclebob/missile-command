@@ -61,14 +61,16 @@
 
   ;; B: contract documented + both hosts use take-new
   (let [sfx-src (slurp "src/missile_command/sfx.cljc")
-        jvm (slurp "src/missile_command/jvm/sketch.clj")
+        jvm-sketch (slurp "src/missile_command/jvm/sketch.clj")
+        jvm-sfx (slurp "src/missile_command/jvm/telemetry_emitter.clj")
         br (slurp "src/missile_command/browser/main.cljs")
         core (slurp "src/missile_command/core.cljc")]
     (assert! (re-find #"take-new" sfx-src) "B sfx missing take-new")
     (assert! (re-find #"truncate-to" sfx-src) "B sfx missing truncate-to")
     (assert! (re-find #"drain" sfx-src) "B sfx missing drain")
     (assert! (re-find #"(?i)Source of truth" sfx-src) "B sfx missing contract docstring")
-    (assert! (re-find #"sfx-take-new" jvm) "B jvm host not using sfx-take-new")
+    (assert! (re-find #"emit-new-sfx!" jvm-sketch) "B jvm sketch not delegating sfx emission")
+    (assert! (re-find #"sfx-take-new" jvm-sfx) "B jvm host sfx emitter not using sfx-take-new")
     (assert! (re-find #"sfx-take-new" br) "B browser host not using sfx-take-new")
     (assert! (re-find #"sfx-take-new" core) "B core missing sfx-take-new export")
     (assert! (re-find #"sfx-truncate-to" core) "B core missing sfx-truncate-to export")

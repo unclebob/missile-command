@@ -50,7 +50,7 @@
   (Double/parseDouble (str s)))
 
 (defn parse-qa-speed
-  "Positive sim-time multiplier (default 1.0). Speeds wall-clock QA waits."
+  "Positive sim-time multiplier (default 1.0). Does not change wall-clock QA waits."
   [s]
   (let [n (parse-float-token s)]
     (when-not (and (double? n) (pos? n) (Double/isFinite n))
@@ -142,5 +142,5 @@
     [(:width opts) (:height opts)]))
 
 ;; clj-mutate-manifest-begin
-;; {:version 1, :tested-at "2026-07-26T10:04:06.762345-05:00", :module-hash "-908200925", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 3, :hash "-2047725135"} {:id "defn/parse-destroy-list", :kind "defn", :line 5, :end-line 12, :hash "700474553"} {:id "defn/parse-xy-pair", :kind "defn", :line 14, :end-line 19, :hash "-1833854870"} {:id "defn/parse-enemy-spec", :kind "defn", :line 21, :end-line 30, :hash "1564602249"} {:id "defn/parse-fireball-spec", :kind "defn", :line 32, :end-line 38, :hash "188453021"} {:id "defn/int-token?", :kind "defn", :line 40, :end-line 42, :hash "1363479279"} {:id "defn/parse-int-token", :kind "defn", :line 44, :end-line 46, :hash "419440019"} {:id "defn/parse-float-token", :kind "defn", :line 48, :end-line 50, :hash "2108051018"} {:id "defn/parse-qa-speed", :kind "defn", :line 52, :end-line 59, :hash "-215203171"} {:id "def/switch-handlers", :kind "def", :line 61, :end-line 93, :hash "-434742608"} {:id "defn/apply-switch", :kind "defn", :line 95, :end-line 99, :hash "502688327"} {:id "defn/apply-size-token", :kind "defn", :line 101, :end-line 109, :hash "-1318813968"} {:id "defn/parse-cli-args", :kind "defn", :line 111, :end-line 137, :hash "-862334904"} {:id "defn/parse-window-size", :kind "defn", :line 139, :end-line 142, :hash "1406683016"}]}
+;; {:version 1, :tested-at "2026-07-26T10:35:38.817452-05:00", :module-hash "1392262090", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 3, :hash "-2047725135"} {:id "defn/parse-destroy-list", :kind "defn", :line 5, :end-line 12, :hash "700474553"} {:id "defn/parse-xy-pair", :kind "defn", :line 14, :end-line 19, :hash "-1833854870"} {:id "defn/parse-enemy-spec", :kind "defn", :line 21, :end-line 30, :hash "1564602249"} {:id "defn/parse-fireball-spec", :kind "defn", :line 32, :end-line 38, :hash "188453021"} {:id "defn/int-token?", :kind "defn", :line 40, :end-line 42, :hash "1363479279"} {:id "defn/parse-int-token", :kind "defn", :line 44, :end-line 46, :hash "419440019"} {:id "defn/parse-float-token", :kind "defn", :line 48, :end-line 50, :hash "2108051018"} {:id "defn/parse-qa-speed", :kind "defn", :line 52, :end-line 59, :hash "-1072047162"} {:id "def/switch-handlers", :kind "def", :line 61, :end-line 93, :hash "-434742608"} {:id "defn/apply-switch", :kind "defn", :line 95, :end-line 99, :hash "502688327"} {:id "defn/apply-size-token", :kind "defn", :line 101, :end-line 109, :hash "-1318813968"} {:id "defn/parse-cli-args", :kind "defn", :line 111, :end-line 137, :hash "-862334904"} {:id "defn/parse-window-size", :kind "defn", :line 139, :end-line 142, :hash "1406683016"}]}
 ;; clj-mutate-manifest-end
