@@ -25,6 +25,7 @@ Hand off **one task at a time** (SwarmForge: complete pipeline before starting t
 | R2 | `shared-host-input-policy` | [rec-02-shared-host-input-policy.md](rec-02-shared-host-input-policy.md) | Ready |
 | R3 | `jvm-sketch-coordinator-split` | [rec-03-jvm-sketch-coordinator-split.md](rec-03-jvm-sketch-coordinator-split.md) | Ready |
 | R4 | `unify-event-sfx-contract` | [rec-04-unify-event-sfx-contract.md](rec-04-unify-event-sfx-contract.md) | Ready |
+| R5 | `qa-wait-wall-clock` | [rec-05-qa-wait-wall-clock.md](rec-05-qa-wait-wall-clock.md) | Ready |
 
 ## Rules for every PR
 
