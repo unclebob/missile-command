@@ -292,6 +292,19 @@
     :enter? enter?
     :backspace? backspace?}))
 
+(defn- enter-key?
+  [ch]
+  (or (= \newline ch)
+      (= \return ch)
+      (when ch
+        (= (int 10) (int ch)))))
+
+(defn- backspace-key?
+  [ch]
+  (or (= \backspace ch)
+      (when ch
+        (= (char 8) ch))))
+
 (defn- toggle-pause
   "Pause while playing, resume while paused; otherwise leave state alone."
   [state]
@@ -490,8 +503,8 @@
   [state _event]
   (if (real-input-enabled?)
     (let [ch (q/raw-key)
-          enter? (or (= \newline ch) (= \return ch) (= (int 10) (int ch)))
-          backspace? (or (= \backspace ch) (= (char 8) ch))
+          enter? (enter-key? ch)
+          backspace? (backspace-key? ch)
           event (normalized-key-event ch enter? backspace?)
           intent (host-input/key-intent state @initials-draft event)]
       (if intent

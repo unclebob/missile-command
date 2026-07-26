@@ -40,6 +40,17 @@
 (def jvm-production-host-forbidden-require-prefixes
   ["missile-command.testing"])
 
+(def host-input-forbidden-source-patterns
+  [#"\bjs/"
+   #"\bq/"
+   #"\bquil\."
+   #"\bmissile-command\.jvm\."
+   #"\bmissile-command\.browser\."
+   #"\bmissile-command\.acceptance\."
+   #"\bclojure\.java\.io\b"
+   #"\bjava\.awt\b"
+   #"\bjavax\.swing\b"])
+
 (defn- balanced-form
   [content start]
   (loop [i (inc start) depth 1]
@@ -106,6 +117,12 @@
                     (str/ends-with? % "/telemetry.clj")))
        sort))
 
+(defn- host-input-files
+  []
+  (->> ["src/missile_command/host_input.cljc"]
+       (filter fs/exists?)
+       sort))
+
 (defn- forbidden-require?
   [req prefixes]
   (some #(or (= req %) (str/starts-with? req (str % ".")) (str/starts-with? req %))
@@ -124,10 +141,26 @@
     (doseq [{:keys [path ns require]} violations]
       (println (str "  " path " (" ns ") requires " require)))))
 
+(defn- source-pattern-violations
+  [paths patterns]
+  (for [path paths
+        :let [content (slurp path)]
+        pattern patterns
+        :when (re-find pattern content)]
+    {:path path :pattern pattern}))
+
+(defn- report-pattern-section!
+  [label violations]
+  (when (seq violations)
+    (println (str "Architecture check FAILED: " label))
+    (doseq [{:keys [path pattern]} violations]
+      (println (str "  " path " matches " pattern)))))
+
 (let [core-files (pure-core-files)
       acceptance (acceptance-files)
       jvm-input (jvm-input-files)
-      jvm-production-host (jvm-production-host-files)]
+      jvm-production-host (jvm-production-host-files)
+      host-input (host-input-files)]
   (when (empty? core-files)
     (println "Architecture check FAILED: no pure core .cljc files under src/missile_command")
     (System/exit 1))
@@ -143,11 +176,14 @@
         jvm-production-host-violations
         (->> jvm-production-host
              (map read-ns-and-requires)
-             (mapcat #(violations-for % jvm-production-host-forbidden-require-prefixes)))]
+             (mapcat #(violations-for % jvm-production-host-forbidden-require-prefixes)))
+        host-input-source-violations
+        (source-pattern-violations host-input host-input-forbidden-source-patterns)]
     (if (or (seq core-violations)
             (seq acceptance-violations)
             (seq jvm-input-violations)
-            (seq jvm-production-host-violations))
+            (seq jvm-production-host-violations)
+            (seq host-input-source-violations))
       (do
         (report-section! "pure core depends on forbidden namespaces" core-violations)
         (report-section! "acceptance depends on non-core internals/hosts"
@@ -156,6 +192,8 @@
                          jvm-input-violations)
         (report-section! "JVM production hosts depend on testing helpers"
                          jvm-production-host-violations)
+        (report-pattern-section! "shared host input policy contains platform code"
+                                 host-input-source-violations)
         (System/exit 1))
       (do
         (println "Architecture check OK")
@@ -163,6 +201,7 @@
         (println (str "  acceptance files: " (count acceptance)))
         (println (str "  JVM input facade files: " (count jvm-input)))
         (println (str "  JVM production host files: " (count jvm-production-host)))
+        (println (str "  shared host input policy files: " (count host-input)))
         (System/exit 0)))))
 
 ;; clj-mutate-manifest-begin
