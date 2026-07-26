@@ -15,6 +15,7 @@
 (def max-canvas-edge 1280)
 
 (defonce initials-draft (atom ""))
+(defonce sfx-cursor (atom 0))
 
 (defn- canvas-size
   []
@@ -37,13 +38,13 @@
       state)))
 
 (defn- play-new-sfx!
-  "Play SFX appended since prev-state (official contract: sfx-take-new)."
+  "Play SFX appended since the host cursor."
   [prev-state state]
   (when (and (core/title? prev-state) (core/playing? state))
     (audio/stop-title!))
-  (let [prev (count (core/sfx-events prev-state))
-        fresh (core/sfx-take-new state prev)]
-    (audio/play-events! fresh (core/mute? state)))
+  (let [[fresh next-cursor] (core/sfx-take-new-with-cursor state @sfx-cursor)]
+    (audio/play-events! fresh (core/mute? state))
+    (reset! sfx-cursor next-cursor))
   ;; After unlock, retry title music if core already emitted :sfx/warning.
   (when (and (core/title? state) @audio/unlocked?)
     (audio/ensure-title! (core/mute? state))))
@@ -113,6 +114,7 @@
   (try (q/pixel-density 1) (catch :default _))
   (audio/warm!)
   (reset! initials-draft "")
+  (reset! sfx-cursor 0)
   (js/setTimeout focus-canvas! 0)
   (let [[w h] (canvas-size)]
     (q/resize-sketch w h)

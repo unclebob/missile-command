@@ -6,7 +6,7 @@
 
   Hosts (JVM + browser):
   1. Remember the previous log length (or a cursor).
-  2. Play `(take-new state prev-count)` — the new events since last frame.
+  2. Play the events returned by `(take-new-with-cursor state cursor)`.
   3. Update the cursor to `(count (events state))`.
 
   `:events` on `handle`/`tick` results is not the SFX log. Fire may still
@@ -38,6 +38,13 @@
         from (long (max 0 (min (long from) n)))]
     (subvec ev from n)))
 
+(defn take-new-with-cursor
+  "Return [fresh-events next-cursor] for a host-owned SFX cursor."
+  [state cursor]
+  (let [ev (events state)
+        next-cursor (count ev)]
+    [(take-new state (or cursor 0)) next-cursor]))
+
 (defn truncate-to
   "Keep only the first `n` log entries (clear when n is 0)."
   [state n]
@@ -54,6 +61,14 @@
   [state type]
   (let [t (if (keyword? type) type (keyword type))]
     (boolean (some #(= t (:type %)) (events state)))))
+
+(defn event-type-name
+  "Stable host-facing text form for an SFX event type."
+  [event]
+  (let [kw (:type event)]
+    (if (namespace kw)
+      (str (namespace kw) "/" (name kw))
+      (name kw))))
 
 (defn launch-events
   "Launch event, plus low-ammo when remaining after fire is 1."
