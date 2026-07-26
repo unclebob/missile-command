@@ -21,3 +21,7 @@
 (defn -main
   [& _]
   (clean!))
+
+;; clj-mutate-manifest-begin
+;; {:version 1, :tested-at "2026-07-26T10:39:34.799253-05:00", :module-hash "2124708450", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 4, :hash "1251759727"} {:id "defn-/delete-tree!", :kind "defn-", :line 6, :end-line 14, :hash "529153903"} {:id "defn/clean!", :kind "defn", :line 16, :end-line 19, :hash "-2142083779"} {:id "defn/-main", :kind "defn", :line 21, :end-line 23, :hash "-1901994670"}]}
+;; clj-mutate-manifest-end
