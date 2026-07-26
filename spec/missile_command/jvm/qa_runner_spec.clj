@@ -5,7 +5,7 @@
 (defn- ctx
   [pending now]
   {:pending-events pending
-   :now-ms (fn [] @now)
+   :now-ns (fn [] @now)
    :qa-telemetry? false
    :emit-sim! (fn [_])
    :persist-settings! identity
@@ -19,17 +19,25 @@
 (describe "drain-one-event"
   (it "keeps a wait event pending until its deadline"
     (let [pending (atom [{:type :wait :seconds 0.5}])
-          now (atom 1000)
+          now (atom 1000000000)
           context (ctx pending now)
           state {:commands []}]
       (should= state (qa-runner/drain-one-event context state))
-      (should= [{:type :wait :seconds 0.5 :until-ms 1500}] @pending)
-      (reset! now 1499)
+      (should= [{:type :wait :seconds 0.5 :until-ns 1500000000}] @pending)
+      (reset! now 1499999999)
       (should= state (qa-runner/drain-one-event context state))
-      (should= [{:type :wait :seconds 0.5 :until-ms 1500}] @pending)
-      (reset! now 1500)
+      (should= [{:type :wait :seconds 0.5 :until-ns 1500000000}] @pending)
+      (reset! now 1500000000)
       (should= state (qa-runner/drain-one-event context state))
       (should= [] @pending)))
+
+  (it "does not scale wait deadlines by qa-speed"
+    (let [pending (atom [{:type :wait :seconds 2.0}])
+          now (atom 1000000000)
+          context (assoc (ctx pending now) :qa-speed 10.0)
+          state {:commands []}]
+      (should= state (qa-runner/drain-one-event context state))
+      (should= [{:type :wait :seconds 2.0 :until-ns 3000000000}] @pending)))
 
   (it "dispatches command events through the supplied host handler"
     (let [pending (atom [{:type :pause}])
