@@ -1,7 +1,6 @@
 (ns missile-command.jvm.window
   "Host window placement: open on the screen where bb was typed; no focus steal."
-  (:require [clojure.string :as str]
-            [clojure.java.io :as io])
+  (:require [clojure.string :as str])
   (:import [java.awt GraphicsEnvironment MouseInfo Window Component]
            [javax.swing SwingUtilities]
            [java.lang ProcessHandle]))

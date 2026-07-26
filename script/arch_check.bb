@@ -25,6 +25,18 @@
    "missile-command.jvm."
    "missile-command.browser."])
 
+;; The JVM input facade is testable host mapping. Keep it independent from
+;; rendering, window placement, sound, and persistence adapters.
+(def jvm-input-forbidden-require-prefixes
+  ["quil."
+   "missile-command.jvm.audio"
+   "missile-command.jvm.persist"
+   "missile-command.jvm.render"
+   "missile-command.jvm.sketch"
+   "missile-command.jvm.window"
+   "java.awt"
+   "javax.swing"])
+
 (defn- balanced-form
   [content start]
   (loop [i (inc start) depth 1]
@@ -73,6 +85,14 @@
        (filter #(str/includes? % "/missile_command/acceptance/"))
        sort))
 
+(defn- jvm-input-files
+  []
+  (->> ["src/missile_command/jvm/input.clj"
+        "src/missile_command/jvm/cli.clj"
+        "src/missile_command/jvm/telemetry.clj"]
+       (filter fs/exists?)
+       sort))
+
 (defn- forbidden-require?
   [req prefixes]
   (some #(or (= req %) (str/starts-with? req (str % ".")) (str/starts-with? req %))
@@ -92,7 +112,8 @@
       (println (str "  " path " (" ns ") requires " require)))))
 
 (let [core-files (pure-core-files)
-      acceptance (acceptance-files)]
+      acceptance (acceptance-files)
+      jvm-input (jvm-input-files)]
   (when (empty? core-files)
     (println "Architecture check FAILED: no pure core .cljc files under src/missile_command")
     (System/exit 1))
@@ -101,15 +122,23 @@
                              (mapcat #(violations-for % forbidden-require-prefixes)))
         acceptance-violations (->> acceptance
                                    (map read-ns-and-requires)
-                                   (mapcat #(violations-for % acceptance-forbidden-require-prefixes)))]
-    (if (or (seq core-violations) (seq acceptance-violations))
+                                   (mapcat #(violations-for % acceptance-forbidden-require-prefixes)))
+        jvm-input-violations (->> jvm-input
+                                  (map read-ns-and-requires)
+                                  (mapcat #(violations-for % jvm-input-forbidden-require-prefixes)))]
+    (if (or (seq core-violations)
+            (seq acceptance-violations)
+            (seq jvm-input-violations))
       (do
         (report-section! "pure core depends on forbidden namespaces" core-violations)
         (report-section! "acceptance depends on non-core internals/hosts"
                          acceptance-violations)
+        (report-section! "JVM input facade depends on low-level host adapters"
+                         jvm-input-violations)
         (System/exit 1))
       (do
         (println "Architecture check OK")
         (println (str "  pure core files: " (count core-files)))
         (println (str "  acceptance files: " (count acceptance)))
+        (println (str "  JVM input facade files: " (count jvm-input)))
         (System/exit 0)))))
