@@ -291,7 +291,7 @@
     :apply-handle apply-handle
     :apply-destroy-options apply-destroy-options
     :apply-enemy-spec apply-enemy-spec
-    :apply-qa-fireballs apply-qa-fireballs
+    :apply-qa-fireballs input/apply-qa-fireballs
     :toggle-pause toggle-pause
     :initials-draft initials-draft}
    state))
