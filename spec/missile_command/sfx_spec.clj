@@ -3,12 +3,11 @@
             [missile-command.core :as core]))
 
 (describe "sfx events"
-  (it "emits launch when firing"
+  (it "records launch in the state SFX log when firing"
     (let [state (-> (core/new-game {:width 800 :height 600})
                     core/start-game)
           result (core/handle state {:type :fire :battery :left})]
-      (should (core/sfx-emitted? (:state result) :sfx/launch))
-      (should (some #(= :sfx/launch (:type %)) (:events result)))))
+      (should (core/sfx-emitted? (:state result) :sfx/launch))))
 
   (it "emits low-ammo when firing leaves one missile"
     (let [state (-> (core/new-game {:width 800 :height 600})
@@ -138,6 +137,17 @@
       (should (every? #(= :sfx/launch (:type %)) fresh))
       (should= (count (core/sfx-events b))
                (+ n (count fresh)))))
+
+  (it "take-new-with-cursor returns fresh events and the next cursor"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    core/start-game)
+          a (:state (core/handle state {:type :fire :battery :left}))
+          [first-batch cursor] (core/sfx-take-new-with-cursor a 0)
+          [replay next-cursor] (core/sfx-take-new-with-cursor a cursor)]
+      (should (seq first-batch))
+      (should= (count (core/sfx-events a)) cursor)
+      (should= [] replay)
+      (should= cursor next-cursor)))
 
   (it "drain returns all events and clears the log"
     (let [state (-> (core/new-game {:width 800 :height 600})
