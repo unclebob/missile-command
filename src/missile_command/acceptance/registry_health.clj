@@ -1,8 +1,6 @@
 (ns missile-command.acceptance.registry-health
   "Health checks for APS parsed feature IR and registered step handlers."
-  (:require [clojure.data.json :as json]
-            [clojure.java.io :as io]
-            [missile-command.acceptance.steps :as steps]))
+  (:require [missile-command.acceptance.steps :as steps]))
 
 (defn pattern-string
   [handler]
@@ -58,18 +56,6 @@
        distinct
        vec))
 
-(defn read-ir-file
-  [path]
-  (json/read-str (slurp path) :key-fn keyword))
-
-(defn ir-files
-  [dir]
-  (->> (file-seq (io/file dir))
-       (filter #(.isFile %))
-       (filter #(re-find #"\.json$" (.getName %)))
-       sort
-       vec))
-
 (defn check
   ([feature-irs]
    (check steps/step-handlers feature-irs))
@@ -97,17 +83,6 @@
   (when (healthy? result)
     (println "Acceptance step registry health OK")))
 
-(defn check-dir!
-  [dir]
-  (let [feature-irs (mapv read-ir-file (ir-files dir))
-        result (check feature-irs)]
-    (report! result)
-    result))
-
 (defn status-code
   [result]
   (if (healthy? result) 0 1))
-
-(defn -main
-  [& [ir-dir]]
-  (System/exit (status-code (check-dir! (or ir-dir "build/acceptance/ir")))))
