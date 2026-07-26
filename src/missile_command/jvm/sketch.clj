@@ -292,6 +292,10 @@
     :apply-destroy-options apply-destroy-options
     :apply-enemy-spec apply-enemy-spec
     :apply-qa-fireballs input/apply-qa-fireballs
+    :apply-scenario input/apply-scenario
+    :load-scenario-edn input/load-scenario-edn
+    :load-persisted load-persisted
+    :new-game #(core/new-game {:width (q/width) :height (q/height)})
     :toggle-pause toggle-pause
     :initials-draft initials-draft}
    state))
