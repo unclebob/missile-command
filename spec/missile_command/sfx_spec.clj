@@ -149,6 +149,12 @@
       (should= [] replay)
       (should= cursor next-cursor)))
 
+  (it "formats event type names for host output"
+    (should= "sfx/launch"
+             (core/sfx-event-type-name {:type :sfx/launch}))
+    (should= "legacy"
+             (core/sfx-event-type-name {:type :legacy})))
+
   (it "drain returns all events and clears the log"
     (let [state (-> (core/new-game {:width 800 :height 600})
                     core/start-game

@@ -62,6 +62,14 @@
   (let [t (if (keyword? type) type (keyword type))]
     (boolean (some #(= t (:type %)) (events state)))))
 
+(defn event-type-name
+  "Stable host-facing text form for an SFX event type."
+  [event]
+  (let [kw (:type event)]
+    (if (namespace kw)
+      (str (namespace kw) "/" (name kw))
+      (name kw))))
+
 (defn launch-events
   "Launch event, plus low-ammo when remaining after fire is 1."
   [battery-id remaining-after]

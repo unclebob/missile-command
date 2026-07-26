@@ -87,6 +87,7 @@
 (def sfx-truncate-to sfx/truncate-to)
 (def sfx-drain sfx/drain)
 (def sfx-emitted? sfx/emitted?)
+(def sfx-event-type-name sfx/event-type-name)
 
 (defn new-game
   "Create a new game state for the given playfield size."
