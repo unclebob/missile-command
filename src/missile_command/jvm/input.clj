@@ -65,5 +65,10 @@
 ;; --- re-exports: scenario / QA automation ---
 (def load-scenario-edn scenario/load-scenario-edn)
 (def apply-scenario scenario/apply-scenario)
+(def apply-destroy-batteries scenario/apply-destroy-batteries)
+(def apply-qa-targets scenario/apply-qa-targets)
+(def apply-enemy-spec scenario/apply-enemy-spec)
+(def apply-qa-enemies scenario/apply-qa-enemies)
+(def apply-qa-fireballs scenario/apply-qa-fireballs)
 (def parse-qa-event-line scenario/parse-qa-event-line)
 (def load-qa-events scenario/load-qa-events)

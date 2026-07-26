@@ -1,4 +1,11 @@
 (ns missile-command.core
+  "Host-facing game facade.
+
+  Stable production entry points are construction (`new-game`, `resize`),
+  command/simulation entry (`handle`, `tick`), and read projections used by
+  hosts, renderers, persistence, audio, and telemetry. State staging helpers
+  used by specs, acceptance, and QA scenarios live in `missile-command.testing`;
+  compatibility wrappers remain here until existing call sites are migrated."
   (:require [missile-command.batteries :as batteries]
             [missile-command.bonus-cities :as bc]
             [missile-command.cities :as cities]
@@ -329,31 +336,19 @@
   [_]
   missiles/fireball-max-radius)
 
-(defn set-battery-ammo
-  "Test/setup helper: set remaining missiles for a battery."
-  [state battery-id ammo]
-  (update-battery state battery-id #(batteries/set-ammo % ammo)))
+(def set-battery-ammo
+  "Compatibility wrapper for testing/setup. Prefer missile-command.testing."
+  testing/set-battery-ammo)
 
-(defn destroy-battery
-  "Mark a battery destroyed; emit sfx when newly destroyed."
-  [state battery-id]
-  (let [bat (battery state battery-id)]
-    (sfx/maybe-emit (update-battery state battery-id batteries/destroy)
-                    (and bat (not (:destroyed? bat)))
-                    :sfx/battery-destroyed)))
+(def destroy-battery
+  "Compatibility wrapper for testing/setup. Prefer missile-command.testing."
+  testing/destroy-battery)
 
 (def add-destroyable-target testing/add-destroyable-target)
 
-(defn- update-city
-  [state city-id f]
-  (update state :cities #(cities/update-city % city-id f)))
-
-(defn destroy-city
-  [state city-id]
-  (let [c (city state city-id)]
-    (sfx/maybe-emit (update-city state city-id cities/destroy)
-                    (and c (:alive? c))
-                    :sfx/city-destroyed)))
+(def destroy-city
+  "Compatibility wrapper for testing/setup. Prefer missile-command.testing."
+  testing/destroy-city)
 
 (def enemy-kind-ballistic combat/enemy-kind-ballistic)
 (def enemy-kind-mirv combat/enemy-kind-mirv)
@@ -445,10 +440,9 @@
                       {:enemy-kind enemy-kind-smart
                        :smart-evaded? false}))))
 
-(defn with-rng-seed
-  "Attach a seedable RNG for deterministic sky origins (QA / tests)."
-  [state seed]
-  (rng/with-seed state seed))
+(def with-rng-seed
+  "Compatibility wrapper for testing/setup. Prefer missile-command.testing."
+  testing/with-rng-seed)
 
 (defn spawn-flyer
   "Spawn a bomber or satellite traversing from start to end at speed."
@@ -607,8 +601,12 @@
   [state key]
   (handle state {:type :key :key key}))
 
-(def set-bonus-city-threshold bc/set-threshold)
-(def set-bonus-city-reserve bc/set-reserve)
+(def set-bonus-city-threshold
+  "Compatibility wrapper for testing/setup. Prefer missile-command.testing."
+  testing/set-bonus-city-threshold)
+(def set-bonus-city-reserve
+  "Compatibility wrapper for testing/setup. Prefer missile-command.testing."
+  testing/set-bonus-city-reserve)
 (def apply-bonus-cities-from-reserve bc/apply-from-reserve)
 
 (defn- make-end-fireball
@@ -707,12 +705,9 @@
       (update :score (fnil + initial-score) (long points))
       bc/sync-from-score))
 
-(defn set-score
-  "Test/setup helper: set absolute score and process bonus city thresholds."
-  [state score-value]
-  (-> state
-      (assoc :score (long score-value))
-      bc/sync-from-score))
+(def set-score
+  "Compatibility wrapper for testing/setup. Prefer missile-command.testing."
+  testing/set-score)
 
 (defn- maybe-complete-wave
   "When the last attack of the wave is cleared, mark complete and show banner.
@@ -801,10 +796,9 @@
   [state]
   (wave-schedule/ensure-attack-started state activate-wave-schedule))
 
-(defn set-non-destroyed-battery-ammo
-  "Test helper: set ammo on every non-destroyed battery."
-  [state ammo]
-  (update state :batteries #(batteries/set-living-ammo % ammo)))
+(def set-non-destroyed-battery-ammo
+  "Compatibility wrapper for testing/setup. Prefer missile-command.testing."
+  testing/set-non-destroyed-battery-ammo)
 
 (def wave-schedule-metrics waves/schedule-metrics)
 (def wave-schedule-metrics-for waves/schedule-metrics-for-state)
