@@ -283,7 +283,7 @@
   [state]
   (qa-runner/drain-one-event
    {:pending-events pending-qa-events
-    :now-ms #(System/currentTimeMillis)
+    :now-ns #(System/nanoTime)
     :qa-telemetry? (:qa-telemetry? @launch-options)
     :emit-sim! emit-sim!
     :persist-settings! persist-settings!
