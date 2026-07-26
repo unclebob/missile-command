@@ -22,6 +22,7 @@ Hand off **one task at a time** (SwarmForge: complete pipeline before starting t
 | Order | Task name | Plan | Status |
 |------:|-----------|------|--------|
 | R1 | `core-facade-boundary` | [rec-01-core-facade-boundary.md](rec-01-core-facade-boundary.md) | Ready |
+| R2 | `shared-host-input-policy` | [rec-02-shared-host-input-policy.md](rec-02-shared-host-input-policy.md) | Ready |
 
 ## Rules for every PR
 
