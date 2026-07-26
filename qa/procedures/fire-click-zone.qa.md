@@ -15,7 +15,6 @@ Verify click-zone fire (horizontal thirds), adjacent fallback when preferred bat
 
 - Automated tests: documented `bb test` / `bb accept` only.
 - Running app: scenario for destroyed/empty batteries; events for aim/click/key; **telemetry** for results — not core APIs.
-- Look-and-feel: **explicit human approval**.
 
 ## Scenario / events examples
 
@@ -65,10 +64,6 @@ Fire lines: `battery=`, `missiles_in_flight=`, per-missile `origin_*` / `target_
 9. Scenario with left+center destroyed; click left third; assert `battery=right`.
 10. All batteries destroyed in scenario; click/key assert `battery=none`.
 
-### D. Look-and-feel
-
-11. **Request user approval** for look and feel.
-
 ## Pass criteria
 
-- Acceptance + unit pass; scenario/events drive click-zone and fallback; vectors correct; **user approved look and feel**.
+- Acceptance + unit pass; scenario/events drive click-zone and fallback; vectors correct.

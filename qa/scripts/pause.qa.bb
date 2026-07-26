@@ -99,7 +99,6 @@
              (str "title pause left title: " screens)))
 
   (println "\nPASS: pause automated QA (A–F)")
-  (println "PASS: look-and-feel approved (pause overlay)")
   (System/exit 0))
 
 (when (= *file* (System/getProperty "babashka.file"))

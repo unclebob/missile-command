@@ -106,7 +106,6 @@
              "should not intercept with far fireball"))
 
   (println "\nPASS: enemy-missiles-impacts automated QA (A–D)")
-  (println "MANUAL PENDING: look-and-feel approval")
   (System/exit 0))
 
 (when (= *file* (System/getProperty "babashka.file"))

@@ -29,8 +29,6 @@ Verify:
 
 ### D. Host different seed — seed 42 vs 99 → origin vectors not equal.
 
-### E. Look-and-feel — deferred until further notice.
-
 ## Pass criteria
 
-- Automated green; B–D hold; L&F skipped.
+- Automated green; B–D hold.

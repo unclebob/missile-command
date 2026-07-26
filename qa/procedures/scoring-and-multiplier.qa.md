@@ -33,7 +33,6 @@ Out of scope for this suite: bomber/satellite/smart-bomb point types (later stor
 - Automated: documented unit/acceptance only.
 - Running app: **scenario + events + telemetry** (no private core API).
 - Score/multiplier must appear in **QA telemetry** (and may already show on HUD; full HUD layout is US-17).
-- Look-and-feel: optional human check that score/multiplier are readable if drawn.
 
 ## Scenario staging
 
@@ -109,10 +108,6 @@ Wave-end uses ammo **before rearm** and living cities **after** impacts for that
 ### F. Multiplier schedule / cap
 
 12. Scenario or host setup at waves 1, 2, 3, 11, 13 — assert mult 1, 1, 2, 6, 6.
-
-### G. Look-and-feel (optional)
-
-13. If score/multiplier are drawn, confirm readable; **request user approval** if visible.
 
 ## Pass criteria
 

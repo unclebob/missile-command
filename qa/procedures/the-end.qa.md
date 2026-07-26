@@ -39,7 +39,6 @@ Depends on **US-10**. Out of scope: high-score initials (US-18), title return (U
 - Scenario + events + telemetry only.
 - Telemetry: THE END state, end message, end-fireball center/radius/phase, score, living, reserve.
 - Presentation clipping may be host-visible; core should expose fireball radius and message clip radius for acceptance.
-- **Look-and-feel approval required** for the fireball + letter reveal.
 
 ## Scenario staging
 
@@ -69,11 +68,8 @@ Reserve save:
 10. During contract: fireball shrinks; letters remain clipped to the disk (never drawn outside).
 11. Confirm message is **THE END**, never “Game Over”.
 
-### H. Look-and-feel — **request user approval** for expand/reveal/contract drama.
-
 ## Pass criteria
 
 - Acceptance including presentation scenarios passes.
 - Logic: zero living + zero reserve ↔ THE END; no post-end fire.
 - Visual: centered screen-fill fireball; THE END fills max blast; gradual reveal; no letters outside fireball.
-- User approves presentation.

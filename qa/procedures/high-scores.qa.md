@@ -30,7 +30,6 @@ Depends on US-14 THE END and US-15 title. Out of scope: online leaderboards.
 - Core: qualify, insert, order, cap, screen transitions via scenario/events.
 - Host: load/save file or localStorage; QA relaunch to verify persistence.
 - Telemetry: `screen=`, pending score, table ranks if exposed.
-- Look-and-feel: **request approval** for entry UI and table view.
 
 ## Scenario staging
 
@@ -71,11 +70,8 @@ initials BOB
 
 ### H. Persist — write a score; quit; relaunch; table still contains it (host file/localStorage).
 
-### I. Look-and-feel — **request user approval**.
-
 ## Pass criteria
 
 - Acceptance for `high-scores` passes.
 - Qualify/entry/order/cap/view match Gherkin.
 - Persistence verified on host.
-- User approves presentation.

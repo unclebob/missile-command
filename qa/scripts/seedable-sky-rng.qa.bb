@@ -96,7 +96,6 @@
     (assert! (not= a d) (str "C different seeds: " a " vs " d)))
 
   (println "\nPASS: seedable-sky-rng automated QA (A–C)")
-  (println "PASS: look-and-feel deferred per user")
   (System/exit 0))
 
 (when (= *file* (System/getProperty "babashka.file"))

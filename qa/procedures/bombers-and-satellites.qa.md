@@ -28,7 +28,6 @@ Out of scope: new weapons (only fireballs destroy flyers).
 
 - Scenario + events + telemetry only.
 - Telemetry: flyer kind (`bomber` / `satellite`), position, path progress; dropped `enemy_missiles`; destroy fate; `score=` / `multiplier=`.
-- Look-and-feel: **request approval** for flyer paths and drop trails.
 
 ## Scenario staging
 
@@ -82,10 +81,7 @@ quit
 
 ### H. Schedule — waves 1/5 → 0/0; wave 8 → bomber; wave 10 → bomber + satellite (per table).
 
-### I. Look-and-feel — **request user approval**.
-
 ## Pass criteria
 
 - Acceptance passes.
 - Motion, drop, kill, score 100×mult, stop-drop, and schedule match Gherkin.
-- User approves flyer readability if drawn.

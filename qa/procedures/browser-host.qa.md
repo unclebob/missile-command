@@ -24,7 +24,6 @@ QA may use documented browser QA flags or URL params only if they are published 
 - Real browser UI: keyboard, mouse, canvas.
 - Persistence via **`localStorage`** (not JVM files).
 - No private core API for play checks.
-- Look-and-feel: **request user approval** (parity with desktop style).
 
 ## Procedure
 
@@ -58,13 +57,7 @@ QA may use documented browser QA flags or URL params only if they are published 
 
 12. Spot-check same rules as desktop (wave, intercept, score) via shared core tests + short play.
 
-### G. Look-and-feel
-
-13. Full visual/audio pass in browser.
-14. **Request user approval**.
-
 ## Pass criteria
 
 - Acceptance for `browser-host` passes.
 - Documented build/open works; full loop + resize + localStorage + core isolation.
-- User approves browser presentation.

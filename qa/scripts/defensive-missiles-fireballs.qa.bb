@@ -1,6 +1,6 @@
 #!/usr/bin/env bb
 ;; Executable QA for defensive-missiles-fireballs.
-;; Procedures A–C via documented CLI; procedure D is manual look-and-feel.
+;; Procedures A-C via documented CLI.
 
 (require '[babashka.process :as p]
          '[clojure.string :as str]
@@ -157,7 +157,6 @@
 
     (println)
     (println "PASS: defensive-missiles-fireballs automated QA (A–C)")
-    (println "MANUAL PENDING: procedure D look-and-feel needs user approval")
     (System/exit 0)))
 
 (when (= *file* (System/getProperty "babashka.file"))

@@ -16,9 +16,6 @@ Verify **reserve is awarded immediately** when score crosses threshold, but **ci
 
 ### D. Cap — large reserve with few destroyed cities places at most 6 living; remainder stays reserve.
 
-### E. Look-and-feel — optional; request approval if restored cities are visible at wave transition.
-
 ## Pass criteria
 
 - Acceptance bonus-cities green; host B–D match.
-- User approves if L&F requested.

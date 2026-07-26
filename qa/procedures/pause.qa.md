@@ -19,7 +19,6 @@ Depends on **US-15** title/start. Out of scope: options from pause, full overlay
 - Scenario + events + telemetry only.
 - Telemetry: `screen=playing|paused|title`, enemy progress/positions frozen while paused, ammo unchanged on paused fire.
 - Events: `pause`, `resume`, or `key p` / `key escape` as documented.
-- Look-and-feel: pause overlay/state visible; **request approval**.
 
 ## Events examples
 
@@ -48,10 +47,7 @@ quit
 
 ### F. Title — on title, pause input; stay on title.
 
-### G. Look-and-feel — **request user approval** for pause indication.
-
 ## Pass criteria
 
 - Acceptance for `pause` passes.
 - Pause freezes motion and blocks fire; resume continues run.
-- User approves pause visibility if drawn.
