@@ -17,6 +17,12 @@ Hand off **one task at a time** (SwarmForge: complete pipeline before starting t
 | 8 | `seedable-sky-rng` | [pr-08-seedable-sky-rng.md](pr-08-seedable-sky-rng.md) | **Done** (QA merged) |
 | 9 | `arch-docs-invariants` | [pr-09-arch-docs-invariants.md](pr-09-arch-docs-invariants.md) | **Done** (QA merged) |
 
+## Post-review implementation plans
+
+| Order | Task name | Plan | Status |
+|------:|-----------|------|--------|
+| R1 | `core-facade-boundary` | [rec-01-core-facade-boundary.md](rec-01-core-facade-boundary.md) | Ready |
+
 ## Rules for every PR
 
 1. Behavior-preserving unless the plan explicitly changes rules.
