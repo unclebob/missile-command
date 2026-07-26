@@ -29,6 +29,12 @@ Hand off **one task at a time** (SwarmForge: complete pipeline before starting t
 | R6 | `acceptance-step-structure` | [rec-06-acceptance-step-structure.md](rec-06-acceptance-step-structure.md) | Ready |
 | R7 | `generated-artifacts-policy` | [rec-07-generated-artifacts-policy.md](rec-07-generated-artifacts-policy.md) | Ready |
 
+## QA improvement plans
+
+| Order | Task name | Plan | Status |
+|------:|-----------|------|--------|
+| Q1 | `qa-consolidation-efficiency` | [qa-consolidation-efficiency.md](qa-consolidation-efficiency.md) | Ready |
+
 ## Rules for every PR
 
 1. Behavior-preserving unless the plan explicitly changes rules.

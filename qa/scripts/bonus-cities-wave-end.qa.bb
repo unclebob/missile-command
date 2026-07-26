@@ -133,7 +133,6 @@
              (str "D leftover reserve (5-1): " next-play)))
 
   (println "\nPASS: bonus-cities-wave-end automated QA (A–D)")
-  (println "PASS: look-and-feel approved (city restore at wave end)")
   (System/exit 0))
 
 (when (= *file* (System/getProperty "babashka.file"))

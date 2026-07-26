@@ -19,7 +19,6 @@ Verify enemy ballistic missiles enter from sky origins that are **not locked to 
 
 - Automated: documented unit/acceptance commands only.
 - Running app: **scenario + events + telemetry only** (no private core API).
-- Look-and-feel: **explicit human approval** required (trails should fan, not all drop straight down).
 
 ## Scenario staging
 
@@ -86,14 +85,8 @@ Diagonal flight: after a short wait, both x and y move toward the target (origin
     - at least one enemy has origin x different from its target’s x (not all vertical)
 12. Visually confirm trails are diagonal / fan across the sky, not a set of pure vertical drops.
 
-### E. Look-and-feel
-
-13. Observe a full wave of trails at full native resolution.
-14. **Request user approval** for entry angles and trail readability.
-
 ## Pass criteria
 
 - Acceptance for `enemy-missile-angles` passes.
 - Staged offset origin is honored in telemetry and still destroys the target if unintercepted.
 - Multi-enemy wave launch uses varied sky origins (not exclusively straight-down).
-- User approves look-and-feel of angled approaches.

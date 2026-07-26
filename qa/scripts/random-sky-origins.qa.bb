@@ -96,7 +96,6 @@
                (str "C origins not varied: " xs))))
 
   (println "\nPASS: random-sky-origins automated QA (A–C)")
-  (println "PASS: look-and-feel deferred per user (skip until further notice)")
   (System/exit 0))
 
 (when (= *file* (System/getProperty "babashka.file"))

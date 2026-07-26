@@ -83,7 +83,6 @@
     (assert! (contains? screens "options") (str "meta options: " screens)))
 
   (println "\nPASS: desktop-host automated QA (A–C shell + meta)")
-  (println "PASS: look-and-feel approved (full desktop package)")
   (System/exit 0))
 
 (when (= *file* (System/getProperty "babashka.file"))

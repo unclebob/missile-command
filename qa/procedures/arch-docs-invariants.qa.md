@@ -12,8 +12,6 @@ Verify plan index and ADR are present and consistent, and executable invariants 
 
 ### B. Static — ADR-001, plans/README with all PR rows; seedable/rng property tests exist; US-10 / bonus place-at-wave-end not contradicted by plan status.
 
-### C. Look-and-feel — N/A (docs only).
-
 ## Pass criteria
 
 - Automated green; docs present and plan index complete.

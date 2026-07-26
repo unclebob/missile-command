@@ -81,7 +81,6 @@
     (assert! a1 (str "C scenario path failed: " (mapv #(field % "screen") lines))))
 
   (println "\nPASS: host-input-split automated QA (A–C; full cli/telemetry/scenario split)")
-  (println "PASS: look-and-feel deferred per user")
   (System/exit 0))
 
 (when (= *file* (System/getProperty "babashka.file"))

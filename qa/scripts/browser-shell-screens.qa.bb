@@ -52,7 +52,6 @@
              (str "browser task unexpected: " (:out b))))
 
   (println "\nPASS: browser-shell-screens automated QA (A–D)")
-  (println "PASS: look-and-feel approved (browser shell parity via desktop proxy)")
   (System/exit 0))
 
 (when (= *file* (System/getProperty "babashka.file"))

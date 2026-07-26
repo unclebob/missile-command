@@ -20,8 +20,6 @@ Verify the modular-core extraction is complete:
 
 ### C. Host — scenario playing + fire → attack 1 and `missiles_in_flight` path live.
 
-### D. Look-and-feel — deferred until further notice.
-
 ## Pass criteria
 
-- Suite green; B–C hold; L&F skipped.
+- Suite green; B–C hold.

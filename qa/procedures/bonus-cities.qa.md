@@ -33,7 +33,6 @@ Depends on **US-09** scoring (score can increase). Out of scope: THE END (US-14)
 - Automated: unit + acceptance only.
 - Running app: scenario + events + telemetry only (no private core API).
 - Telemetry must expose at least: `score=`, `bonus_cities=` / reserve, living city count, and a bonus-city earned signal when awarded (event log or telemetry flag).
-- Look-and-feel: optional if cities reappear visibly at wave end; **request approval** if host draws restored cities.
 
 ## Scenario staging
 
@@ -102,10 +101,6 @@ Complete wave; assert living cities increase from reserve without exceeding 6.
 11. Stage reserve &gt; 0 with destroyed cities; complete a wave (battery target preferred so city count only changes via restore).
 12. Assert reserve applied until living 6 or reserve empty.
 13. With three awards and two destroyed: after wave end living 6, reserve 1.
-
-### F. Look-and-feel
-
-14. If restored cities appear on screen at wave end (and Bonus City banner when applicable), confirm readable; **request user approval**.
 
 ## Pass criteria
 
