@@ -75,6 +75,10 @@
   (and (:qa-telemetry? @launch-options)
        (:no-keyfocus? @launch-options)))
 
+(defn- real-input-enabled?
+  []
+  (not (no-keyfocus-qa?)))
+
 (defn- emit-sim!
   [state]
   (emit! (input/format-sim-telemetry-line
@@ -179,10 +183,8 @@
   (try
     (let [surface (.getSurface (applet/current-applet))
           anchor (:launch-anchor @launch-options)
-          prev (:restore-focus-app @launch-options)
-          no-keyfocus? (and (:qa-telemetry? @launch-options)
-                            (:no-keyfocus? @launch-options))]
-      (window/place-on-launch-screen! surface (q/width) (q/height) anchor prev no-keyfocus?))
+          prev (:restore-focus-app @launch-options)]
+      (window/place-on-launch-screen! surface (q/width) (q/height) anchor prev (no-keyfocus-qa?)))
     (catch Exception e
       (binding [*out* *err*]
         (println "window placement skipped:" (.getMessage e))))))
@@ -436,9 +438,12 @@
                   tick-state)]
     (if scripted?
       (drain-one-qa-event state)
-      (-> state
-          (as-> s (apply-handle s (input/aim-command (q/mouse-x) (q/mouse-y))))
-          drain-one-qa-event))))
+      (cond-> state
+        (real-input-enabled?)
+        (apply-handle (input/aim-command (q/mouse-x) (q/mouse-y)))
+
+        true
+        drain-one-qa-event))))
 (defn draw
   [state]
   (render/draw-world! state @initials-draft)
@@ -446,9 +451,9 @@
 
 (defn mouse-moved
   [state _event]
-  (if (no-keyfocus-qa?)
-    state
-    (apply-handle state (input/aim-command (q/mouse-x) (q/mouse-y)))))
+  (if (real-input-enabled?)
+    (apply-handle state (input/aim-command (q/mouse-x) (q/mouse-y)))
+    state))
 
 (defn mouse-dragged
   [state event]
@@ -461,10 +466,10 @@
 
 (defn mouse-pressed
   [state event]
-  (if (or (no-keyfocus-qa?)
-          (not (left-button? event)))
-    state
-    (apply-handle state (input/click-command (q/mouse-x) (q/mouse-y)))))
+  (if (and (real-input-enabled?)
+           (left-button? event))
+    (apply-handle state (input/click-command (q/mouse-x) (q/mouse-y)))
+    state))
 
 (defn- initials-char?
   [ch]
@@ -479,8 +484,7 @@
 
 (defn key-pressed
   [state _event]
-  (if (no-keyfocus-qa?)
-    state
+  (if (real-input-enabled?)
     (let [ch (q/raw-key)
           key-name (when ch (str/lower-case (str ch)))]
       (cond
@@ -552,7 +556,8 @@
         (and key-name (core/playing? state))
         (apply-handle state {:type :key :key key-name})
 
-        :else state))))
+        :else state))
+    state))
 
 (defn run-sketch!
   ([]
@@ -572,8 +577,7 @@
                :middleware [m/fun-mode]
                :features [:resizable]
                :settings #(q/smooth 2)]
-         no-keyfocus? (and (:qa-telemetry? @launch-options)
-                           (:no-keyfocus? @launch-options))]
+         no-keyfocus? (no-keyfocus-qa?)]
      (if no-keyfocus?
        (with-redefs-fn {(intern 'quil.applet '-showSurface)
                         (fn [this]
