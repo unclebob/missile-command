@@ -129,6 +129,18 @@ samples (copyrighted). See `resources/sounds/CREDITS.md`.
 
 QA uses a small, stable launch surface—not a private core API:
 
+Executable QA scripts can be run through the suite wrapper:
+
+```sh
+bb qa-suite smoke
+bb qa-suite feature sound-events
+bb qa-suite full
+```
+
+Suite mode runs global architecture/property checks once and skips duplicate
+in-script global checks during the script pass. Direct scripts remain available
+for focused debugging, for example `bb qa/scripts/sound-events.qa.bb`.
+
 | Flag | Role |
 |------|------|
 | `--qa` | Enable QA mode: **telemetry on**, accept scenario/events |
@@ -260,6 +272,7 @@ quit
 | `mute true\|false` | Set mute on options (or any shell; stored in options) |
 | `difficulty easy\|normal\|arcade` | Set difficulty scaling for wave metrics |
 | `bind-fire left\|center\|right <key>` | Remap a fire battery to a single key |
+| `reset-scenario <file>` | Reset the running QA host to a fresh game plus the named scenario |
 | `pause` / `resume` | Pause/resume play (`P` / Esc also toggle while playing) |
 | `quit` | Exit cleanly |
 
