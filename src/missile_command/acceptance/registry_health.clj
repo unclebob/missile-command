@@ -97,11 +97,17 @@
   (when (healthy? result)
     (println "Acceptance step registry health OK")))
 
-(defn -main
-  [& [ir-dir]]
-  (let [dir (or ir-dir "build/acceptance/ir")
-        feature-irs (mapv read-ir-file (ir-files dir))
+(defn check-dir!
+  [dir]
+  (let [feature-irs (mapv read-ir-file (ir-files dir))
         result (check feature-irs)]
     (report! result)
-    (when-not (healthy? result)
-      (System/exit 1))))
+    result))
+
+(defn status-code
+  [result]
+  (if (healthy? result) 0 1))
+
+(defn -main
+  [& [ir-dir]]
+  (System/exit (status-code (check-dir! (or ir-dir "build/acceptance/ir")))))
