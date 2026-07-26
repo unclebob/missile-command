@@ -4,6 +4,13 @@
             [missile-command.core :as core]
             [missile-command.jvm.input :as input]))
 
+(def nanos-per-milli 1000000)
+(def nanos-per-second 1000000000.0)
+
+(defn seconds->nanos
+  [seconds]
+  (long (* nanos-per-second (double seconds))))
+
 (defn- emit-sim-when-qa!
   [ctx state]
   (when (:qa-telemetry? ctx)
@@ -95,12 +102,12 @@
   [ctx]
   (if-let [f (:now-ns ctx)]
     (f)
-    (* 1000000 ((:now-ms ctx)))))
+    (* nanos-per-milli ((:now-ms ctx)))))
 
 (defn- wait-deadline-ns
   [ctx ev]
   (+ (now-ns ctx)
-     (long (* 1000000000.0 (double (:seconds ev))))))
+     (seconds->nanos (:seconds ev))))
 
 (defn drain-one-event
   [ctx state]

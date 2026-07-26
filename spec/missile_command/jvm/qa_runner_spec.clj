@@ -18,6 +18,9 @@
    :initials-draft (atom "")})
 
 (describe "drain-one-event"
+  (it "converts decimal seconds to nanoseconds"
+    (should= 1500000000 (qa-runner/seconds->nanos 1.5)))
+
   (it "keeps a wait event pending until its deadline"
     (let [pending (atom [{:type :wait :seconds 0.5}])
           now (atom 1000000000)
