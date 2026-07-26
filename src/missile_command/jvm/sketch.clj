@@ -6,7 +6,6 @@
             [clojure.string :as str]
             [missile-command.core :as core]
             [missile-command.missiles :as missiles]
-            [missile-command.testing :as testing]
             [missile-command.jvm.input :as input]
             [missile-command.jvm.audio :as audio]
             [missile-command.jvm.persist :as persist]
@@ -149,35 +148,23 @@
 
 (defn- apply-destroy-options
   [state]
-  (reduce (fn [s id]
-            (testing/destroy-battery s id))
-          state
-          (:destroy-batteries @launch-options)))
+  (input/apply-destroy-batteries state (:destroy-batteries @launch-options)))
 
 (defn- apply-qa-targets
   [state]
-  (reduce (fn [s {:keys [x y]}]
-            (testing/add-destroyable-target s x y))
-          state
-          (:qa-targets @launch-options)))
+  (input/apply-qa-targets state (:qa-targets @launch-options)))
 
 (defn- apply-enemy-spec
-  [state {:keys [kind id]}]
-  (case kind
-    :city (testing/spawn-enemy-targeting-city state id)
-    :battery (testing/spawn-enemy-targeting-battery state id)
-    state))
+  [state spec]
+  (input/apply-enemy-spec state spec))
 
 (defn- apply-qa-enemies
   [state]
-  (reduce apply-enemy-spec state (:qa-enemies @launch-options)))
+  (input/apply-qa-enemies state (:qa-enemies @launch-options)))
 
 (defn- apply-qa-fireballs
   [state]
-  (reduce (fn [s {:keys [x y radius]}]
-            (testing/add-static-fireball s x y radius))
-          state
-          (:qa-fireballs @launch-options)))
+  (input/apply-qa-fireballs state (:qa-fireballs @launch-options)))
 
 (defn- configure-display!
   []
@@ -427,7 +414,9 @@
                        :else s))
               :enemy (apply-enemy-spec state (:spec ev))
               :fireball (let [{:keys [x y radius]} (:spec ev)]
-                          (testing/add-static-fireball state x y radius))
+                          (input/apply-qa-fireballs
+                           state
+                           [{:x x :y y :radius radius}]))
               state)))))))
 
 (defn update-state

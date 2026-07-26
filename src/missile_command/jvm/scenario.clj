@@ -50,6 +50,11 @@
     (:destroyed opts) (testing/destroy-battery id)
     (contains? opts :ammo) (testing/set-battery-ammo id (:ammo opts))))
 
+(defn apply-destroy-batteries
+  "Apply QA launch option battery destruction."
+  [state battery-ids]
+  (reduce testing/destroy-battery state battery-ids))
+
 (defn- apply-scenario-batteries
   [state scenario]
   (reduce apply-scenario-battery state (or (:batteries scenario) {})))
@@ -64,6 +69,14 @@
   (reduce (fn [s t] (testing/add-destroyable-target s (:x t) (:y t)))
           state
           (or (:targets scenario) [])))
+
+(defn apply-qa-targets
+  "Apply QA launch option destroyable targets."
+  [state targets]
+  (reduce (fn [s {:keys [x y]}]
+            (testing/add-destroyable-target s x y))
+          state
+          targets))
 
 (defn- apply-scenario-bonus-threshold
   [state scenario]
@@ -160,6 +173,28 @@
     :mirv (spawn-scenario-mirv state e)
     :smart (testing/spawn-smart-bomb-targeting-city state (second (:target e)))
     (spawn-scenario-ballistic state e)))
+
+(defn apply-enemy-spec
+  "Apply a QA launch/event enemy spec."
+  [state {:keys [kind id]}]
+  (case kind
+    :city (testing/spawn-enemy-targeting-city state id)
+    :battery (testing/spawn-enemy-targeting-battery state id)
+    state))
+
+(defn apply-qa-enemies
+  "Apply QA launch option enemy specs."
+  [state enemies]
+  (reduce apply-enemy-spec state enemies))
+
+(defn apply-qa-fireballs
+  "Apply QA launch option static fireballs."
+  [state fireballs]
+  (reduce (fn [s {:keys [x y radius]}]
+            (testing/add-static-fireball s x y radius))
+          state
+          fireballs))
+
 (defn- apply-scenario-enemies
   [state scenario]
   (let [enemies (or (:enemies scenario) [])]
