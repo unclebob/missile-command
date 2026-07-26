@@ -4,6 +4,7 @@
             [quil.core :as q :include-macros true]
             [quil.middleware :as m]
             [missile-command.core :as core]
+            [missile-command.host-input :as host-input]
             [missile-command.browser.persist :as persist]
             [missile-command.browser.render :as render]
             [missile-command.browser.audio :as audio]))
@@ -62,23 +63,19 @@
       (persist/save-settings! state'))
     state'))
 
-(defn- toggle-pause
-  [state]
+(defn- apply-input-intent
+  [state intent]
   (cond
-    (core/playing? state) (apply-handle state {:type :pause})
-    (core/paused? state) (apply-handle state {:type :resume})
+    (:command intent)
+    (let [state' (apply-handle state (:command intent))]
+      (when-let [draft (:draft intent)]
+        (reset! initials-draft draft))
+      state')
+
+    (contains? intent :draft)
+    (do (reset! initials-draft (:draft intent)) state)
+
     :else state))
-
-(defn- initials-char?
-  [ch]
-  (and ch (re-matches #"[A-Za-z0-9]" (str ch))))
-
-(defn- append-initials-draft!
-  [ch]
-  (let [c (str/upper-case (str ch))
-        cur @initials-draft]
-    (when (< (count cur) 3)
-      (reset! initials-draft (str cur c)))))
 
 (defn- key-name
   [ch]
@@ -160,89 +157,20 @@
       (= "Escape" (str ch))
       (= 27 (when (number? ch) ch))))
 
-(defn- handle-escape
-  [state]
-  (cond
-    (or (core/playing? state) (core/paused? state)) (toggle-pause state)
-    (core/high-scores-view? state) (apply-handle state {:type :close-high-scores})
-    (core/options? state) (apply-handle state {:type :leave-options})
-    :else state))
-
-(defn- handle-options-keys
-  "Mute (M) and difficulty 1/2/3 while on options; nil if not handled."
-  [state ch]
-  (when (core/options? state)
-    (cond
-      (or (= \m ch) (= \M ch))
-      (apply-handle state {:type :set-mute :mute (not (core/mute? state))})
-      (= \1 ch) (apply-handle state {:type :set-difficulty :difficulty "easy"})
-      (= \2 ch) (apply-handle state {:type :set-difficulty :difficulty "normal"})
-      (= \3 ch) (apply-handle state {:type :set-difficulty :difficulty "arcade"})
-      :else nil)))
-
-(defn- handle-toggle-shell
-  [state open-type close-type open? close?]
-  (cond
-    (open? state) (apply-handle state {:type open-type})
-    (close? state) (apply-handle state {:type close-type})
-    :else state))
-
-(defn- handle-enter
-  [state]
-  (cond
-    (core/title? state)
-    (apply-handle state {:type :start})
-
-    (core/the-end? state)
-    (do (reset! initials-draft "")
-        (apply-handle state {:type :confirm}))
-
-    (core/high-score-entry? state)
-    (let [draft @initials-draft]
-      (if (seq draft)
-        (apply-handle state {:type :submit-high-score :initials draft})
-        state))
-
-    :else state))
-
-(defn- handle-initials-edit
-  [state ch]
-  (cond
-    (initials-char? ch)
-    (do (append-initials-draft! ch) state)
-
-    (backspace-key? ch)
-    (do (reset! initials-draft
-                (let [d @initials-draft]
-                  (if (seq d) (subs d 0 (dec (count d))) d)))
-        state)
-
-    :else nil))
-
 (defn key-pressed
   [state _]
   (audio/unlock!)
   (when (core/title? state)
     (audio/ensure-title! (core/mute? state)))
   (let [ch (q/raw-key)
-        kn (key-name ch)]
-    (or (when (escape-key? ch) (handle-escape state))
-        (handle-options-keys state ch)
-        (when (or (= \o ch) (= \O ch))
-          (handle-toggle-shell state :open-options :leave-options
-                               core/title? core/options?))
-        (when (or (= \h ch) (= \H ch))
-          (handle-toggle-shell state :open-high-scores :close-high-scores
-                               core/title? core/high-scores-view?))
-        (when (or (= \p ch) (= \P ch)
-                  (and kn (core/pause-key-includes? state kn)))
-          (toggle-pause state))
-        (when (enter-key? ch) (handle-enter state))
-        (when (core/high-score-entry? state)
-          (handle-initials-edit state ch))
-        (when (and kn (core/playing? state))
-          (apply-handle state {:type :key :key kn}))
-        state)))
+        event {:ch ch
+               :key-name (key-name ch)
+               :escape? (escape-key? ch)
+               :enter? (enter-key? ch)
+               :backspace? (backspace-key? ch)}]
+    (if-let [intent (host-input/key-intent state @initials-draft event)]
+      (apply-input-intent state intent)
+      state)))
 
 (defn ^:export run
   []
@@ -256,3 +184,7 @@
     :mouse-pressed mouse-pressed
     :key-pressed key-pressed
     :middleware [m/fun-mode]))
+
+;; clj-mutate-manifest-begin
+;; {:version 1, :tested-at "2026-07-26T10:25:44.507363-05:00", :module-hash "-593069136", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 10, :hash "-775129158"} {:id "def/default-width", :kind "def", :line 12, :end-line 12, :hash "1515114879"} {:id "def/default-height", :kind "def", :line 13, :end-line 13, :hash "1673066894"} {:id "def/max-canvas-edge", :kind "def", :line 15, :end-line 15, :hash "980421588"} {:id "form/4/defonce", :kind "defonce", :line 17, :end-line 17, :hash "490469823"} {:id "defn-/canvas-size", :kind "defn-", :line 19, :end-line 27, :hash "2041325195"} {:id "defn-/maybe-resize", :kind "defn-", :line 29, :end-line 37, :hash "138955454"} {:id "defn-/play-new-sfx!", :kind "defn-", :line 39, :end-line 49, :hash "-621287917"} {:id "defn-/apply-handle", :kind "defn-", :line 51, :end-line 64, :hash "-969854057"} {:id "defn-/apply-input-intent", :kind "defn-", :line 66, :end-line 78, :hash "-1199831732"} {:id "defn-/key-name", :kind "defn-", :line 80, :end-line 82, :hash "1959061477"} {:id "defn-/backspace-key?", :kind "defn-", :line 84, :end-line 90, :hash "1076867633"} {:id "defn-/enter-key?", :kind "defn-", :line 92, :end-line 96, :hash "1257294141"} {:id "defn-/focus-canvas!", :kind "defn-", :line 98, :end-line 106, :hash "1762094652"} {:id "defn/setup", :kind "defn", :line 108, :end-line 120, :hash "-1953546766"} {:id "defn/update-state", :kind "defn", :line 122, :end-line 134, :hash "-1909946871"} {:id "defn/draw", :kind "defn", :line 136, :end-line 140, :hash "505697670"} {:id "defn/mouse-pressed", :kind "defn", :line 142, :end-line 152, :hash "2096012436"} {:id "defn-/escape-key?", :kind "defn-", :line 154, :end-line 158, :hash "-1047378806"} {:id "defn/key-pressed", :kind "defn", :line 160, :end-line 173, :hash "914901487"} {:id "defn/run", :kind "defn", :line 175, :end-line 186, :hash "-146256283"}]}
+;; clj-mutate-manifest-end

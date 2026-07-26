@@ -1,6 +1,6 @@
 # mutation-stamp: sha256=07eeb37d5bebd3c3dcf9b284db50e723e499ed50fc6af472fcd1c9fd4a56a5aa
 # acceptance-mutation-manifest-begin
-# {"version":1,"tested_at":"2026-07-26T15:19:40.785066Z","feature_name":"Playfield resize","feature_path":"features/playfield-resize.feature","background_hash":"74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b","implementation_hash":"sha256:e334ef8c3f64bf79cf7cd86c0b92525a36dacd964410e540d553c3e700107aa3","scenarios":[{"index":0,"name":"Playfield resize 01 reflows a fresh game","scenario_hash":"2ccaeebd7ff3651f78d037a2953711582de711cb4051c5875c290931ce8b7814","mutation_count":18,"result":{"Total":18,"Killed":18,"Survived":0,"Errors":0},"tested_at":"2026-07-26T15:05:56.565267Z"}]}
+# {"version":1,"tested_at":"2026-07-26T15:26:27.765555Z","feature_name":"Playfield resize","feature_path":"features/playfield-resize.feature","background_hash":"74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b","implementation_hash":"sha256:e334ef8c3f64bf79cf7cd86c0b92525a36dacd964410e540d553c3e700107aa3","scenarios":[{"index":0,"name":"Playfield resize 01 reflows a fresh game","scenario_hash":"2ccaeebd7ff3651f78d037a2953711582de711cb4051c5875c290931ce8b7814","mutation_count":18,"result":{"Total":18,"Killed":18,"Survived":0,"Errors":0},"tested_at":"2026-07-26T15:05:56.565267Z"}]}
 # acceptance-mutation-manifest-end
 
 # Playfield resize 01 reflows a fresh game
