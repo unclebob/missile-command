@@ -1,7 +1,6 @@
 (ns missile-command.jvm.window
   "Host window placement: open on the screen where bb was typed; no focus steal."
-  (:require [clojure.string :as str]
-            [clojure.java.io :as io])
+  (:require [clojure.string :as str])
   (:import [java.awt GraphicsEnvironment MouseInfo Window Component]
            [javax.swing SwingUtilities]
            [java.lang ProcessHandle]))
@@ -270,3 +269,7 @@
 (defn place-on-pointer-screen!
   [surface sketch-w sketch-h]
   (place-on-launch-screen! surface sketch-w sketch-h (pointer-location)))
+
+;; clj-mutate-manifest-begin
+;; {:version 1, :tested-at "2026-07-26T10:04:13.630917-05:00", :module-hash "-1733619857", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 6, :hash "1007685043"} {:id "defn/pointer-location", :kind "defn", :line 8, :end-line 11, :hash "-307681220"} {:id "defn/screen-bounds-containing", :kind "defn", :line 13, :end-line 24, :hash "1048841510"} {:id "defn/centered-location", :kind "defn", :line 26, :end-line 30, :hash "231400435"} {:id "defn/parse-point-csv", :kind "defn", :line 32, :end-line 37, :hash "-524147827"} {:id "defn/normalize-tty", :kind "defn", :line 39, :end-line 46, :hash "-1697798455"} {:id "defn-/run-process", :kind "defn-", :line 48, :end-line 58, :hash "1056657960"} {:id "defn-/run-osascript", :kind "defn-", :line 60, :end-line 62, :hash "403540014"} {:id "defn-/tmux-socket", :kind "defn-", :line 64, :end-line 68, :hash "1971745431"} {:id "defn/tmux-client-tty", :kind "defn", :line 70, :end-line 75, :hash "1356283202"} {:id "defn/process-controlling-tty", :kind "defn", :line 77, :end-line 91, :hash "-1584411454"} {:id "defn/terminal-app-window-center-for-tty", :kind "defn", :line 93, :end-line 118, :hash "-844435020"} {:id "defn/frontmost-window-center", :kind "defn", :line 120, :end-line 136, :hash "-467981581"} {:id "defn/capture-launch-anchor!", :kind "defn", :line 138, :end-line 147, :hash "-1740903649"} {:id "defn/frontmost-app-name", :kind "defn", :line 149, :end-line 155, :hash "1402997965"} {:id "defn/restore-frontmost-app!", :kind "defn", :line 157, :end-line 168, :hash "1261717427"} {:id "defn-/as-awt-window", :kind "defn-", :line 170, :end-line 182, :hash "677262048"} {:id "defn-/try-set-position!", :kind "defn-", :line 184, :end-line 192, :hash "167591262"} {:id "defn-/disable-focus-steal!", :kind "defn-", :line 194, :end-line 210, :hash "11651988"} {:id "defn/make-non-focusable!", :kind "defn", :line 212, :end-line 222, :hash "1162789388"} {:id "defn/show-non-focusable-surface!", :kind "defn", :line 224, :end-line 234, :hash "1916848146"} {:id "defn/place-on-launch-screen!", :kind "defn", :line 236, :end-line 267, :hash "-324537841"} {:id "defn/place-on-pointer-screen!", :kind "defn", :line 269, :end-line 271, :hash "1900442351"}]}
+;; clj-mutate-manifest-end

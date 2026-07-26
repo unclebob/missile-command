@@ -69,11 +69,6 @@
   (or (:scores-file @launch-options)
       (persist/default-settings-path)))
 
-(defn- no-keyfocus-qa?
-  []
-  (and (:qa-telemetry? @launch-options)
-       (:no-keyfocus? @launch-options)))
-
 (defn- telemetry-context
   []
   {:launch-options launch-options
@@ -82,6 +77,15 @@
    :sfx-emitted-count sfx-emitted-count
    :stop-title! audio/stop-title!
    :play-events! audio/play-events!})
+
+(defn- no-keyfocus-qa?
+  []
+  (and (:qa-telemetry? @launch-options)
+       (:no-keyfocus? @launch-options)))
+
+(defn- real-input-enabled?
+  []
+  (not (no-keyfocus-qa?)))
 
 (defn- emit-sim!
   [state]
@@ -165,10 +169,8 @@
   (try
     (let [surface (.getSurface (applet/current-applet))
           anchor (:launch-anchor @launch-options)
-          prev (:restore-focus-app @launch-options)
-          no-keyfocus? (and (:qa-telemetry? @launch-options)
-                            (:no-keyfocus? @launch-options))]
-      (window/place-on-launch-screen! surface (q/width) (q/height) anchor prev no-keyfocus?))
+          prev (:restore-focus-app @launch-options)]
+      (window/place-on-launch-screen! surface (q/width) (q/height) anchor prev (no-keyfocus-qa?)))
     (catch Exception e
       (binding [*out* *err*]
         (println "window placement skipped:" (.getMessage e))))))
@@ -302,9 +304,12 @@
                   tick-state)]
     (if scripted?
       (drain-one-qa-event state)
-      (-> state
-          (as-> s (apply-handle s (input/aim-command (q/mouse-x) (q/mouse-y))))
-          drain-one-qa-event))))
+      (cond-> state
+        (real-input-enabled?)
+        (apply-handle (input/aim-command (q/mouse-x) (q/mouse-y)))
+
+        true
+        drain-one-qa-event))))
 (defn draw
   [state]
   (render/draw-world! state @initials-draft)
@@ -312,9 +317,9 @@
 
 (defn mouse-moved
   [state _event]
-  (if (no-keyfocus-qa?)
-    state
-    (apply-handle state (input/aim-command (q/mouse-x) (q/mouse-y)))))
+  (if (real-input-enabled?)
+    (apply-handle state (input/aim-command (q/mouse-x) (q/mouse-y)))
+    state))
 
 (defn mouse-dragged
   [state event]
@@ -327,15 +332,14 @@
 
 (defn mouse-pressed
   [state event]
-  (if (or (no-keyfocus-qa?)
-          (not (left-button? event)))
-    state
-    (apply-handle state (input/click-command (q/mouse-x) (q/mouse-y)))))
+  (if (and (real-input-enabled?)
+           (left-button? event))
+    (apply-handle state (input/click-command (q/mouse-x) (q/mouse-y)))
+    state))
 
 (defn key-pressed
   [state _event]
-  (if (no-keyfocus-qa?)
-    state
+  (if (real-input-enabled?)
     (let [ch (q/raw-key)
           enter? (or (= \newline ch) (= \return ch) (= (int 10) (int ch)))
           backspace? (or (= \backspace ch) (= (char 8) ch))
@@ -345,7 +349,8 @@
         (apply-input-intent state intent)
         (if (:escape? event)
           (do (persist-settings! state) (q/exit) state)
-          state)))))
+          state)))
+    state))
 
 (defn run-sketch!
   ([]
@@ -365,11 +370,14 @@
                :middleware [m/fun-mode]
                :features [:resizable]
                :settings #(q/smooth 2)]
-         no-keyfocus? (and (:qa-telemetry? @launch-options)
-                           (:no-keyfocus? @launch-options))]
+         no-keyfocus? (no-keyfocus-qa?)]
      (if no-keyfocus?
        (with-redefs-fn {(intern 'quil.applet '-showSurface)
                         (fn [this]
                           (window/show-non-focusable-surface! (.getSurface this)))}
          #(apply q/sketch opts))
        (apply q/sketch opts)))))
+
+;; clj-mutate-manifest-begin
+;; {:version 1, :tested-at "2026-07-26T10:04:17.029927-05:00", :module-hash "-1395926409", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 13, :hash "-1263449719"} {:id "def/default-width", :kind "def", :line 15, :end-line 15, :hash "1515114879"} {:id "def/default-height", :kind "def", :line 16, :end-line 16, :hash "1673066894"} {:id "form/3/defonce", :kind "defonce", :line 18, :end-line 30, :hash "-1716031864"} {:id "form/4/defonce", :kind "defonce", :line 32, :end-line 32, :hash "1002191581"} {:id "form/5/defonce", :kind "defonce", :line 33, :end-line 33, :hash "-1026770644"} {:id "form/6/defonce", :kind "defonce", :line 34, :end-line 34, :hash "836696795"} {:id "form/7/defonce", :kind "defonce", :line 35, :end-line 35, :hash "490469823"} {:id "form/8/defonce", :kind "defonce", :line 36, :end-line 36, :hash "-829465550"} {:id "defn/configure!", :kind "defn", :line 38, :end-line 59, :hash "-913584225"} {:id "defn-/settings-path", :kind "defn-", :line 61, :end-line 65, :hash "-1863195585"} {:id "defn-/emit!", :kind "defn-", :line 67, :end-line 71, :hash "-332396237"} {:id "defn-/no-keyfocus-qa?", :kind "defn-", :line 73, :end-line 76, :hash "-1856740227"} {:id "defn-/real-input-enabled?", :kind "defn-", :line 78, :end-line 80, :hash "220575733"} {:id "defn-/emit-sim!", :kind "defn-", :line 82, :end-line 85, :hash "1660367962"} {:id "defn-/persist-settings!", :kind "defn-", :line 87, :end-line 94, :hash "338512157"} {:id "defn-/load-persisted", :kind "defn-", :line 96, :end-line 98, :hash "-1022612185"} {:id "defn-/emit-telemetry-fire!", :kind "defn-", :line 100, :end-line 102, :hash "-1450278322"} {:id "defn-/emit-fireball-phases!", :kind "defn-", :line 104, :end-line 111, :hash "-2091449435"} {:id "defn-/emit-new-sfx!", :kind "defn-", :line 113, :end-line 131, :hash "-43333562"} {:id "defn-/apply-handle", :kind "defn-", :line 133, :end-line 147, :hash "-1526758363"} {:id "defn-/apply-destroy-options", :kind "defn-", :line 149, :end-line 154, :hash "-32174696"} {:id "defn-/apply-qa-targets", :kind "defn-", :line 156, :end-line 161, :hash "1683538768"} {:id "defn-/apply-enemy-spec", :kind "defn-", :line 163, :end-line 168, :hash "555521639"} {:id "defn-/apply-qa-enemies", :kind "defn-", :line 170, :end-line 172, :hash "144502861"} {:id "defn-/apply-qa-fireballs", :kind "defn-", :line 174, :end-line 179, :hash "896237087"} {:id "defn-/configure-display!", :kind "defn-", :line 181, :end-line 190, :hash "237377933"} {:id "defn-/apply-qa-scenario", :kind "defn-", :line 192, :end-line 196, :hash "781354933"} {:id "defn/setup", :kind "defn", :line 198, :end-line 219, :hash "33615506"} {:id "defn-/frame-dt-seconds", :kind "defn-", :line 221, :end-line 230, :hash "901947249"} {:id "defn-/advance-one-step", :kind "defn-", :line 232, :end-line 239, :hash "67813870"} {:id "defn-/tick-state", :kind "defn-", :line 241, :end-line 278, :hash "1935649145"} {:id "defn-/toggle-pause", :kind "defn-", :line 280, :end-line 286, :hash "243918724"} {:id "defn-/drain-one-qa-event", :kind "defn-", :line 288, :end-line 430, :hash "-694435654"} {:id "defn/update-state", :kind "defn", :line 432, :end-line 446, :hash "-426389492"} {:id "defn/draw", :kind "defn", :line 447, :end-line 450, :hash "171649855"} {:id "defn/mouse-moved", :kind "defn", :line 452, :end-line 456, :hash "-1860317437"} {:id "defn/mouse-dragged", :kind "defn", :line 458, :end-line 460, :hash "-440374218"} {:id "defn-/left-button?", :kind "defn-", :line 462, :end-line 465, :hash "143503345"} {:id "defn/mouse-pressed", :kind "defn", :line 467, :end-line 472, :hash "1887518453"} {:id "defn-/initials-char?", :kind "defn-", :line 474, :end-line 476, :hash "-1078115175"} {:id "defn-/append-initials-draft!", :kind "defn-", :line 478, :end-line 483, :hash "-400509074"} {:id "defn/key-pressed", :kind "defn", :line 485, :end-line 560, :hash "1306562840"} {:id "defn/run-sketch!", :kind "defn", :line 562, :end-line 586, :hash "1780402941"}]}
+;; clj-mutate-manifest-end
