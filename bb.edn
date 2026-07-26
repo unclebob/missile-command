@@ -141,7 +141,7 @@
 
   generate-acceptance
   {:doc "Generate acceptance test entrypoints from IR"
-   :depends [parse-acceptance]
+   :depends [check-acceptance-registry]
    :task (shell "bash" "-c"
                 (str "set -euo pipefail; "
                      "mkdir -p acceptance/generated/metadata; "
@@ -151,6 +151,12 @@
                      "  [ -e \"$f\" ] || continue; "
                      "  bin/acceptance-entrypoint-generator \"$f\" acceptance/generated; "
                      "done"))}
+
+  check-acceptance-registry
+  {:doc "Check parsed acceptance IR for duplicate, unsupported, or ambiguous steps"
+   :depends [parse-acceptance]
+   :task (shell "clojure" "-M" "-m" "missile-command.acceptance.registry-health"
+                "build/acceptance/ir")}
 
   accept
   {:doc "Normal acceptance pipeline: parse → generate → run generated tests"

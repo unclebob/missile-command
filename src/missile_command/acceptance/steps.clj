@@ -1,4 +1,14 @@
 (ns missile-command.acceptance.steps
+  "Acceptance step registry.
+
+  Ownership:
+  - this namespace keeps generic setup, layout, scoring, and shared assertions;
+  - enemy/combat/fireball/city/defensive behavior lives in focused step files;
+  - shell/title/pause/options/high-score behavior lives in shell step files;
+  - host/browser/desktop behavior lives in host step files.
+
+  Registry health is checked from APS parsed IR by
+  missile-command.acceptance.registry-health."
   (:require [missile-command.acceptance.step-support :as support]
             [missile-command.acceptance.enemy-steps :as enemy-steps]
             [missile-command.acceptance.end-steps :as end-steps]
@@ -98,8 +108,25 @@
   [world pred dt max-steps fail-message]
   (support/advance-until world pred core/tick dt max-steps fail-message))
 
+(defn- distinct-handlers
+  "Keep the first registered handler for each regex string.
+  The broad generic block remains first for compatibility; focused namespaces
+  own newer behavior areas and must not add active duplicate patterns."
+  [handlers]
+  (loop [remaining handlers
+         seen #{}
+         unique []]
+    (if (empty? remaining)
+      unique
+      (let [handler (first remaining)
+            pattern (str (:pattern handler))]
+        (if (contains? seen pattern)
+          (recur (rest remaining) seen unique)
+          (recur (rest remaining) (conj seen pattern) (conj unique handler)))))))
+
 (def step-handlers
-  (vec (concat
+  (distinct-handlers
+   (concat
         [{:pattern #"^a new game with width <([A-Za-z0-9_]+)> and height <([A-Za-z0-9_]+)>$"
     :fn (fn [world [_ width-param height-param] example]
           (assoc world :state
