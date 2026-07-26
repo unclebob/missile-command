@@ -15,6 +15,7 @@
 (def max-canvas-edge 1280)
 
 (defonce initials-draft (atom ""))
+(defonce sfx-cursor (atom 0))
 
 (defn- canvas-size
   []
@@ -37,13 +38,13 @@
       state)))
 
 (defn- play-new-sfx!
-  "Play SFX appended since prev-state (official contract: sfx-take-new)."
+  "Play SFX appended since the host cursor."
   [prev-state state]
   (when (and (core/title? prev-state) (core/playing? state))
     (audio/stop-title!))
-  (let [prev (count (core/sfx-events prev-state))
-        fresh (core/sfx-take-new state prev)]
-    (audio/play-events! fresh (core/mute? state)))
+  (let [[fresh next-cursor] (core/sfx-take-new-with-cursor state @sfx-cursor)]
+    (audio/play-events! fresh (core/mute? state))
+    (reset! sfx-cursor next-cursor))
   ;; After unlock, retry title music if core already emitted :sfx/warning.
   (when (and (core/title? state) @audio/unlocked?)
     (audio/ensure-title! (core/mute? state))))
@@ -113,6 +114,7 @@
   (try (q/pixel-density 1) (catch :default _))
   (audio/warm!)
   (reset! initials-draft "")
+  (reset! sfx-cursor 0)
   (js/setTimeout focus-canvas! 0)
   (let [[w h] (canvas-size)]
     (q/resize-sketch w h)
@@ -186,5 +188,5 @@
     :middleware [m/fun-mode]))
 
 ;; clj-mutate-manifest-begin
-;; {:version 1, :tested-at "2026-07-26T10:25:44.507363-05:00", :module-hash "-593069136", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 10, :hash "-775129158"} {:id "def/default-width", :kind "def", :line 12, :end-line 12, :hash "1515114879"} {:id "def/default-height", :kind "def", :line 13, :end-line 13, :hash "1673066894"} {:id "def/max-canvas-edge", :kind "def", :line 15, :end-line 15, :hash "980421588"} {:id "form/4/defonce", :kind "defonce", :line 17, :end-line 17, :hash "490469823"} {:id "defn-/canvas-size", :kind "defn-", :line 19, :end-line 27, :hash "2041325195"} {:id "defn-/maybe-resize", :kind "defn-", :line 29, :end-line 37, :hash "138955454"} {:id "defn-/play-new-sfx!", :kind "defn-", :line 39, :end-line 49, :hash "-621287917"} {:id "defn-/apply-handle", :kind "defn-", :line 51, :end-line 64, :hash "-969854057"} {:id "defn-/apply-input-intent", :kind "defn-", :line 66, :end-line 78, :hash "-1199831732"} {:id "defn-/key-name", :kind "defn-", :line 80, :end-line 82, :hash "1959061477"} {:id "defn-/backspace-key?", :kind "defn-", :line 84, :end-line 90, :hash "1076867633"} {:id "defn-/enter-key?", :kind "defn-", :line 92, :end-line 96, :hash "1257294141"} {:id "defn-/focus-canvas!", :kind "defn-", :line 98, :end-line 106, :hash "1762094652"} {:id "defn/setup", :kind "defn", :line 108, :end-line 120, :hash "-1953546766"} {:id "defn/update-state", :kind "defn", :line 122, :end-line 134, :hash "-1909946871"} {:id "defn/draw", :kind "defn", :line 136, :end-line 140, :hash "505697670"} {:id "defn/mouse-pressed", :kind "defn", :line 142, :end-line 152, :hash "2096012436"} {:id "defn-/escape-key?", :kind "defn-", :line 154, :end-line 158, :hash "-1047378806"} {:id "defn/key-pressed", :kind "defn", :line 160, :end-line 173, :hash "914901487"} {:id "defn/run", :kind "defn", :line 175, :end-line 186, :hash "-146256283"}]}
+;; {:version 1, :tested-at "2026-07-26T10:35:35.405842-05:00", :module-hash "-197846849", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 10, :hash "-775129158"} {:id "def/default-width", :kind "def", :line 12, :end-line 12, :hash "1515114879"} {:id "def/default-height", :kind "def", :line 13, :end-line 13, :hash "1673066894"} {:id "def/max-canvas-edge", :kind "def", :line 15, :end-line 15, :hash "980421588"} {:id "form/4/defonce", :kind "defonce", :line 17, :end-line 17, :hash "490469823"} {:id "form/5/defonce", :kind "defonce", :line 18, :end-line 18, :hash "-56437432"} {:id "defn-/canvas-size", :kind "defn-", :line 20, :end-line 28, :hash "2041325195"} {:id "defn-/maybe-resize", :kind "defn-", :line 30, :end-line 38, :hash "138955454"} {:id "defn-/play-new-sfx!", :kind "defn-", :line 40, :end-line 50, :hash "361546056"} {:id "defn-/apply-handle", :kind "defn-", :line 52, :end-line 65, :hash "-969854057"} {:id "defn-/apply-input-intent", :kind "defn-", :line 67, :end-line 79, :hash "-1199831732"} {:id "defn-/key-name", :kind "defn-", :line 81, :end-line 83, :hash "1959061477"} {:id "defn-/backspace-key?", :kind "defn-", :line 85, :end-line 91, :hash "1076867633"} {:id "defn-/enter-key?", :kind "defn-", :line 93, :end-line 97, :hash "1257294141"} {:id "defn-/focus-canvas!", :kind "defn-", :line 99, :end-line 107, :hash "1762094652"} {:id "defn/setup", :kind "defn", :line 109, :end-line 122, :hash "-513383052"} {:id "defn/update-state", :kind "defn", :line 124, :end-line 136, :hash "-1909946871"} {:id "defn/draw", :kind "defn", :line 138, :end-line 142, :hash "505697670"} {:id "defn/mouse-pressed", :kind "defn", :line 144, :end-line 154, :hash "2096012436"} {:id "defn-/escape-key?", :kind "defn-", :line 156, :end-line 160, :hash "-1047378806"} {:id "defn/key-pressed", :kind "defn", :line 162, :end-line 175, :hash "914901487"} {:id "defn/run", :kind "defn", :line 177, :end-line 188, :hash "-146256283"}]}
 ;; clj-mutate-manifest-end

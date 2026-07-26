@@ -3,12 +3,11 @@
             [missile-command.core :as core]))
 
 (describe "sfx events"
-  (it "emits launch when firing"
+  (it "records launch in the state SFX log when firing"
     (let [state (-> (core/new-game {:width 800 :height 600})
                     core/start-game)
           result (core/handle state {:type :fire :battery :left})]
-      (should (core/sfx-emitted? (:state result) :sfx/launch))
-      (should (some #(= :sfx/launch (:type %)) (:events result)))))
+      (should (core/sfx-emitted? (:state result) :sfx/launch))))
 
   (it "emits low-ammo when firing leaves one missile"
     (let [state (-> (core/new-game {:width 800 :height 600})
@@ -138,6 +137,44 @@
       (should (every? #(= :sfx/launch (:type %)) fresh))
       (should= (count (core/sfx-events b))
                (+ n (count fresh)))))
+
+  (it "take-new-with-cursor returns fresh events and the next cursor"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    core/start-game)
+          a (:state (core/handle state {:type :fire :battery :left}))
+          [first-batch cursor] (core/sfx-take-new-with-cursor a 0)
+          [replay next-cursor] (core/sfx-take-new-with-cursor a cursor)]
+      (should (seq first-batch))
+      (should= (count (core/sfx-events a)) cursor)
+      (should= [] replay)
+      (should= cursor next-cursor)))
+
+  (it "take-new clamps cursors to the event log"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    core/start-game)
+          a (:state (core/handle state {:type :fire :battery :left}))
+          all-events (core/sfx-events a)
+          [nil-batch nil-cursor] (core/sfx-take-new-with-cursor a nil)]
+      (should= all-events (core/sfx-take-new a -1))
+      (should= [] (core/sfx-take-new a 1000))
+      (should= all-events nil-batch)
+      (should= (count all-events) nil-cursor)))
+
+  (it "formats event type names for host output"
+    (should= "sfx/launch"
+             (core/sfx-event-type-name {:type :sfx/launch}))
+    (should= "legacy"
+             (core/sfx-event-type-name {:type :legacy})))
+
+  (it "truncate-to keeps a bounded prefix of the event log"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (assoc :sfx-events [{:type :sfx/launch}
+                                        {:type :sfx/low-ammo}
+                                        {:type :sfx/boom}]))]
+      (should= [{:type :sfx/launch}]
+               (core/sfx-events (core/sfx-truncate-to state 1)))
+      (should= []
+               (core/sfx-events (core/sfx-truncate-to state -1)))))
 
   (it "drain returns all events and clears the log"
     (let [state (-> (core/new-game {:width 800 :height 600})
