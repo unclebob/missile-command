@@ -163,6 +163,10 @@
    :depends [generate-acceptance]
    :task (shell "clojure" "-M:accept")}
 
+  clean-generated
+  {:doc "Remove disposable generated outputs; keep source, SwarmForge state, and package locks"
+   :task (shell "clojure" "-M" "-m" "missile-command.generated-artifacts")}
+
   arch-check
   {:doc "Architecture boundary check (pure core vs hosts/IO/acceptance)"
    :task (shell "bb" "script/arch_check.bb")}
