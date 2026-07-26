@@ -35,4 +35,22 @@
                           :scenarios [{:name "supported"
                                        :steps [{:text "a new game with width 800 and height 600"}
                                                {:text "the playfield width is <width>"}]}])])]
-      (should (registry-health/healthy? result)))))
+      (should (registry-health/healthy? result))))
+
+  (it "reports healthy and unhealthy statuses"
+    (let [healthy {:duplicate-patterns []
+                   :unsupported-steps []
+                   :ambiguous-steps []}
+          unhealthy {:duplicate-patterns [{:pattern "^same$" :count 2}]
+                     :unsupported-steps ["missing"]
+                     :ambiguous-steps [{:text "ambiguous" :patterns ["a" "b"]}]}]
+      (should= 0 (registry-health/status-code healthy))
+      (should= 1 (registry-health/status-code unhealthy))
+      (should= "Acceptance step registry health OK\n"
+               (with-out-str (registry-health/report! healthy)))
+      (should-contain "duplicate step patterns:"
+                      (with-out-str (registry-health/report! unhealthy)))
+      (should-contain "unsupported feature steps:"
+                      (with-out-str (registry-health/report! unhealthy)))
+      (should-contain "ambiguous feature steps:"
+                      (with-out-str (registry-health/report! unhealthy))))))

@@ -1,8 +1,6 @@
 (ns missile-command.acceptance.registry-health
   "Health checks for APS parsed feature IR and registered step handlers."
-  (:require [clojure.data.json :as json]
-            [clojure.java.io :as io]
-            [missile-command.acceptance.steps :as steps]))
+  (:require [missile-command.acceptance.steps :as steps]))
 
 (defn pattern-string
   [handler]
@@ -58,18 +56,6 @@
        distinct
        vec))
 
-(defn read-ir-file
-  [path]
-  (json/read-str (slurp path) :key-fn keyword))
-
-(defn ir-files
-  [dir]
-  (->> (file-seq (io/file dir))
-       (filter #(.isFile %))
-       (filter #(re-find #"\.json$" (.getName %)))
-       sort
-       vec))
-
 (defn check
   ([feature-irs]
    (check steps/step-handlers feature-irs))
@@ -97,11 +83,10 @@
   (when (healthy? result)
     (println "Acceptance step registry health OK")))
 
-(defn -main
-  [& [ir-dir]]
-  (let [dir (or ir-dir "build/acceptance/ir")
-        feature-irs (mapv read-ir-file (ir-files dir))
-        result (check feature-irs)]
-    (report! result)
-    (when-not (healthy? result)
-      (System/exit 1))))
+(defn status-code
+  [result]
+  (if (healthy? result) 0 1))
+
+;; clj-mutate-manifest-begin
+;; {:version 1, :tested-at "2026-07-26T10:35:51.462255-05:00", :module-hash "543187978", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 3, :hash "1656134628"} {:id "defn/pattern-string", :kind "defn", :line 5, :end-line 7, :hash "1976678912"} {:id "defn/duplicate-patterns", :kind "defn", :line 9, :end-line 16, :hash "-1362392601"} {:id "defn/matching-handlers", :kind "defn", :line 18, :end-line 20, :hash "-702728874"} {:id "defn-/scenario-steps", :kind "defn-", :line 22, :end-line 25, :hash "-41637326"} {:id "defn/feature-steps", :kind "defn", :line 27, :end-line 32, :hash "-636700737"} {:id "defn/unsupported-steps", :kind "defn", :line 34, :end-line 44, :hash "-87370533"} {:id "defn/ambiguous-steps", :kind "defn", :line 46, :end-line 57, :hash "-1873634923"} {:id "defn/check", :kind "defn", :line 59, :end-line 65, :hash "-1149970123"} {:id "defn/healthy?", :kind "defn", :line 67, :end-line 69, :hash "-1183560552"} {:id "defn-/report-section", :kind "defn-", :line 71, :end-line 76, :hash "-154276992"} {:id "defn/report!", :kind "defn", :line 78, :end-line 84, :hash "968351135"} {:id "defn/status-code", :kind "defn", :line 86, :end-line 88, :hash "-1815810408"}]}
+;; clj-mutate-manifest-end

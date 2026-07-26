@@ -31,10 +31,7 @@
 
 (defn sfx-line
   [event muted?]
-  (let [kw (:type event)
-        t (if (namespace kw)
-            (str (namespace kw) "/" (name kw))
-            (name kw))]
+  (let [t (core/sfx-event-type-name event)]
     (str "qa-sfx type=" t
          " played=" (if muted? "false" "true")
          " mute=" muted?)))

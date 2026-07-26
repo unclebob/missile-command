@@ -155,7 +155,7 @@
   check-acceptance-registry
   {:doc "Check parsed acceptance IR for duplicate, unsupported, or ambiguous steps"
    :depends [parse-acceptance]
-   :task (shell "clojure" "-M" "-m" "missile-command.acceptance.registry-health"
+   :task (shell "clojure" "-M" "-m" "missile-command.acceptance.registry-health-cli"
                 "build/acceptance/ir")}
 
   accept
