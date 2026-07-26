@@ -52,3 +52,7 @@
     (doseq [e fresh]
       (emit-line! (:launch-options ctx) (sfx-line e muted?)))
     (reset! (:sfx-emitted-count ctx) (count (core/sfx-events state)))))
+
+;; clj-mutate-manifest-begin
+;; {:version 1, :tested-at "2026-07-26T10:25:57.998125-05:00", :module-hash "1760234680", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 4, :hash "-1603225078"} {:id "defn/emit-line!", :kind "defn", :line 6, :end-line 10, :hash "965714201"} {:id "defn/emit-sim!", :kind "defn", :line 12, :end-line 16, :hash "-809269331"} {:id "defn/emit-telemetry-fire!", :kind "defn", :line 18, :end-line 20, :hash "2038362595"} {:id "defn/emit-fireball-phases!", :kind "defn", :line 22, :end-line 30, :hash "-686305833"} {:id "defn/sfx-line", :kind "defn", :line 32, :end-line 40, :hash "389009004"} {:id "defn/emit-new-sfx!", :kind "defn", :line 42, :end-line 54, :hash "1729313920"}]}
+;; clj-mutate-manifest-end
