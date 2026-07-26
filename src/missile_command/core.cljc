@@ -83,6 +83,7 @@
 
 (def sfx-events sfx/events)
 (def sfx-take-new sfx/take-new)
+(def sfx-take-new-with-cursor sfx/take-new-with-cursor)
 (def sfx-truncate-to sfx/truncate-to)
 (def sfx-drain sfx/drain)
 (def sfx-emitted? sfx/emitted?)
@@ -591,7 +592,9 @@
             (no-events state)))})
 
 (defn handle
-  "Apply a player command. Returns {:state s :events [...]}."
+  "Apply a player command.
+  Returns {:state s :events [...]} where :events is non-SFX command feedback
+  used by telemetry; hosts play audio from :sfx-events with an SFX cursor."
   [state command]
   (if-let [handler (get command-handlers (:type command))]
     (handler state command)
@@ -830,7 +833,8 @@
       (update :sim-time (fnil + 0.0) applied)))
 
 (defn tick
-  "Advance simulation by dt seconds (clamped). Returns {:state s :events [...]}.
+  "Advance simulation by dt seconds (clamped).
+  Returns {:state s :events [...]} where :events is non-SFX command feedback.
   Playing runs combat; wave-banner animates then resumes; THE END expands the
   end fireball; paused freezes; other shells advance the clock only."
   [state dt]

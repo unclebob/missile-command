@@ -41,14 +41,13 @@
 
 (defn emit-new-sfx!
   "Play new SFX clips and emit qa-sfx lines; honor mute for playback.
-  Uses sfx-take-new (cursor = previous log length)."
+  Uses a host-owned SFX cursor."
   [ctx prev-state state]
   (when (and (core/title? prev-state) (core/playing? state))
     ((:stop-title! ctx)))
-  (let [prev (count (core/sfx-events prev-state))
-        fresh (core/sfx-take-new state prev)
+  (let [[fresh next-cursor] (core/sfx-take-new-with-cursor state @(:sfx-emitted-count ctx))
         muted? (core/mute? state)]
     ((:play-events! ctx) fresh muted?)
     (doseq [e fresh]
       (emit-line! (:launch-options ctx) (sfx-line e muted?)))
-    (reset! (:sfx-emitted-count ctx) (count (core/sfx-events state)))))
+    (reset! (:sfx-emitted-count ctx) next-cursor)))
