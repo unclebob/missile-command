@@ -2,8 +2,7 @@
   "Scripted QA event queue handling for the JVM host."
   (:require [clojure.string :as str]
             [missile-command.core :as core]
-            [missile-command.jvm.input :as input]
-            [missile-command.testing :as testing]))
+            [missile-command.jvm.input :as input]))
 
 (defn- emit-sim-when-qa!
   [ctx state]
@@ -89,7 +88,7 @@
     :key (apply-key-event ctx state ev)
     :enemy ((:apply-enemy-spec ctx) state (:spec ev))
     :fireball (let [{:keys [x y radius]} (:spec ev)]
-                (testing/add-static-fireball state x y radius))
+                ((:apply-qa-fireballs ctx) state [{:x x :y y :radius radius}]))
     state))
 
 (defn- now-ns
