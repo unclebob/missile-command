@@ -4,6 +4,7 @@
             [quil.core :as q :include-macros true]
             [quil.middleware :as m]
             [missile-command.core :as core]
+            [missile-command.host-input :as host-input]
             [missile-command.browser.persist :as persist]
             [missile-command.browser.render :as render]
             [missile-command.browser.audio :as audio]))
@@ -62,23 +63,19 @@
       (persist/save-settings! state'))
     state'))
 
-(defn- toggle-pause
-  [state]
+(defn- apply-input-intent
+  [state intent]
   (cond
-    (core/playing? state) (apply-handle state {:type :pause})
-    (core/paused? state) (apply-handle state {:type :resume})
+    (:command intent)
+    (let [state' (apply-handle state (:command intent))]
+      (when-let [draft (:draft intent)]
+        (reset! initials-draft draft))
+      state')
+
+    (contains? intent :draft)
+    (do (reset! initials-draft (:draft intent)) state)
+
     :else state))
-
-(defn- initials-char?
-  [ch]
-  (and ch (re-matches #"[A-Za-z0-9]" (str ch))))
-
-(defn- append-initials-draft!
-  [ch]
-  (let [c (str/upper-case (str ch))
-        cur @initials-draft]
-    (when (< (count cur) 3)
-      (reset! initials-draft (str cur c)))))
 
 (defn- key-name
   [ch]
@@ -152,7 +149,7 @@
     (if (and (core/title? state) first-unlock?)
       (do (audio/ensure-title! (core/mute? state))
           state)
-      (apply-handle state {:type :click :x (q/mouse-x) :y (q/mouse-y)})))))
+      (apply-handle state {:type :click :x (q/mouse-x) :y (q/mouse-y)}))))
 
 (defn- escape-key?
   [ch]
@@ -160,89 +157,20 @@
       (= "Escape" (str ch))
       (= 27 (when (number? ch) ch))))
 
-(defn- handle-escape
-  [state]
-  (cond
-    (or (core/playing? state) (core/paused? state)) (toggle-pause state)
-    (core/high-scores-view? state) (apply-handle state {:type :close-high-scores})
-    (core/options? state) (apply-handle state {:type :leave-options})
-    :else state))
-
-(defn- handle-options-keys
-  "Mute (M) and difficulty 1/2/3 while on options; nil if not handled."
-  [state ch]
-  (when (core/options? state)
-    (cond
-      (or (= \m ch) (= \M ch))
-      (apply-handle state {:type :set-mute :mute (not (core/mute? state))})
-      (= \1 ch) (apply-handle state {:type :set-difficulty :difficulty "easy"})
-      (= \2 ch) (apply-handle state {:type :set-difficulty :difficulty "normal"})
-      (= \3 ch) (apply-handle state {:type :set-difficulty :difficulty "arcade"})
-      :else nil)))
-
-(defn- handle-toggle-shell
-  [state open-type close-type open? close?]
-  (cond
-    (open? state) (apply-handle state {:type open-type})
-    (close? state) (apply-handle state {:type close-type})
-    :else state))
-
-(defn- handle-enter
-  [state]
-  (cond
-    (core/title? state)
-    (apply-handle state {:type :start})
-
-    (core/the-end? state)
-    (do (reset! initials-draft "")
-        (apply-handle state {:type :confirm}))
-
-    (core/high-score-entry? state)
-    (let [draft @initials-draft]
-      (if (seq draft)
-        (apply-handle state {:type :submit-high-score :initials draft})
-        state))
-
-    :else state))
-
-(defn- handle-initials-edit
-  [state ch]
-  (cond
-    (initials-char? ch)
-    (do (append-initials-draft! ch) state)
-
-    (backspace-key? ch)
-    (do (reset! initials-draft
-                (let [d @initials-draft]
-                  (if (seq d) (subs d 0 (dec (count d))) d)))
-        state)
-
-    :else nil))
-
 (defn key-pressed
   [state _]
   (audio/unlock!)
   (when (core/title? state)
     (audio/ensure-title! (core/mute? state)))
   (let [ch (q/raw-key)
-        kn (key-name ch)]
-    (or (when (escape-key? ch) (handle-escape state))
-        (handle-options-keys state ch)
-        (when (or (= \o ch) (= \O ch))
-          (handle-toggle-shell state :open-options :leave-options
-                               core/title? core/options?))
-        (when (or (= \h ch) (= \H ch))
-          (handle-toggle-shell state :open-high-scores :close-high-scores
-                               core/title? core/high-scores-view?))
-        (when (or (= \p ch) (= \P ch)
-                  (and kn (core/pause-key-includes? state kn)))
-          (toggle-pause state))
-        (when (enter-key? ch) (handle-enter state))
-        (when (core/high-score-entry? state)
-          (handle-initials-edit state ch))
-        (when (and kn (core/playing? state))
-          (apply-handle state {:type :key :key kn}))
-        state)))
+        event {:ch ch
+               :key-name (key-name ch)
+               :escape? (escape-key? ch)
+               :enter? (enter-key? ch)
+               :backspace? (backspace-key? ch)}]
+    (if-let [intent (host-input/key-intent state @initials-draft event)]
+      (apply-input-intent state intent)
+      state)))
 
 (defn ^:export run
   []
