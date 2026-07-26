@@ -24,6 +24,7 @@
          :qa-targets []
          :qa-enemies []
          :qa-fireballs []
+         :no-keyfocus? false
          :scores-file nil
          :launch-anchor nil
          :restore-focus-app nil}))
@@ -44,6 +45,7 @@
                                             :qa-targets
                                             :qa-enemies
                                             :qa-fireballs
+                                            :no-keyfocus?
                                             :scores-file
                                             :launch-anchor
                                             :restore-focus-app]))
@@ -67,6 +69,11 @@
   (when (:qa-telemetry? @launch-options)
     (println line)
     (flush)))
+
+(defn- no-keyfocus-qa?
+  []
+  (and (:qa-telemetry? @launch-options)
+       (:no-keyfocus? @launch-options)))
 
 (defn- emit-sim!
   [state]
@@ -172,8 +179,10 @@
   (try
     (let [surface (.getSurface (applet/current-applet))
           anchor (:launch-anchor @launch-options)
-          prev (:restore-focus-app @launch-options)]
-      (window/place-on-launch-screen! surface (q/width) (q/height) anchor prev))
+          prev (:restore-focus-app @launch-options)
+          no-keyfocus? (and (:qa-telemetry? @launch-options)
+                            (:no-keyfocus? @launch-options))]
+      (window/place-on-launch-screen! surface (q/width) (q/height) anchor prev no-keyfocus?))
     (catch Exception e
       (binding [*out* *err*]
         (println "window placement skipped:" (.getMessage e))))))
@@ -437,7 +446,9 @@
 
 (defn mouse-moved
   [state _event]
-  (apply-handle state (input/aim-command (q/mouse-x) (q/mouse-y))))
+  (if (no-keyfocus-qa?)
+    state
+    (apply-handle state (input/aim-command (q/mouse-x) (q/mouse-y)))))
 
 (defn mouse-dragged
   [state event]
@@ -450,9 +461,10 @@
 
 (defn mouse-pressed
   [state event]
-  (if (left-button? event)
-    (apply-handle state (input/click-command (q/mouse-x) (q/mouse-y)))
-    state))
+  (if (or (no-keyfocus-qa?)
+          (not (left-button? event)))
+    state
+    (apply-handle state (input/click-command (q/mouse-x) (q/mouse-y)))))
 
 (defn- initials-char?
   [ch]
@@ -467,95 +479,104 @@
 
 (defn key-pressed
   [state _event]
-  (let [ch (q/raw-key)
-        key-name (when ch (str/lower-case (str ch)))]
-    (cond
-      (input/escape-key? ch)
+  (if (no-keyfocus-qa?)
+    state
+    (let [ch (q/raw-key)
+          key-name (when ch (str/lower-case (str ch)))]
       (cond
-        (or (core/playing? state) (core/paused? state))
+        (input/escape-key? ch)
+        (cond
+          (or (core/playing? state) (core/paused? state))
+          (toggle-pause state)
+          (core/high-scores-view? state)
+          (apply-handle state {:type :close-high-scores})
+          (core/options? state)
+          (apply-handle state {:type :leave-options})
+          (core/high-score-entry? state)
+          state
+          :else
+          (do (persist-settings! state) (q/exit) state))
+
+        (and (core/options? state) (or (= \m ch) (= \M ch)))
+        (apply-handle state {:type :set-mute :mute (not (core/mute? state))})
+
+        (and (core/options? state) (= \1 ch))
+        (apply-handle state {:type :set-difficulty :difficulty "easy"})
+
+        (and (core/options? state) (= \2 ch))
+        (apply-handle state {:type :set-difficulty :difficulty "normal"})
+
+        (and (core/options? state) (= \3 ch))
+        (apply-handle state {:type :set-difficulty :difficulty "arcade"})
+
+        (or (= \o ch) (= \O ch))
+        (cond
+          (core/title? state) (apply-handle state {:type :open-options})
+          (core/options? state) (apply-handle state {:type :leave-options})
+          :else state)
+
+        (or (= \p ch) (= \P ch)
+            (and key-name (core/pause-key-includes? state key-name)))
         (toggle-pause state)
-        (core/high-scores-view? state)
-        (apply-handle state {:type :close-high-scores})
-        (core/options? state)
-        (apply-handle state {:type :leave-options})
-        (core/high-score-entry? state)
-        state
-        :else
-        (do (persist-settings! state) (q/exit) state))
 
-      (and (core/options? state) (or (= \m ch) (= \M ch)))
-      (apply-handle state {:type :set-mute :mute (not (core/mute? state))})
+        (or (= \h ch) (= \H ch))
+        (cond
+          (core/title? state)
+          (apply-handle state {:type :open-high-scores})
+          (core/high-scores-view? state)
+          (apply-handle state {:type :close-high-scores})
+          :else state)
 
-      (and (core/options? state) (= \1 ch))
-      (apply-handle state {:type :set-difficulty :difficulty "easy"})
+        (or (= \newline ch) (= \return ch) (= (int 10) (int ch)))
+        (cond
+          (core/title? state)
+          (apply-handle state {:type :start})
+          (core/the-end? state) (apply-handle state {:type :confirm})
+          (core/high-score-entry? state)
+          (let [draft @initials-draft]
+            (if (seq draft)
+              (apply-handle state {:type :submit-high-score :initials draft})
+              state))
+          :else state)
 
-      (and (core/options? state) (= \2 ch))
-      (apply-handle state {:type :set-difficulty :difficulty "normal"})
+        (and (core/high-score-entry? state) (initials-char? ch))
+        (do (append-initials-draft! ch) state)
 
-      (and (core/options? state) (= \3 ch))
-      (apply-handle state {:type :set-difficulty :difficulty "arcade"})
+        (and (core/high-score-entry? state)
+             (or (= \backspace ch) (= (char 8) ch)))
+        (do (reset! initials-draft
+                    (let [d @initials-draft]
+                      (if (seq d) (subs d 0 (dec (count d))) d)))
+            state)
 
-      (or (= \o ch) (= \O ch))
-      (cond
-        (core/title? state) (apply-handle state {:type :open-options})
-        (core/options? state) (apply-handle state {:type :leave-options})
-        :else state)
+        (and key-name (core/playing? state))
+        (apply-handle state {:type :key :key key-name})
 
-      (or (= \p ch) (= \P ch)
-          (and key-name (core/pause-key-includes? state key-name)))
-      (toggle-pause state)
-
-      (or (= \h ch) (= \H ch))
-      (cond
-        (core/title? state)
-        (apply-handle state {:type :open-high-scores})
-        (core/high-scores-view? state)
-        (apply-handle state {:type :close-high-scores})
-        :else state)
-
-      (or (= \newline ch) (= \return ch) (= (int 10) (int ch)))
-      (cond
-        (core/title? state)
-        (apply-handle state {:type :start})
-        (core/the-end? state) (apply-handle state {:type :confirm})
-        (core/high-score-entry? state)
-        (let [draft @initials-draft]
-          (if (seq draft)
-            (apply-handle state {:type :submit-high-score :initials draft})
-            state))
-        :else state)
-
-      (and (core/high-score-entry? state) (initials-char? ch))
-      (do (append-initials-draft! ch) state)
-
-      (and (core/high-score-entry? state)
-           (or (= \backspace ch) (= (char 8) ch)))
-      (do (reset! initials-draft
-                  (let [d @initials-draft]
-                    (if (seq d) (subs d 0 (dec (count d))) d)))
-          state)
-
-      (and key-name (core/playing? state))
-      (apply-handle state {:type :key :key key-name})
-
-      :else state)))
+        :else state))))
 
 (defn run-sketch!
   ([]
    (run-sketch! default-width default-height))
   ([width height]
-   (q/sketch
-    :title "Missile Command"
-    :size [width height]
-    ;; java2d → AWT Frame so setAutoRequestFocus(false) can prevent focus steal
-    :renderer :java2d
-    :setup setup
-    :update update-state
-    :draw draw
-    :mouse-moved mouse-moved
-    :mouse-dragged mouse-dragged
-    :mouse-pressed mouse-pressed
-    :key-pressed key-pressed
-    :middleware [m/fun-mode]
-    :features [:resizable]
-    :settings #(q/smooth 2))))
+   (let [opts [:title "Missile Command"
+               :size [width height]
+               ;; java2d → AWT Frame so setAutoRequestFocus(false) can prevent focus steal
+               :renderer :java2d
+               :setup setup
+               :update update-state
+               :draw draw
+               :mouse-moved mouse-moved
+               :mouse-dragged mouse-dragged
+               :mouse-pressed mouse-pressed
+               :key-pressed key-pressed
+               :middleware [m/fun-mode]
+               :features [:resizable]
+               :settings #(q/smooth 2)]
+         no-keyfocus? (and (:qa-telemetry? @launch-options)
+                           (:no-keyfocus? @launch-options))]
+     (if no-keyfocus?
+       (with-redefs-fn {(intern 'quil.applet '-showSurface)
+                        (fn [this]
+                          (window/show-non-focusable-surface! (.getSurface this)))}
+         #(apply q/sketch opts))
+       (apply q/sketch opts)))))

@@ -173,7 +173,13 @@
   (cond
     (nil? native) nil
     (instance? Window native) native
-    (instance? Component native) (SwingUtilities/getWindowAncestor ^Component native)
+    (instance? Component native) (or (SwingUtilities/getWindowAncestor ^Component native)
+                                     (try
+                                       (let [m (.getMethod (class native) "getFrame" (make-array Class 0))
+                                             frame (.invoke m native (object-array []))]
+                                         (when (instance? Window frame)
+                                           frame))
+                                       (catch Exception _ nil)))
     :else nil))
 
 (defn- try-set-position!
@@ -204,6 +210,30 @@
           (.invoke m native (into-array Object [false])))
         (catch Exception _)))))
 
+(defn make-non-focusable!
+  "QA-only: keep the Processing window visible but unable to take keyboard focus."
+  [native]
+  (let [awt (as-awt-window native)]
+    (when (instance? Component native)
+      (try (.setFocusable ^Component native false) (catch Exception _)))
+    (when (instance? Window awt)
+      (try (.setAutoRequestFocus ^Window awt false) (catch Exception _))
+      (try (.setFocusable ^Window awt false) (catch Exception _))
+      (try (.setFocusableWindowState ^Window awt false) (catch Exception _))
+      (try (.setAlwaysOnTop ^Window awt false) (catch Exception _)))))
+
+(defn show-non-focusable-surface!
+  "Show an AWT Processing surface without calling PSurfaceAWT.setVisible, which
+  immediately requests canvas focus."
+  [surface]
+  (let [native (try (.getNative surface) (catch Exception _ nil))
+        awt (as-awt-window native)]
+    (make-non-focusable! native)
+    (if (instance? Window awt)
+      (try (.setVisible ^Window awt true) (catch Exception _))
+      (try (.setVisible surface true) (catch Exception _)))
+    (make-non-focusable! native)))
+
 (defn place-on-launch-screen!
   "Center the Processing surface on the screen of launch-anchor {:x :y}.
   Keeps the window visible; setAutoRequestFocus(false) so typing stays in the
@@ -213,7 +243,9 @@
    (place-on-launch-screen! surface sketch-w sketch-h (capture-launch-anchor!) nil))
   ([surface sketch-w sketch-h launch-anchor]
    (place-on-launch-screen! surface sketch-w sketch-h launch-anchor nil))
-  ([surface sketch-w sketch-h launch-anchor _restore-focus-app]
+  ([surface sketch-w sketch-h launch-anchor restore-focus-app]
+   (place-on-launch-screen! surface sketch-w sketch-h launch-anchor restore-focus-app false))
+  ([surface sketch-w sketch-h launch-anchor restore-focus-app no-keyfocus?]
    (let [anchor (or launch-anchor (capture-launch-anchor!))
          bounds (screen-bounds-containing (:x anchor) (:y anchor))
          loc (centered-location bounds sketch-w sketch-h)
@@ -221,13 +253,18 @@
          ly (int (:y loc))
          native (try (.getNative surface) (catch Exception _ nil))
          awt (as-awt-window native)]
-     (disable-focus-steal! native)
+     (if no-keyfocus?
+       (make-non-focusable! native)
+       (disable-focus-steal! native))
      (try (.setLocation surface lx ly) (catch Exception _))
      (try-set-position! native lx ly)
      (try (.setVisible surface true) (catch Exception _))
      ;; Ensure on-screen without keyboard grab: order by location only.
      (when (instance? Window awt)
        (try (.setAutoRequestFocus ^Window awt false) (catch Exception _)))
+     (when no-keyfocus?
+       (make-non-focusable! native)
+       (restore-frontmost-app! restore-focus-app))
      {:screen bounds :location loc :anchor anchor})))
 
 (defn place-on-pointer-screen!

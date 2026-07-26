@@ -35,7 +35,7 @@
 
 (defn launch! [scenario-path events-path]
   ;; --qa-speed multiplies sim-time vs wall clock so host waits stay short.
-  (let [cmd (str "bb play 800 600 --qa --qa-speed 10 --qa-scenario " scenario-path
+  (let [cmd (str "bb play 800 600 --qa --no-keyfocus --qa-speed 10 --qa-scenario " scenario-path
                  " --qa-events " events-path)]
     (println "==> host:" cmd) (flush)
     (let [r (p/shell {:out :string :err :string :continue true :timeout 45000}

@@ -1,6 +1,6 @@
 #!/usr/bin/env bb
 ;; Executable QA for fire-click-zone (aligned with qa/procedures/fire-click-zone.qa.md).
-;; Automated tests via documented README commands; host UI via bb play + --qa-events.
+;; Automated tests via documented README commands; host UI via bb play + --qa-events + --no-keyfocus.
 
 (require '[babashka.process :as p]
          '[clojure.string :as str]
@@ -75,7 +75,7 @@
                        (str "--destroy-batteries " destroy " "))
         cmd (str "bb play "
                  width " " height " "
-                 "--qa-telemetry "
+                 "--qa-telemetry --no-keyfocus "
                  destroy-part
                  "--qa-events " events-path)]
     (println "==> host:" cmd)

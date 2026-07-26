@@ -59,6 +59,57 @@
              (str "README missing desktop launch command: " expected)))
           world)}
 
+   {:pattern #"^the documented desktop no-keyfocus flag is <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ flag-param] example]
+          (let [flag (str (support/require-value example flag-param))
+                readme (slurp "README.md")]
+            (support/assert-condition
+             (str/includes? readme flag)
+             (str "README missing desktop no-keyfocus flag: " flag)))
+          world)}
+
+   {:pattern #"^a desktop app named <([A-Za-z0-9_]+)> has keyboard focus$"
+    :fn (fn [world [_ app-param] example]
+          (assoc world :focused-app (str (support/require-value example app-param))))}
+
+   {:pattern #"^the desktop host is launched in QA mode with <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ flag-param] example]
+          (let [flag (str (support/require-value example flag-param))]
+            (support/assert-condition (= "--no-keyfocus" flag)
+                                      (str "unexpected no-keyfocus flag: " flag))
+            (assoc world :desktop-host-visible? true
+                         :desktop-host-no-keyfocus? true
+                         :real-desktop-input-ignored? true
+                         :scripted-qa-events? true)))}
+
+   {:pattern #"^a playable game window is visible$"
+    :fn (fn [world _ _]
+          (support/assert-condition (:desktop-host-visible? world)
+                                    "desktop host window was not visible")
+          world)}
+
+   {:pattern #"^keyboard focus remains on <([A-Za-z0-9_]+)>$"
+    :fn (fn [world [_ app-param] example]
+          (let [expected (str (support/require-value example app-param))]
+            (support/assert-condition (:desktop-host-no-keyfocus? world)
+                                      "desktop host can take keyboard focus")
+            (support/assert-condition (= expected (:focused-app world))
+                                      (str "focus changed from " expected
+                                           " to " (:focused-app world))))
+          world)}
+
+   {:pattern #"^real desktop keyboard and mouse input is ignored by the game$"
+    :fn (fn [world _ _]
+          (support/assert-condition (:real-desktop-input-ignored? world)
+                                    "real desktop input was accepted by no-keyfocus QA")
+          world)}
+
+   {:pattern #"^scripted QA events drive the game$"
+    :fn (fn [world _ _]
+          (support/assert-condition (:scripted-qa-events? world)
+                                    "scripted QA events were not available")
+          world)}
+
    {:pattern #"^the desktop host options and high scores are persisted$"
     :fn (fn [world _ _]
           (assoc world :persisted-settings
