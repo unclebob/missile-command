@@ -149,11 +149,32 @@
       (should= [] replay)
       (should= cursor next-cursor)))
 
+  (it "take-new clamps cursors to the event log"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    core/start-game)
+          a (:state (core/handle state {:type :fire :battery :left}))
+          all-events (core/sfx-events a)
+          [nil-batch nil-cursor] (core/sfx-take-new-with-cursor a nil)]
+      (should= all-events (core/sfx-take-new a -1))
+      (should= [] (core/sfx-take-new a 1000))
+      (should= all-events nil-batch)
+      (should= (count all-events) nil-cursor)))
+
   (it "formats event type names for host output"
     (should= "sfx/launch"
              (core/sfx-event-type-name {:type :sfx/launch}))
     (should= "legacy"
              (core/sfx-event-type-name {:type :legacy})))
+
+  (it "truncate-to keeps a bounded prefix of the event log"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    (assoc :sfx-events [{:type :sfx/launch}
+                                        {:type :sfx/low-ammo}
+                                        {:type :sfx/boom}]))]
+      (should= [{:type :sfx/launch}]
+               (core/sfx-events (core/sfx-truncate-to state 1)))
+      (should= []
+               (core/sfx-events (core/sfx-truncate-to state -1)))))
 
   (it "drain returns all events and clears the log"
     (let [state (-> (core/new-game {:width 800 :height 600})
