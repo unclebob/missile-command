@@ -50,6 +50,11 @@
     (:destroyed opts) (testing/destroy-battery id)
     (contains? opts :ammo) (testing/set-battery-ammo id (:ammo opts))))
 
+(defn apply-destroy-batteries
+  "Apply QA launch option battery destruction."
+  [state battery-ids]
+  (reduce testing/destroy-battery state battery-ids))
+
 (defn- apply-scenario-batteries
   [state scenario]
   (reduce apply-scenario-battery state (or (:batteries scenario) {})))
@@ -64,6 +69,14 @@
   (reduce (fn [s t] (testing/add-destroyable-target s (:x t) (:y t)))
           state
           (or (:targets scenario) [])))
+
+(defn apply-qa-targets
+  "Apply QA launch option destroyable targets."
+  [state targets]
+  (reduce (fn [s {:keys [x y]}]
+            (testing/add-destroyable-target s x y))
+          state
+          targets))
 
 (defn- apply-scenario-bonus-threshold
   [state scenario]
@@ -160,6 +173,28 @@
     :mirv (spawn-scenario-mirv state e)
     :smart (testing/spawn-smart-bomb-targeting-city state (second (:target e)))
     (spawn-scenario-ballistic state e)))
+
+(defn apply-enemy-spec
+  "Apply a QA launch/event enemy spec."
+  [state {:keys [kind id]}]
+  (case kind
+    :city (testing/spawn-enemy-targeting-city state id)
+    :battery (testing/spawn-enemy-targeting-battery state id)
+    state))
+
+(defn apply-qa-enemies
+  "Apply QA launch option enemy specs."
+  [state enemies]
+  (reduce apply-enemy-spec state enemies))
+
+(defn apply-qa-fireballs
+  "Apply QA launch option static fireballs."
+  [state fireballs]
+  (reduce (fn [s {:keys [x y radius]}]
+            (testing/add-static-fireball s x y radius))
+          state
+          fireballs))
+
 (defn- apply-scenario-enemies
   [state scenario]
   (let [enemies (or (:enemies scenario) [])]
@@ -261,3 +296,7 @@
        (map parse-qa-event-line)
        (remove nil?)
        vec))
+
+;; clj-mutate-manifest-begin
+;; {:version 1, :tested-at "2026-07-26T10:19:06.701656-05:00", :module-hash "1278718815", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 6, :hash "1620897903"} {:id "defn/load-scenario-edn", :kind "defn", :line 8, :end-line 12, :hash "702073124"} {:id "defn-/apply-scenario-wave", :kind "defn-", :line 14, :end-line 18, :hash "665021942"} {:id "defn-/apply-scenario-screen", :kind "defn-", :line 20, :end-line 25, :hash "448966260"} {:id "defn-/apply-scenario-wave-attack", :kind "defn-", :line 27, :end-line 32, :hash "-141594200"} {:id "defn-/apply-scenario-rng-seed", :kind "defn-", :line 34, :end-line 39, :hash "-1194143982"} {:id "defn-/apply-scenario-size", :kind "defn-", :line 41, :end-line 45, :hash "-409420687"} {:id "defn-/apply-scenario-battery", :kind "defn-", :line 47, :end-line 51, :hash "-1270830876"} {:id "defn/apply-destroy-batteries", :kind "defn", :line 53, :end-line 56, :hash "-1238041924"} {:id "defn-/apply-scenario-batteries", :kind "defn-", :line 58, :end-line 60, :hash "-1182610143"} {:id "defn-/apply-scenario-cities", :kind "defn-", :line 62, :end-line 65, :hash "-845527766"} {:id "defn-/apply-scenario-targets", :kind "defn-", :line 67, :end-line 71, :hash "-1250784535"} {:id "defn/apply-qa-targets", :kind "defn", :line 73, :end-line 79, :hash "1114579005"} {:id "defn-/apply-scenario-bonus-threshold", :kind "defn-", :line 81, :end-line 85, :hash "880924155"} {:id "defn-/apply-scenario-score-and-bonus", :kind "defn-", :line 87, :end-line 94, :hash "1875400561"} {:id "defn-/apply-scenario-high-scores", :kind "defn-", :line 96, :end-line 110, :hash "-1208080297"} {:id "defn-/apply-scenario-mute", :kind "defn-", :line 112, :end-line 116, :hash "-382843912"} {:id "defn-/apply-scenario-difficulty", :kind "defn-", :line 118, :end-line 122, :hash "306163409"} {:id "defn-/apply-scenario-options-map", :kind "defn-", :line 124, :end-line 132, :hash "18991043"} {:id "defn-/apply-scenario-options", :kind "defn-", :line 134, :end-line 139, :hash "27805209"} {:id "defn-/spawn-scenario-mirv", :kind "defn-", :line 141, :end-line 147, :hash "-1005955178"} {:id "defn-/spawn-with-optional-origin", :kind "defn-", :line 149, :end-line 153, :hash "-1706604714"} {:id "defn-/spawn-scenario-ballistic", :kind "defn-", :line 155, :end-line 168, :hash "-1951507746"} {:id "defn-/spawn-scenario-enemy", :kind "defn-", :line 169, :end-line 175, :hash "1961476205"} {:id "defn/apply-enemy-spec", :kind "defn", :line 177, :end-line 183, :hash "347627411"} {:id "defn/apply-qa-enemies", :kind "defn", :line 185, :end-line 188, :hash "758172028"} {:id "defn/apply-qa-fireballs", :kind "defn", :line 190, :end-line 196, :hash "-55288772"} {:id "defn-/apply-scenario-enemies", :kind "defn-", :line 198, :end-line 203, :hash "287745192"} {:id "def/default-flyer-from", :kind "def", :line 205, :end-line 205, :hash "531809922"} {:id "def/default-flyer-to", :kind "def", :line 206, :end-line 206, :hash "1285077568"} {:id "def/default-flyer-speed", :kind "def", :line 207, :end-line 207, :hash "712485135"} {:id "def/first-drop-id", :kind "def", :line 209, :end-line 209, :hash "772225316"} {:id "defn-/scenario-flyer-drops", :kind "defn-", :line 211, :end-line 218, :hash "867803261"} {:id "defn-/apply-scenario-flyer", :kind "defn-", :line 220, :end-line 230, :hash "-535868616"} {:id "defn-/apply-scenario-flyers", :kind "defn-", :line 232, :end-line 234, :hash "-136070644"} {:id "defn/apply-scenario", :kind "defn", :line 236, :end-line 253, :hash "540794563"} {:id "def/qa-event-parsers", :kind "def", :line 255, :end-line 278, :hash "-886446121"} {:id "defn/parse-qa-event-line", :kind "defn", :line 280, :end-line 290, :hash "-1292649055"} {:id "defn/load-qa-events", :kind "defn", :line 292, :end-line 298, :hash "361312324"}]}
+;; clj-mutate-manifest-end

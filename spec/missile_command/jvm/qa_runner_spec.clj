@@ -13,6 +13,7 @@
    :apply-handle (fn [state command] (update state :commands conj command))
    :apply-destroy-options identity
    :apply-enemy-spec (fn [state spec] (assoc state :enemy spec))
+   :apply-qa-fireballs (fn [state specs] (assoc state :fireballs specs))
    :toggle-pause (fn [state] (assoc state :paused true))
    :initials-draft (atom "")})
 
