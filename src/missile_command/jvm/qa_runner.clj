@@ -138,3 +138,7 @@
           (do
             (reset! pending-events (vec (rest events)))
             (apply-event ctx state ev)))))))
+
+;; clj-mutate-manifest-begin
+;; {:version 1, :tested-at "2026-07-26T10:25:50.872899-05:00", :module-hash "1837863906", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 5, :hash "1893744529"} {:id "defn-/emit-sim-when-qa!", :kind "defn-", :line 7, :end-line 10, :hash "384781164"} {:id "defn-/apply-and-emit!", :kind "defn-", :line 12, :end-line 16, :hash "-1319046755"} {:id "defn-/apply-key-event", :kind "defn-", :line 18, :end-line 54, :hash "-1242483882"} {:id "defn-/apply-event", :kind "defn-", :line 56, :end-line 92, :hash "-872152135"} {:id "defn/drain-one-event", :kind "defn", :line 94, :end-line 123, :hash "-1361301969"}]}
+;; clj-mutate-manifest-end
