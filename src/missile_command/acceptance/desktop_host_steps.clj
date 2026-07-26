@@ -136,3 +136,7 @@
              (zero? code)
              (str "architecture check failed (" code "): " out)))
           world)}])
+
+;; clj-mutate-manifest-begin
+;; {:version 1, :tested-at "2026-07-26T10:04:20.464385-05:00", :module-hash "-1121364067", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 6, :hash "-1120919510"} {:id "def/handlers", :kind "def", :line 8, :end-line 138, :hash "-1778337155"}]}
+;; clj-mutate-manifest-end
