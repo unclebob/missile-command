@@ -39,7 +39,7 @@
 (defn launch!
   [{:keys [events-path scores-path timeout-ms]
     :or {timeout-ms 45000}}]
-  (let [cmd (str "bb play 800 600 --qa --qa-speed 6"
+  (let [cmd (str "bb play 800 600 --qa --no-keyfocus --qa-speed 6"
                  (when scores-path (str " --scores-file " scores-path))
                  (when events-path (str " --qa-events " events-path)))]
     (println "==> host:" cmd) (flush)

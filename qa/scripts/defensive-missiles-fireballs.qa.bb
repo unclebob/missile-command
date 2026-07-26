@@ -59,7 +59,7 @@
             (spit scenario-path (pr-str scenario)))
         target-args (str/join " " (map #(str "--qa-target " %) targets))
         cmd (str "bb play " width " " height
-                 " --qa-telemetry "
+                 " --qa-telemetry --no-keyfocus "
                  (when scenario (str "--qa-scenario " scenario-path " "))
                  (when (seq target-args) (str target-args " "))
                  "--qa-events " events-path)]

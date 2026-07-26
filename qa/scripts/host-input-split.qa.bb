@@ -68,7 +68,7 @@
 
   (write-edn! "tmp/his.edn" {:screen :playing :wave 1})
   (write-events! "tmp/his.txt" ["wait 0.2" "quit"])
-  (let [cmd "bb play 800 600 --qa --qa-speed 8 --scores-file tmp/his-empty.edn --qa-scenario tmp/his.edn --qa-events tmp/his.txt"
+  (let [cmd "bb play 800 600 --qa --no-keyfocus --qa-speed 8 --scores-file tmp/his-empty.edn --qa-scenario tmp/his.edn --qa-events tmp/his.txt"
         _ (println "==> host:" cmd)
         r (p/shell {:out :string :err :string :continue true :timeout 45000}
                    "bash" "-lc" cmd)

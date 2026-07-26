@@ -62,6 +62,7 @@
   {"--" (fn [opts xs] [opts (rest xs)])
    "--qa" (fn [opts xs] [(assoc opts :qa-telemetry? true) (rest xs)])
    "--qa-telemetry" (fn [opts xs] [(assoc opts :qa-telemetry? true) (rest xs)])
+   "--no-keyfocus" (fn [opts xs] [(assoc opts :no-keyfocus? true) (rest xs)])
    "--destroy-batteries"
    (fn [opts xs]
      [(assoc opts :destroy-batteries (parse-destroy-list (second xs)))
@@ -123,6 +124,7 @@
                 :qa-targets []
                 :qa-enemies []
                 :qa-fireballs []
+                :no-keyfocus? false
                 :scores-file nil}]
      (if-not xs
        (-> opts
