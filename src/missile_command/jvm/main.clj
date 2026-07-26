@@ -27,3 +27,7 @@
                         :restore-focus-app prev-app))]
     ((requiring-resolve 'missile-command.jvm.sketch/configure!) opts)
     ((requiring-resolve 'missile-command.jvm.sketch/run-sketch!) (:width opts) (:height opts))))
+
+;; clj-mutate-manifest-begin
+;; {:version 1, :tested-at "2026-07-26T10:04:10.249719-05:00", :module-hash "-1402041241", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 3, :hash "-1899662254"} {:id "defn-/request-non-activating-awt!", :kind "defn-", :line 5, :end-line 9, :hash "1759235789"} {:id "defn/-main", :kind "defn", :line 11, :end-line 29, :hash "203828246"}]}
+;; clj-mutate-manifest-end
