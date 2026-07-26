@@ -6,6 +6,7 @@
             [clojure.string :as str]
             [missile-command.core :as core]
             [missile-command.missiles :as missiles]
+            [missile-command.testing :as testing]
             [missile-command.jvm.input :as input]
             [missile-command.jvm.audio :as audio]
             [missile-command.jvm.persist :as persist]
@@ -149,22 +150,22 @@
 (defn- apply-destroy-options
   [state]
   (reduce (fn [s id]
-            (core/destroy-battery s id))
+            (testing/destroy-battery s id))
           state
           (:destroy-batteries @launch-options)))
 
 (defn- apply-qa-targets
   [state]
   (reduce (fn [s {:keys [x y]}]
-            (core/add-destroyable-target s x y))
+            (testing/add-destroyable-target s x y))
           state
           (:qa-targets @launch-options)))
 
 (defn- apply-enemy-spec
   [state {:keys [kind id]}]
   (case kind
-    :city (core/spawn-enemy-targeting-city state id)
-    :battery (core/spawn-enemy-targeting-battery state id)
+    :city (testing/spawn-enemy-targeting-city state id)
+    :battery (testing/spawn-enemy-targeting-battery state id)
     state))
 
 (defn- apply-qa-enemies
@@ -174,7 +175,7 @@
 (defn- apply-qa-fireballs
   [state]
   (reduce (fn [s {:keys [x y radius]}]
-            (core/add-static-fireball s x y radius))
+            (testing/add-static-fireball s x y radius))
           state
           (:qa-fireballs @launch-options)))
 
@@ -426,7 +427,7 @@
                        :else s))
               :enemy (apply-enemy-spec state (:spec ev))
               :fireball (let [{:keys [x y radius]} (:spec ev)]
-                          (core/add-static-fireball state x y radius))
+                          (testing/add-static-fireball state x y radius))
               state)))))))
 
 (defn update-state
