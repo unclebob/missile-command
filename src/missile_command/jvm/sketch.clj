@@ -5,6 +5,7 @@
             [quil.applet :as applet]
             [clojure.string :as str]
             [missile-command.core :as core]
+            [missile-command.host-input :as host-input]
             [missile-command.missiles :as missiles]
             [missile-command.testing :as testing]
             [missile-command.jvm.input :as input]
@@ -278,13 +279,37 @@
       (swap! launch-options assoc :last-emitted-fate (core/last-enemy-fate state')))
     state'))
 
+(defn- apply-input-intent
+  [state intent]
+  (cond
+    (:command intent)
+    (let [state' (apply-handle state (:command intent))]
+      (when-let [draft (:draft intent)]
+        (reset! initials-draft draft))
+      state')
+
+    (contains? intent :draft)
+    (do (reset! initials-draft (:draft intent)) state)
+
+    :else state))
+
+(defn- normalized-key-event
+  ([ch]
+   (normalized-key-event ch false false))
+  ([ch enter?]
+   (normalized-key-event ch enter? false))
+  ([ch enter? backspace?]
+   {:ch ch
+    :key-name (when ch (str/lower-case (str ch)))
+    :escape? (input/escape-key? ch)
+    :enter? enter?
+    :backspace? backspace?}))
+
 (defn- toggle-pause
   "Pause while playing, resume while paused; otherwise leave state alone."
   [state]
-  (cond
-    (core/playing? state) (apply-handle state {:type :pause})
-    (core/paused? state) (apply-handle state {:type :resume})
-    :else state))
+  (apply-input-intent state (host-input/key-intent state @initials-draft
+                                                  {:ch \p :key-name "p"})))
 
 (defn- drain-one-qa-event
   [state]
@@ -472,92 +497,19 @@
     (apply-handle state (input/click-command (q/mouse-x) (q/mouse-y)))
     state))
 
-(defn- initials-char?
-  [ch]
-  (and ch (re-matches #"[A-Za-z0-9]" (str ch))))
-
-(defn- append-initials-draft!
-  [ch]
-  (let [c (str/upper-case (str ch))
-        cur @initials-draft]
-    (when (< (count cur) 3)
-      (reset! initials-draft (str cur c)))))
-
 (defn key-pressed
   [state _event]
   (if (real-input-enabled?)
     (let [ch (q/raw-key)
-          key-name (when ch (str/lower-case (str ch)))]
-      (cond
-        (input/escape-key? ch)
-        (cond
-          (or (core/playing? state) (core/paused? state))
-          (toggle-pause state)
-          (core/high-scores-view? state)
-          (apply-handle state {:type :close-high-scores})
-          (core/options? state)
-          (apply-handle state {:type :leave-options})
-          (core/high-score-entry? state)
-          state
-          :else
-          (do (persist-settings! state) (q/exit) state))
-
-        (and (core/options? state) (or (= \m ch) (= \M ch)))
-        (apply-handle state {:type :set-mute :mute (not (core/mute? state))})
-
-        (and (core/options? state) (= \1 ch))
-        (apply-handle state {:type :set-difficulty :difficulty "easy"})
-
-        (and (core/options? state) (= \2 ch))
-        (apply-handle state {:type :set-difficulty :difficulty "normal"})
-
-        (and (core/options? state) (= \3 ch))
-        (apply-handle state {:type :set-difficulty :difficulty "arcade"})
-
-        (or (= \o ch) (= \O ch))
-        (cond
-          (core/title? state) (apply-handle state {:type :open-options})
-          (core/options? state) (apply-handle state {:type :leave-options})
-          :else state)
-
-        (or (= \p ch) (= \P ch)
-            (and key-name (core/pause-key-includes? state key-name)))
-        (toggle-pause state)
-
-        (or (= \h ch) (= \H ch))
-        (cond
-          (core/title? state)
-          (apply-handle state {:type :open-high-scores})
-          (core/high-scores-view? state)
-          (apply-handle state {:type :close-high-scores})
-          :else state)
-
-        (or (= \newline ch) (= \return ch) (= (int 10) (int ch)))
-        (cond
-          (core/title? state)
-          (apply-handle state {:type :start})
-          (core/the-end? state) (apply-handle state {:type :confirm})
-          (core/high-score-entry? state)
-          (let [draft @initials-draft]
-            (if (seq draft)
-              (apply-handle state {:type :submit-high-score :initials draft})
-              state))
-          :else state)
-
-        (and (core/high-score-entry? state) (initials-char? ch))
-        (do (append-initials-draft! ch) state)
-
-        (and (core/high-score-entry? state)
-             (or (= \backspace ch) (= (char 8) ch)))
-        (do (reset! initials-draft
-                    (let [d @initials-draft]
-                      (if (seq d) (subs d 0 (dec (count d))) d)))
-            state)
-
-        (and key-name (core/playing? state))
-        (apply-handle state {:type :key :key key-name})
-
-        :else state))
+          enter? (or (= \newline ch) (= \return ch) (= (int 10) (int ch)))
+          backspace? (or (= \backspace ch) (= (char 8) ch))
+          event (normalized-key-event ch enter? backspace?)
+          intent (host-input/key-intent state @initials-draft event)]
+      (if intent
+        (apply-input-intent state intent)
+        (if (:escape? event)
+          (do (persist-settings! state) (q/exit) state)
+          state)))
     state))
 
 (defn run-sketch!
