@@ -40,7 +40,6 @@
              (str "browser task unexpected: " (:out b))))
 
   (println "\nPASS: browser-host automated QA (A–B docs/build/accept)")
-  (println "PASS: look-and-feel approved (browser presentation via docs/parity)")
   (System/exit 0))
 
 (when (= *file* (System/getProperty "babashka.file"))

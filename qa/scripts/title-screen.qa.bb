@@ -102,7 +102,6 @@
     (assert! back (str "never returned to title: " (last (:sims r)))))
 
   (println "\nPASS: title-screen automated QA (A–E)")
-  (println "PASS: look-and-feel approved (title layout + start affordance)")
   (System/exit 0))
 
 (when (= *file* (System/getProperty "babashka.file"))

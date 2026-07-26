@@ -145,7 +145,6 @@
                (str "at least one non-vertical: ox=" oxs " tx=" txs))))
 
   (println "\nPASS: enemy-missile-angles automated QA (A–D)")
-  (println "PASS: look-and-feel approved (angled trail fan)")
   (System/exit 0))
 
 (when (= *file* (System/getProperty "babashka.file"))

@@ -17,7 +17,6 @@ Design: §5.5 — “choose among living cities and non-destroyed batteries.”
 
 - Scenario + telemetry only for targeting.
 - Telemetry: `enemy_target=city:N` and `enemy_target=battery:left|center|right` (or equivalent).
-- Look-and-feel: optional; trails toward batteries are enough for visual check.
 
 ## Scenario staging
 
@@ -58,8 +57,6 @@ Then allow wave spawn / remaining schedule and assert no `battery:left` targets.
 
 6. Destroy left battery; spawn wave enemies (8 eligible).
 7. Assert no target is left battery; all targets are living cities or intact batteries.
-
-### E. Look-and-feel — confirm some trails aim at batteries; optional user nod.
 
 ## Pass criteria
 

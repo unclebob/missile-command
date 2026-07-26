@@ -40,7 +40,6 @@ Examples wave 1 arcade: count 3, speed 50 → easy count 2, speed 35.
 
 - Scenario/events for open options, set mute/difficulty/bind key, leave, start, press remapped key.
 - Telemetry: mute, difficulty, key bindings, wave metrics after start.
-- Look-and-feel: **request approval** for options screen.
 
 ## Procedure
 
@@ -58,10 +57,7 @@ Examples wave 1 arcade: count 3, speed 50 → easy count 2, speed 35.
 
 ### G. Leave — leave options → title.
 
-### H. Look-and-feel — **request user approval**.
-
 ## Pass criteria
 
 - Acceptance for `options` passes.
 - Mute, keys, difficulty behave per Gherkin; host persistence verified.
-- User approves options UI.

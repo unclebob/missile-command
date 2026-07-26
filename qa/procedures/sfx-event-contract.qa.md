@@ -26,7 +26,6 @@ Verify hosts learn which SFX to play each frame via the **documented cursor cont
 
 - Telemetry: `sfx_count=`, `sfx_last=`, `qa-sfx type=… played=…`.
 - Host QA must show play attempts only for **new** events since the previous frame (cursor).
-- Look-and-feel: **deferred** until user re-enables L&F reviews.
 
 ## Procedure
 
@@ -38,9 +37,7 @@ Verify hosts learn which SFX to play each frame via the **documented cursor cont
 
 ### D. Mute still suppresses play only — muted fire → `played=false` with core log still showing launch.
 
-### E. Look-and-feel — deferred until further notice.
-
 ## Pass criteria
 
 - Unit, accept, arch, property green.
-- Host B–D hold; L&F skipped until further notice.
+- Host B–D hold.

@@ -139,7 +139,6 @@
              (str "wave 3 should be harder: " s1 " vs " s3)))
 
   (println "\nPASS: waves-and-rearm automated QA (A–B)")
-  (println "PASS: look-and-feel approved (HUD wave readability)")
   (System/exit 0))
 
 (when (= *file* (System/getProperty "babashka.file"))

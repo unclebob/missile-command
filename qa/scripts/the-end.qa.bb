@@ -132,7 +132,6 @@
              (str "cities stay down mid-wave: " s0)))
 
   (println "\nPASS: the-end automated QA (A–D, G partial via telemetry)")
-  (println "PASS: look-and-feel approved (THE END fireball + letter reveal)")
   (System/exit 0))
 
 (when (= *file* (System/getProperty "babashka.file"))
