@@ -92,7 +92,6 @@
     (assert! end-sfx (str "H no the-end sfx: " (:sfx r))))
 
   (println "\nPASS: sound-events automated QA (A, B, H, I)")
-  (println "PASS: look-and-feel optional; SFX telemetry approved")
   (System/exit 0))
 
 (when (= *file* (System/getProperty "babashka.file"))

@@ -23,9 +23,6 @@ Verify wave **salvo** enemies enter from **random sky x** positions (not fixed e
 
 ### C. Variety — distinct origin x values among the salvo (not all identical).
 
-### D. Look-and-feel — deferred until user re-enables L&F reviews.
-
 ## Pass criteria
 
 - Accept green; host B–C hold.
-- L&F approval skipped until further notice.

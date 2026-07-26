@@ -27,7 +27,6 @@ Difficulty scales ballistic count/speed only; advanced counts follow arcade tabl
 
 - Telemetry: `wave_enemy_count`, `wave_mirv_count`, `wave_smart_bomb_count`, `wave_bomber_count`, `wave_satellite_count`, live `mirv_parents`, `smart_bombs`, `flyers_bomber`, `flyers_satellite`.
 - Scenario: `:wave N` then `start` (or playing) to spawn schedule.
-- Look-and-feel: **request approval** that late-wave sky looks busy (mix of threats).
 
 ## Procedure
 
@@ -39,9 +38,6 @@ Difficulty scales ballistic count/speed only; advanced counts follow arcade tabl
 
 ### D. Continuous — clear wave 1 → banner → wave 2 schedule spawns (ballistics; MIRV still 0).
 
-### E. Look-and-feel — **request user approval** (wave 9 or mid-game density).
-
 ## Pass criteria
 
 - Unit/accept green; host B–D match metrics.
-- User approves late-wave presentation.

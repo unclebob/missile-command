@@ -138,7 +138,6 @@
     (assert! (= 0 (long-field w2 "wave_mirv_count")) (str "D wave2 mirv: " w2)))
 
   (println "\nPASS: play-wave-schedule automated QA (A–D)")
-  (println "PASS: look-and-feel approved (wave-9 full schedule density)")
   (System/exit 0))
 
 (when (= *file* (System/getProperty "babashka.file"))

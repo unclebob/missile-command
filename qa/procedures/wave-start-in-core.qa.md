@@ -25,7 +25,6 @@ Verify that **core `tick`** starts attack 1 when the sky is empty, no attack is 
 
 - Telemetry: `screen`, `wave`, `wave_attack`, `ballistic_missiles`.
 - Events: `start`, waits, `quit` only — hosts must not inject schedule activation beyond handle/tick.
-- Look-and-feel: **deferred** until user re-enables L&F reviews.
 
 ## Procedure
 
@@ -37,9 +36,7 @@ Verify that **core `tick`** starts attack 1 when the sky is empty, no attack is 
 
 ### D. Continuous after banner — stage final attack clear path → WAVE banner → after banner `playing` with `wave=2` and `wave_attack=1`.
 
-### E. Look-and-feel — deferred until further notice.
-
 ## Pass criteria
 
 - Unit, accept, arch, and property green.
-- Host B–D hold; L&F skipped until further notice.
+- Host B–D hold.

@@ -128,7 +128,6 @@
     (assert! (not= a d) (str "D different seeds should differ: " a " vs " d)))
 
   (println "\nPASS: core-testing-api automated QA (A–D)")
-  (println "PASS: look-and-feel deferred per user (skip until further notice)")
   (System/exit 0))
 
 (when (= *file* (System/getProperty "babashka.file"))

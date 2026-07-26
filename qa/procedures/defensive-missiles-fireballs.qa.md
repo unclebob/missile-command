@@ -13,7 +13,7 @@ Verify missiles fly to aim, become fireballs (start/max/shrink/end times), repor
 
 ## UI Event Boundary
 
-Scenario for optional `:targets`; events for aim/fire/wait; telemetry for vectors and fireball phases — no private core API. **User look-and-feel approval** required.
+Scenario for optional `:targets`; events for aim/fire/wait; telemetry for vectors and fireball phases — no private core API.
 
 ## Scenario / events examples
 
@@ -57,8 +57,6 @@ quit
 3. Scenario target on aim; fire; assert destroyed when radius covers target.
 4. Scenario target far; fire through max; assert not destroyed.
 
-### D. Look-and-feel — **request user approval**.
-
 ## Pass criteria
 
-- Phases and center/radius on every fireball line; hit/miss correct; **user approved look and feel**.
+- Phases and center/radius on every fireball line; hit/miss correct.

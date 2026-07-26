@@ -198,7 +198,6 @@
                (str "H relaunch score: " view))))
 
   (println "\nPASS: high-scores automated QA (A–H)")
-  (println "PASS: look-and-feel approved (entry UI + table view)")
   (System/exit 0))
 
 (when (= *file* (System/getProperty "babashka.file"))

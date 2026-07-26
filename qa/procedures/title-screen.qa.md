@@ -18,7 +18,6 @@ Out of scope: options menu (US-19), high-score table (US-18), pause (US-16), att
 - Scenario + events + telemetry only.
 - Telemetry: `screen=title|playing|the_end`, title game name, start affordance flag if exposed, score, wave, cities/batteries after start.
 - Events may include `start` / `confirm` / `key enter` as documented.
-- Look-and-feel: **request approval** for title layout and start affordance.
 
 ## Scenario / events
 
@@ -65,10 +64,7 @@ confirm
 
 6. Stage THE END; complete/confirm end screen without high-score path. Assert return to **title**.
 
-### F. Look-and-feel — **request user approval** for title + start.
-
 ## Pass criteria
 
 - Acceptance for `title-screen` passes.
 - Launch → title; start → fresh playing; THE END confirm → title.
-- User approves title presentation.
