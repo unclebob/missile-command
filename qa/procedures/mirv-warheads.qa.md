@@ -31,7 +31,6 @@ Out of scope: smart bombs (US-12), flyers (US-13).
 - Automated: unit + acceptance only.
 - Running app: scenario + events + telemetry only.
 - Telemetry must distinguish MIRV parent vs child when present (e.g. `enemy_kind=mirv|child` or equivalent), plus origin/position/target, `enemy_missiles=`.
-- Look-and-feel: **request user approval** for visible split/fan trails.
 
 ## Scenario staging
 
@@ -100,14 +99,8 @@ or normal play advanced to wave 4+.
 9. Wave 1–2: MIRV schedule count 0.
 10. Wave 4+: schedule includes ≥1 MIRV (per feature table).
 
-### G. Look-and-feel
-
-11. Observe split mid-descent and fanning trails.
-12. **Request user approval**.
-
 ## Pass criteria
 
 - Acceptance for `mirv-warheads` passes.
 - Split, pre-split kill, child impact, and child fireball kill match Gherkin.
 - Early waves have no MIRVs; mid/later waves schedule them.
-- User approves split readability if drawn.

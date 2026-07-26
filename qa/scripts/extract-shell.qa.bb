@@ -78,7 +78,6 @@
     (assert! has-paused (str "C never paused: " screens)))
 
   (println "\nPASS: extract-shell automated QA (A–C)")
-  (println "PASS: look-and-feel deferred per user (skip until further notice)")
   (System/exit 0))
 
 (when (= *file* (System/getProperty "babashka.file"))

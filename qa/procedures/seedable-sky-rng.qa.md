@@ -14,8 +14,6 @@ Verify optional `:rng-seed` makes attack-1 sky origins deterministic; unseeded p
 
 ### C. Host — same seed twice → identical origin xs; seed 42 ≠ seed 99.
 
-### D. Look-and-feel — deferred until further notice.
-
 ## Pass criteria
 
-- Suite green; host C holds; L&F skipped.
+- Suite green; host C holds.

@@ -20,8 +20,6 @@ Verify:
 
 ### C. Host — `--qa` + scenario EDN still plays (start → attack 1).
 
-### D. Look-and-feel — deferred until further notice.
-
 ## Pass criteria
 
-- Suite green; B–C hold; L&F skipped.
+- Suite green; B–C hold.

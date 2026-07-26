@@ -209,7 +209,6 @@
 
     (println)
     (println "PASS: fire-click-zone automated QA (procedures A–C)")
-    (println "MANUAL PENDING: procedure D look-and-feel requires explicit user approval")
     (System/exit 0)))
 
 (when (= *file* (System/getProperty "babashka.file"))

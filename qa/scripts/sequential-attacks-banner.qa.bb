@@ -127,7 +127,6 @@
     (assert! (= "WAVE_2" (field banner "banner_text")) (str "E banner: " banner)))
 
   (println "\nPASS: sequential-attacks-banner automated QA (A–E)")
-  (println "PASS: look-and-feel approved (3 salvos then WAVE banner)")
   (System/exit 0))
 
 (when (= *file* (System/getProperty "babashka.file"))

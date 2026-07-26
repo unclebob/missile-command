@@ -23,8 +23,6 @@ Verify screen shell transitions live in `missile-command.shell` with core re-exp
 
 ### C. Host — start from title → playing; pause key path if telemetry exposes screen=paused.
 
-### D. Look-and-feel — deferred until further notice.
-
 ## Pass criteria
 
-- Automated green; host C holds; L&F skipped.
+- Automated green; host C holds.

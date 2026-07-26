@@ -134,7 +134,6 @@
     (assert! title (str "G never title after leave: " (map #(field % "screen") (:sims r)))))
 
   (println "\nPASS: options automated QA (A–G)")
-  (println "PASS: look-and-feel approved (options screen)")
   (System/exit 0))
 
 (when (= *file* (System/getProperty "babashka.file"))

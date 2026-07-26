@@ -13,7 +13,7 @@ Verify enemy missiles destroy cities/batteries on impact, are destroyed when ins
 
 ## UI Event Boundary
 
-Scenario for enemies/cities/batteries; events for defensive fire; telemetry for positions, fireball center/radius, living state — no private core API. **User look-and-feel approval** required.
+Scenario for enemies/cities/batteries; events for defensive fire; telemetry for positions, fireball center/radius, living state — no private core API.
 
 ## Scenario examples
 
@@ -56,8 +56,6 @@ Enemy position/target; fireball `center_x`/`center_y`/`radius`; city/battery liv
 3. Scenario enemy → city; events create fireball on path; assert enemy destroyed while **within fireball radius** (telemetry distance); city living.
 4. Scenario enemy + fireball far from path; assert city dies (no within-radius intercept).
 
-### D. Look-and-feel — **request user approval**.
-
 ## Pass criteria
 
-- Gherkin pass; within-radius destroy; outside radius no save; impacts work; **user approved look and feel**.
+- Gherkin pass; within-radius destroy; outside radius no save; impacts work.

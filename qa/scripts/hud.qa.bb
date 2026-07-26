@@ -115,7 +115,6 @@
              (str "title should not force full HUD: " t)))
 
   (println "\nPASS: hud automated QA (A–G partial)")
-  (println "PASS: look-and-feel approved (HUD readability)")
   (System/exit 0))
 
 (when (= *file* (System/getProperty "babashka.file"))

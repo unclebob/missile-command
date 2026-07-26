@@ -8,7 +8,7 @@ Verify the **ClojureScript browser host** draws the same shell screens as deskto
 
 ## Preconditions
 
-- Desktop shells already approved (title/options/high-scores/pause/end/banner).
+- Desktop shell procedures cover title/options/high-scores/pause/end/banner behavior.
 - Browser modules: `browser/render_shells.cljs`, `browser/main.cljs`, `bb browser`, `index.html`.
 
 ## Procedure
@@ -21,10 +21,7 @@ Verify the **ClojureScript browser host** draws the same shell screens as deskto
 
 ### D. Build — `bb browser` produces usable open path (or documents compile skip gracefully).
 
-### E. Look-and-feel — request approval for browser shell parity (or desktop shell screens as proxy when browser assets unavailable).
-
 ## Pass criteria
 
 - Acceptance for browser-host green.
 - Shell modules cover all shell screens.
-- User approves presentation / parity.

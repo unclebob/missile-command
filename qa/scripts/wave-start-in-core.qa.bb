@@ -130,7 +130,6 @@
              (str "D wave 2 attack 1 needs ballistics: " w2)))
 
   (println "\nPASS: wave-start-in-core automated QA (A–D)")
-  (println "PASS: look-and-feel deferred per user (skip until further notice)")
   (System/exit 0))
 
 (when (= *file* (System/getProperty "babashka.file"))

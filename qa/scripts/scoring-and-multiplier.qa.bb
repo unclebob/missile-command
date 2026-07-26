@@ -160,7 +160,6 @@
                (str "wave " w " mult: " s0))))
 
   (println "\nPASS: scoring-and-multiplier automated QA (A–F)")
-  (println "MANUAL PENDING: look-and-feel (score/mult HUD readability)")
   (System/exit 0))
 
 (when (= *file* (System/getProperty "babashka.file"))

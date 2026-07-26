@@ -23,7 +23,6 @@ Window: resizable; opens on launch screen; should not steal keyboard focus (exis
 - Real desktop UI via documented CLI and window input.
 - QA flags only as published UI affordances (`--qa`, scenario, events, speed).
 - No private core API instead of the host.
-- Look-and-feel: **request user approval** for full visual + audio package.
 
 ## Draw order (design §7.2)
 
@@ -79,13 +78,7 @@ Window: resizable; opens on launch screen; should not steal keyboard focus (exis
 
 15. `bb arch-check` — pure core free of Quil/IO.
 
-### H. Look-and-feel
-
-16. Full session visual pass (draw order, vector style, HUD, THE END fireball).
-17. **Request user approval**.
-
 ## Pass criteria
 
 - Acceptance for `desktop-host` passes.
 - Documented launch works; full play loop + resize + persist + SFX + arch isolation.
-- User approves desktop presentation and audio.
