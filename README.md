@@ -22,6 +22,7 @@ spec/missile_command/         Speclj unit tests
 features/                     Gherkin feature files
 acceptance/generated/         generated acceptance entrypoints (build product)
 build/acceptance/ir/          Gherkin JSON IR (build product)
+resources/public/js/          generated browser JavaScript (build product)
 ```
 
 Host namespaces (`missile-command.jvm`, `missile-command.browser`) will be added
@@ -47,6 +48,15 @@ bb accept
 
 Runs `gherkin-parser` → project acceptance entrypoint generator → generated
 executable tests.
+
+### Generated artifacts
+
+Generated outputs are disposable and not source-controlled:
+`acceptance/generated/`, `build/acceptance/`, and `resources/public/js/`.
+Local caches `.cpcache/` and `.shadow-cljs/` are also disposable. Do not edit
+generated acceptance files by hand. Use `bb clean-generated` to remove those
+outputs without touching source files, SwarmForge state, package manifests, or
+`tmp/` working notes.
 
 ### Architecture check
 
