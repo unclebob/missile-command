@@ -23,8 +23,6 @@ Verify defensive missiles, fireballs, and destroyable-target hits live in `missi
 
 ### C. Host fire — start, aim, fire key → `missiles_in_flight` ≥ 1 (defensive path live via combat).
 
-### D. Look-and-feel — deferred until further notice.
-
 ## Pass criteria
 
-- Automated green; host C holds; L&F skipped.
+- Automated green; host C holds.

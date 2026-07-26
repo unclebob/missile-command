@@ -99,7 +99,6 @@
              (str "D core should still log: " last-sim)))
 
   (println "\nPASS: sfx-event-contract automated QA (A–D)")
-  (println "PASS: look-and-feel deferred per user (skip until further notice)")
   (System/exit 0))
 
 (when (= *file* (System/getProperty "babashka.file"))

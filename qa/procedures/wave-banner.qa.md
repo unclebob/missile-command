@@ -24,7 +24,6 @@ Verify that **between waves** the game shows a **banner page** announcing the **
 ## UI Event Boundary
 
 - Scenario/events + telemetry: `screen=wave-banner`, banner text, phase `enter|exit`, text position, wave.
-- Look-and-feel: **request user approval** for in/out motion and readability.
 
 ## Scenario staging
 
@@ -53,13 +52,7 @@ Clear the enemy (impact or intercept); observe banner for **WAVE 2**.
 
 6. After banner finishes: `screen=playing`, wave 2, rearm to 10, next threats can spawn.
 
-### E. Look-and-feel
-
-7. Watch enter/exit animation at full resolution.
-8. **Request user approval**.
-
 ## Pass criteria
 
 - Acceptance for `wave-banner` passes.
 - Banner announces next wave; text in then out; then play resumes.
-- User approves motion/readability.

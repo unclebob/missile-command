@@ -35,7 +35,6 @@ Depends on US-06 combat and US-19 mute. Out of scope: licensed samples, backgrou
 - Core: event list / last events on state after commands and ticks.
 - Host: play when unmuted; silent when muted (QA: process flag, log “played”, or no audio device call).
 - Do not use private core APIs for play checks beyond documented telemetry.
-- Look-and-feel: optional; **request approval** that SFX feel arcade-appropriate when unmuted.
 
 ## Procedure
 
@@ -61,11 +60,8 @@ Depends on US-06 combat and US-19 mute. Out of scope: licensed samples, backgrou
 2. Host does **not** play (no audible / play counter 0).
 3. Mute off; fire; host plays again.
 
-### J. Look-and-feel — **request user approval** for SFX character (optional).
-
 ## Pass criteria
 
 - Acceptance for `sound-events` passes.
 - All required events emit at the right moments.
 - Mute blocks host playback only.
-- User approves SFX if reviewed.

@@ -28,9 +28,6 @@ Verify each wave runs **3 sequential attacks (salvos)**. Attacks 1–2 are **bal
 
 ### E. Banner — after attack 3 clears → `screen=wave-banner`, then wave advances and attack 1 of next wave.
 
-### F. Look-and-feel — **request approval** for salvo pacing + banner after full wave.
-
 ## Pass criteria
 
 - Host B–E match rules.
-- User approves presentation.

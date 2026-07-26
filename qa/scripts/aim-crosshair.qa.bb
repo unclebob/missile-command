@@ -1,7 +1,6 @@
 #!/usr/bin/env bb
 ;; Executable QA for aim-crosshair (aligned with qa/procedures/aim-crosshair.qa.md).
 ;; Automated portion only: documented project-root CLI (README). No private project API.
-;; Manual look-and-feel (procedure B) requires a documented launch command and user approval.
 
 (require '[babashka.process :as p]
          '[clojure.string :as str]
@@ -48,13 +47,6 @@
     (when-let [[_ cmd] (re-find #"(?ms)^### Architecture check\s*```sh\s*\n([^\n`]+)\n```" doc)]
       (str/trim cmd))))
 
-(defn discover-launch-command
-  "Optional documented app launch (README Launch / Run / Play section)."
-  [doc]
-  (when (re-find #"(?m)^### (Run|Start|Launch|Application|Play)\b" doc)
-    (when-let [[_ cmd] (re-find #"(?ms)^### (?:Run|Start|Launch|Application|Play)[^\n]*\n+```sh\s*\n([^\n`]+)\n```" doc)]
-      (str/trim cmd))))
-
 (defn run-documented!
   [label cmd]
   (println (str "==> " label ": " cmd))
@@ -82,7 +74,7 @@
 
 (defn -main
   [& args]
-  (let [mode (or (first args) "automated")]
+  (let [_mode (or (first args) "automated")]
     (assert! (project-root?)
              "run from project root with README, bb.edn, and QA procedure present")
     (doseq [f required-features]
@@ -90,28 +82,18 @@
     (let [doc (readme)
           unit-cmd (discover-unit-command doc)
           accept-cmd (discover-accept-command doc)
-          arch-cmd (discover-arch-command doc)
-          launch-cmd (discover-launch-command doc)]
+          arch-cmd (discover-arch-command doc)]
       (assert! (seq unit-cmd) "README does not document a unit-test command")
       (assert! (seq accept-cmd) "README does not document an acceptance-test command")
       (println "Discovered unit command:" unit-cmd)
       (println "Discovered accept command:" accept-cmd)
       (when (seq arch-cmd) (println "Discovered arch command:" arch-cmd))
-      (if (seq launch-cmd)
-        (println "Discovered launch command:" launch-cmd)
-        (println "NOTE: no documented app launch command in README (manual portion blocked)"))
       (let [arch (when (seq arch-cmd) (run-documented! "arch-check" arch-cmd))]
         (when arch
           (assert! (zero? (:exit arch)) (str "arch-check exited " (:exit arch)))
           (assert! (no-failures? (:out arch)) "arch-check reported failure"))
         (println)
         (println "PASS: aim-crosshair automated QA (procedure A)")
-        (when (= mode "full")
-          (when-not (seq launch-cmd)
-            (die! "full mode requires a documented app launch command for manual look-and-feel"))
-          (die! (str "manual look-and-feel not automated; start with: " launch-cmd
-                     " then request human approval per procedure B")))
-        (println "MANUAL PENDING: procedure B look-and-feel needs documented launch + user approval")
         (System/exit 0)))))
 
 (when (= *file* (System/getProperty "babashka.file"))

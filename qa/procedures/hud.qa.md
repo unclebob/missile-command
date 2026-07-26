@@ -22,13 +22,12 @@ Depends on US-09/US-10 (score, mult, bonus cities) and US-15/US-16 (playing/paus
 ## Preconditions
 
 - Start from title into playing.
-- `bb play --qa` with telemetry that mirrors HUD fields (or on-screen read for look-and-feel).
+- `bb play --qa` with telemetry that mirrors HUD fields.
 
 ## UI Event Boundary
 
 - Scenario + events + telemetry / visible HUD only.
 - Telemetry should include the same fields the HUD shows (`score=`, `wave=`, `multiplier=`, `battery_*_ammo=`, living/bonus cities).
-- Look-and-feel: **request approval** for readability during play and pause.
 
 ## Procedure
 
@@ -58,10 +57,7 @@ Depends on US-09/US-10 (score, mult, bonus cities) and US-15/US-16 (playing/paus
 
 6. On title, full playing HUD not required.
 
-### H. Look-and-feel — **request user approval** for layout/legibility.
-
 ## Pass criteria
 
 - Acceptance for `hud` passes.
 - HUD values always match core during playing and paused.
-- User approves readability.

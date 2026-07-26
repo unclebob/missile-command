@@ -23,8 +23,6 @@ Verify bonus award/place algorithms live in `missile-command.bonus-cities` with 
 
 ### C. Host mid-wave — score+destroyed+reserve while playing: living unchanged, reserve held.
 
-### D. Look-and-feel — deferred until further notice.
-
 ## Pass criteria
 
-- Automated green; host C holds; L&F skipped.
+- Automated green; host C holds.

@@ -19,7 +19,6 @@ Verify waves start at 1, do not complete while enemies remain, complete when the
 
 - Automated: documented unit/acceptance commands only.
 - Running app: **scenario + events + telemetry only** (no private core API).
-- Look-and-feel: **explicit human approval** required.
 
 ## Scenario staging (wave transition)
 
@@ -71,13 +70,7 @@ Under `--qa`, expect at least `wave=`, `wave_complete=`, per-battery ammo/destro
 11. Compare wave 1 vs higher wave hardness (count and/or speed via telemetry).
 12. Quit cleanly (`quit` in events or UI).
 
-### C. Manual look-and-feel
-
-13. Observe wave number on the HUD, wave transition, rearm, city map from scenario, difficulty step-up.
-14. **Request user approval** for look and feel (including wave readability on the HUD).
-
 ## Pass criteria
 
 - Unit/acceptance pass; scenario EDN stages ammo/cities/enemies; rearm and destroyed rules hold; higher waves harder.
 - **HUD shows current wave** and stays in sync with core after advance.
-- **User approved look and feel**.

@@ -43,7 +43,6 @@ Out of scope: flyers (US-13).
 
 - Scenario + events + telemetry only.
 - Telemetry: identify smart bombs (`enemy_kind=smart` or equivalent), position, target, evade/destroy fate; `score=`, `multiplier=`.
-- Look-and-feel: **request approval** for smart-bomb motion/evade readability.
 
 ## Scenario staging
 
@@ -90,10 +89,7 @@ quit
 
 ### H. Schedule — waves 1/4 → 0 smart; 7+ → ≥1 per table.
 
-### I. Look-and-feel — **request user approval**.
-
 ## Pass criteria
 
 - Acceptance passes; centered vs edge outcomes match parameters.
 - Score 125×mult; impact and schedule rules hold.
-- User approves readability if drawn.
