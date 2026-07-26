@@ -91,6 +91,17 @@
                 ((:apply-qa-fireballs ctx) state [{:x x :y y :radius radius}]))
     state))
 
+(defn- now-ns
+  [ctx]
+  (if-let [f (:now-ns ctx)]
+    (f)
+    (* 1000000 ((:now-ms ctx)))))
+
+(defn- wait-deadline-ns
+  [ctx ev]
+  (+ (now-ns ctx)
+     (long (* 1000000000.0 (double (:seconds ev))))))
+
 (defn drain-one-event
   [ctx state]
   (let [pending-events (:pending-events ctx)
@@ -100,15 +111,14 @@
       (let [ev (first events)]
         (case (:type ev)
           :wait
-          (let [until (or (:until-ms ev)
-                          (+ ((:now-ms ctx))
-                             (long (* 1000.0 (double (:seconds ev))))))]
-            (if (nil? (:until-ms ev))
+          (let [until (or (:until-ns ev)
+                          (wait-deadline-ns ctx ev))]
+            (if (nil? (:until-ns ev))
               (do
                 (reset! pending-events
-                        (vec (cons (assoc ev :until-ms until) (rest events))))
+                        (vec (cons (assoc ev :until-ns until) (rest events))))
                 state)
-              (if (>= ((:now-ms ctx)) until)
+              (if (>= (now-ns ctx) until)
                 (do (reset! pending-events (vec (rest events))) state)
                 state)))
 

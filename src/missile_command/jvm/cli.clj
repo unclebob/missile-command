@@ -50,7 +50,7 @@
   (Double/parseDouble (str s)))
 
 (defn parse-qa-speed
-  "Positive sim-time multiplier (default 1.0). Speeds wall-clock QA waits."
+  "Positive sim-time multiplier (default 1.0). Does not change wall-clock QA waits."
   [s]
   (let [n (parse-float-token s)]
     (when-not (and (double? n) (pos? n) (Double/isFinite n))
