@@ -152,7 +152,7 @@
     (if (and (core/title? state) first-unlock?)
       (do (audio/ensure-title! (core/mute? state))
           state)
-      (apply-handle state {:type :click :x (q/mouse-x) :y (q/mouse-y)})))))
+      (apply-handle state {:type :click :x (q/mouse-x) :y (q/mouse-y)}))))
 
 (defn- escape-key?
   [ch]
