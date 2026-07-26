@@ -48,7 +48,7 @@
         events-path "tmp/qa-enemy-events.txt"
         _ (when scenario (write-edn! scenario-path scenario))
         _ (write-events! events-path (concat events ["quit"]))
-        cmd (str "bb play 800 600 --qa --qa-speed 10 "
+        cmd (str "bb play 800 600 --qa --no-keyfocus --qa-speed 10 "
                  (when scenario (str "--qa-scenario " scenario-path " "))
                  (when (seq extra) (str extra " "))
                  "--qa-events " events-path)]

@@ -38,7 +38,7 @@
 (defn launch!
   [{:keys [scenario-path events-path extra timeout-ms]
     :or {timeout-ms 45000 extra ""}}]
-  (let [cmd (str "bb play 800 600 --qa --qa-speed 8"
+  (let [cmd (str "bb play 800 600 --qa --no-keyfocus --qa-speed 8"
                  (when (seq extra) (str " " extra))
                  (when scenario-path (str " --qa-scenario " scenario-path))
                  (when events-path (str " --qa-events " events-path)))]

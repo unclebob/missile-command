@@ -126,23 +126,30 @@ QA uses a small, stable launch surface—not a private core API:
 | `--qa-scenario <file>` | Initial world state (EDN) |
 | `--qa-events <file>` | Timed input script (text); `wait` is wall-clock seconds |
 | `--qa-speed <n>` | Multiply sim-time advance vs wall clock (default `1`) |
+| `--no-keyfocus` | QA mode only: prevent focus activation and ignore real mouse/key callbacks |
 | `--qa-enemy city:N` / `battery:…` | Spawn one enemy missile toward a city or battery |
 | `--qa-target x,y` | Add a destroyable test target at playfield coordinates |
 | `--qa-fireball x,y,r` | Seed a live fireball at coordinates with max radius |
 | `--destroy-batteries left,center,…` | Mark listed batteries destroyed at start |
 
 ```sh
-bb play --qa
-# equivalent: bb play --qa-telemetry
-bb play --qa --qa-scenario tmp/wave-rearm.edn
-bb play --qa --qa-speed 10 --qa-scenario tmp/setup.edn --qa-events tmp/clicks.txt
-bb play 1280 720 --qa --qa-scenario tmp/setup.edn
-bb play --qa-telemetry --qa-enemy city:0
-bb play --qa-telemetry --qa-target 400,200
-bb play --qa-telemetry --destroy-batteries left --qa-events tmp/clicks.txt
+bb play --qa --no-keyfocus
+# equivalent: bb play --qa-telemetry --no-keyfocus
+bb play --qa --no-keyfocus --qa-events tmp/clicks.txt
+bb play --qa --no-keyfocus --qa-scenario tmp/wave-rearm.edn
+bb play --qa --no-keyfocus --qa-speed 10 --qa-scenario tmp/setup.edn --qa-events tmp/clicks.txt
+bb play 1280 720 --qa --no-keyfocus --qa-scenario tmp/setup.edn
+bb play --qa-telemetry --no-keyfocus --qa-enemy city:0
+bb play --qa-telemetry --no-keyfocus --qa-target 400,200
+bb play --qa-telemetry --no-keyfocus --destroy-batteries left --qa-events tmp/clicks.txt
 ```
 
-Optional: `--qa-events` alone with `--qa` (default new-game state, scripted input only).
+Automated desktop QA scripts use `--no-keyfocus` by default. With that flag,
+scripted `--qa-events` still drive the game through the internal queue, while
+real keyboard and mouse callbacks from the OS are ignored.
+
+Optional: `--qa-events` alone with `--qa --no-keyfocus` (default new-game state,
+scripted input only).
 
 #### `--qa-speed <n>`
 
@@ -152,7 +159,7 @@ event scripts remains **wall-clock seconds**.
 
 ```sh
 # ~10× faster sim: a 5.7s enemy flight finishes in ~0.6s wall clock
-bb play --qa --qa-speed 10 --qa-enemy city:0 --qa-events tmp/events.txt
+bb play --qa --no-keyfocus --qa-speed 10 --qa-enemy city:0 --qa-events tmp/events.txt
 ```
 
 #### Scenario file (EDN)
@@ -174,7 +181,7 @@ flags. Omitted keys keep normal new-game defaults.
 ```
 
 ```sh
-bb play --qa --qa-speed 10 --qa-scenario tmp/wave-rearm-depleted.edn --qa-events tmp/events.txt
+bb play --qa --no-keyfocus --qa-speed 10 --qa-scenario tmp/wave-rearm-depleted.edn --qa-events tmp/events.txt
 ```
 
 | Key | Meaning |
@@ -210,8 +217,8 @@ Examples for common setups:
 Spawn one enemy ballistic missile toward a city index or battery.
 
 ```sh
-bb play --qa-telemetry --qa-enemy city:0
-bb play --qa-telemetry --qa-enemy battery:left
+bb play --qa-telemetry --no-keyfocus --qa-enemy city:0
+bb play --qa-telemetry --no-keyfocus --qa-enemy battery:left
 ```
 
 #### Events file (text)

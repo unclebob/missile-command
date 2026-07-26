@@ -58,7 +58,7 @@
                 ["1280" "720" "--qa-telemetry" "--destroy-batteries" "left,center"
                  "--qa-events" "tmp/events.txt" "--qa-target" "400,200"
                  "--qa-enemy" "city:0" "--qa-fireball" "10,20,30"
-                 "--qa-speed" "8"]
+                 "--qa-speed" "8" "--no-keyfocus"]
                 800 600)]
       (should= 1280 (:width opts))
       (should= 720 (:height opts))
@@ -68,7 +68,8 @@
       (should= "tmp/events.txt" (:qa-events opts))
       (should= [{:x 400 :y 200}] (:qa-targets opts))
       (should= [{:kind :city :id 0}] (:qa-enemies opts))
-      (should= [{:x 10 :y 20 :radius 30.0}] (:qa-fireballs opts))))
+      (should= [{:x 10 :y 20 :radius 30.0}] (:qa-fireballs opts))
+      (should (:no-keyfocus? opts))))
 
   (it "assigns first size token to width and second to height only"
     (let [opts (input/parse-cli-args ["900" "500"] 800 600)]

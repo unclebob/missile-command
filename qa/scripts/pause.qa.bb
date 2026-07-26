@@ -36,7 +36,7 @@
 
 (defn launch!
   [{:keys [events-path timeout-ms] :or {timeout-ms 45000}}]
-  (let [cmd (str "bb play 800 600 --qa --qa-speed 10 --qa-events " events-path)]
+  (let [cmd (str "bb play 800 600 --qa --no-keyfocus --qa-speed 10 --qa-events " events-path)]
     (println "==> host:" cmd) (flush)
     (let [r (p/shell {:out :string :err :string :continue true :timeout timeout-ms}
                      "bash" "-lc" cmd)

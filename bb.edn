@@ -167,7 +167,19 @@
 
   play
   {:doc "Launch the JVM Quil host (mouse aim, key fire)"
-   :task (apply shell "clojure" "-M:run" *command-line-args*)}
+   :task (let [args *command-line-args*
+               no-keyfocus? (some #{"--no-keyfocus"} args)
+               java-tool-options (System/getenv "JAVA_TOOL_OPTIONS")
+               qa-awt-options "-Dapple.awt.UIElement=true"
+               env (cond-> {}
+                     no-keyfocus?
+                     (assoc "JAVA_TOOL_OPTIONS"
+                            (str (when (seq java-tool-options)
+                                   (str java-tool-options " "))
+                                 qa-awt-options)))]
+           (apply shell (cond-> {}
+                          no-keyfocus? (assoc :extra-env env))
+                  "clojure" "-M:run" args))}
 
   browser
   {:doc "Build/serve the ClojureScript browser host (index.html)"
