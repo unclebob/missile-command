@@ -2,6 +2,7 @@
   "QA scenario EDN apply and host automation event files. Pure; no Quil."
   (:require [clojure.string :as str]
             [missile-command.core :as core]
+            [missile-command.testing :as testing]
             [missile-command.jvm.cli :as cli]))
 
 (defn load-scenario-edn
@@ -13,7 +14,7 @@
 (defn- apply-scenario-wave
   [state scenario]
   (if-let [w (:wave scenario)]
-    (core/set-wave state w)
+    (testing/set-wave state w)
     state))
 
 (defn- apply-scenario-screen
@@ -27,14 +28,14 @@
   "Optional :wave-attack k begins that sequential salvo (1-based)."
   [state scenario]
   (if-let [k (:wave-attack scenario)]
-    (core/begin-wave-attack state (long k))
+    (testing/begin-wave-attack state (long k))
     state))
 
 (defn- apply-scenario-rng-seed
   "Optional :rng-seed for deterministic sky origins."
   [state scenario]
   (if-let [seed (:rng-seed scenario)]
-    (core/with-rng-seed state (long seed))
+    (testing/with-rng-seed state (long seed))
     state))
 
 (defn- apply-scenario-size
@@ -46,8 +47,8 @@
 (defn- apply-scenario-battery
   [state [id opts]]
   (cond-> state
-    (:destroyed opts) (core/destroy-battery id)
-    (contains? opts :ammo) (core/set-battery-ammo id (:ammo opts))))
+    (:destroyed opts) (testing/destroy-battery id)
+    (contains? opts :ammo) (testing/set-battery-ammo id (:ammo opts))))
 
 (defn- apply-scenario-batteries
   [state scenario]
@@ -55,19 +56,19 @@
 
 (defn- apply-scenario-cities
   [state scenario]
-  (reduce core/destroy-city state
+  (reduce testing/destroy-city state
           (or (get-in scenario [:cities :destroyed]) [])))
 
 (defn- apply-scenario-targets
   [state scenario]
-  (reduce (fn [s t] (core/add-destroyable-target s (:x t) (:y t)))
+  (reduce (fn [s t] (testing/add-destroyable-target s (:x t) (:y t)))
           state
           (or (:targets scenario) [])))
 
 (defn- apply-scenario-bonus-threshold
   [state scenario]
   (if-let [t (:bonus-city-threshold scenario)]
-    (core/set-bonus-city-threshold state t)
+    (testing/set-bonus-city-threshold state t)
     state))
 
 (defn- apply-scenario-score-and-bonus
@@ -75,9 +76,9 @@
   [state scenario]
   (cond-> state
     (contains? scenario :bonus-cities)
-    (core/set-bonus-city-reserve (:bonus-cities scenario))
+    (testing/set-bonus-city-reserve (:bonus-cities scenario))
     (contains? scenario :score)
-    (core/set-score (:score scenario))))
+    (testing/set-score (:score scenario))))
 
 (defn- apply-scenario-high-scores
   "Seed table capacity and entries from scenario keys."
@@ -127,7 +128,7 @@
 (defn- spawn-scenario-mirv
   [state e]
   (let [[_ id] (:target e)]
-    (core/spawn-mirv-targeting-city
+    (testing/spawn-mirv-targeting-city
      state id
      (or (:child-count e) 3)
      (or (:split-progress e) 0.5))))
@@ -145,19 +146,19 @@
     (case kind
       :city (spawn-with-optional-origin
              state origin id
-             core/spawn-enemy-targeting-city-from
-             core/spawn-enemy-targeting-city)
+             testing/spawn-enemy-targeting-city-from
+             testing/spawn-enemy-targeting-city)
       :battery (spawn-with-optional-origin
                 state origin id
-                core/spawn-enemy-targeting-battery-from
-                core/spawn-enemy-targeting-battery)
+                testing/spawn-enemy-targeting-battery-from
+                testing/spawn-enemy-targeting-battery)
       state)))
 (defn- spawn-scenario-enemy
   "Spawn one scenario enemy, honoring MIRV/smart kinds and optional angled origin."
   [state e]
   (case (:kind e)
     :mirv (spawn-scenario-mirv state e)
-    :smart (core/spawn-smart-bomb-targeting-city state (second (:target e)))
+    :smart (testing/spawn-smart-bomb-targeting-city state (second (:target e)))
     (spawn-scenario-ballistic state e)))
 (defn- apply-scenario-enemies
   [state scenario]
@@ -185,12 +186,12 @@
   [state flyer]
   (let [[x0 y0] (get flyer :from default-flyer-from)
         [x1 y1] (get flyer :to default-flyer-to)
-        state (core/spawn-flyer state
-                                (get flyer :kind :bomber)
-                                x0 y0 x1 y1
-                                (get flyer :speed default-flyer-speed))]
+        state (testing/spawn-flyer state
+                                   (get flyer :kind :bomber)
+                                   x0 y0 x1 y1
+                                   (get flyer :speed default-flyer-speed))]
     (if-let [drops (seq (:drops flyer))]
-      (core/set-flyer-drops state (scenario-flyer-drops drops))
+      (testing/set-flyer-drops state (scenario-flyer-drops drops))
       state)))
 
 (defn- apply-scenario-flyers
