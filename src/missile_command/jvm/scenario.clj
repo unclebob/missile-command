@@ -275,11 +275,12 @@
    "bind-fire" (fn [a b] {:type :bind-fire-key
                           :battery (keyword a)
                           :key (str b)})
+   "reset-scenario" (fn [a _] {:type :reset-scenario :path (str a)})
    "quit" (fn [_ _] {:type :quit})})
 
 (defn parse-qa-event-line
   "Parse host automation: click X Y | aim X Y | key CHAR | wait SECONDS | quit
-  Also: open-high-scores | close-high-scores | initials ABC"
+  Also: open-high-scores | close-high-scores | initials ABC | reset-scenario PATH"
   [line]
   (let [line (str/trim (str line))]
     (when (seq line)

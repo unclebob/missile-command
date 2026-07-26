@@ -92,6 +92,15 @@
     :bind-fire-key (apply-and-emit! ctx state {:type :bind-fire-key
                                                :battery (:battery ev)
                                                :key (:key ev)})
+    :reset-scenario (let [s (-> ((:new-game ctx))
+                                ((:load-persisted ctx))
+                                ((:apply-destroy-options ctx))
+                                ((:apply-scenario ctx)
+                                 ((:load-scenario-edn ctx) (:path ev)))
+                                (core/evaluate-game-over))]
+                      (reset! (:initials-draft ctx) "")
+                      (emit-sim-when-qa! ctx s)
+                      s)
     :key (apply-key-event ctx state ev)
     :enemy ((:apply-enemy-spec ctx) state (:spec ev))
     :fireball (let [{:keys [x y radius]} (:spec ev)]
