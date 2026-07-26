@@ -27,6 +27,7 @@ Hand off **one task at a time** (SwarmForge: complete pipeline before starting t
 | R4 | `unify-event-sfx-contract` | [rec-04-unify-event-sfx-contract.md](rec-04-unify-event-sfx-contract.md) | Ready |
 | R5 | `qa-wait-wall-clock` | [rec-05-qa-wait-wall-clock.md](rec-05-qa-wait-wall-clock.md) | Ready |
 | R6 | `acceptance-step-structure` | [rec-06-acceptance-step-structure.md](rec-06-acceptance-step-structure.md) | Ready |
+| R7 | `generated-artifacts-policy` | [rec-07-generated-artifacts-policy.md](rec-07-generated-artifacts-policy.md) | Ready |
 
 ## Rules for every PR
 
