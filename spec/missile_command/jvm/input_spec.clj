@@ -176,6 +176,10 @@
     (should= {:type :confirm} (input/parse-qa-event-line "confirm"))
     (should= {:type :start} (input/parse-qa-event-line "start")))
 
+  (it "parses scenario reset events"
+    (should= {:type :reset-scenario :path "tmp/case.edn"}
+             (input/parse-qa-event-line "reset-scenario tmp/case.edn")))
+
   (it "ignores blank lines"
     (should-be-nil (input/parse-qa-event-line "   ")))
 

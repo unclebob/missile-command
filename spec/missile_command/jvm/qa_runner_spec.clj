@@ -1,5 +1,6 @@
 (ns missile-command.jvm.qa-runner-spec
   (:require [speclj.core :refer :all]
+            [missile-command.core :as core]
             [missile-command.jvm.qa-runner :as qa-runner]))
 
 (defn- ctx
@@ -14,6 +15,11 @@
    :apply-destroy-options identity
    :apply-enemy-spec (fn [state spec] (assoc state :enemy spec))
    :apply-qa-fireballs (fn [state fireballs] (assoc state :fireballs fireballs))
+   :apply-scenario (fn [state scenario] (merge state scenario))
+   :load-scenario-edn (fn [path] {:scenario-path path})
+   :load-persisted identity
+   :new-game (fn [] (assoc (core/new-game {:width 800 :height 600})
+                           :fresh true))
    :toggle-pause (fn [state] (assoc state :paused true))
    :initials-draft (atom "")})
 
@@ -48,4 +54,15 @@
           now (atom 0)]
       (should= {:commands [{:type :pause}]}
                (qa-runner/drain-one-event (ctx pending now) {:commands []}))
+      (should= [] @pending)))
+
+  (it "resets to a fresh scenario through the host-supplied scenario functions"
+    (let [pending (atom [{:type :reset-scenario :path "tmp/case.edn"}])
+          now (atom 0)
+          context (ctx pending now)
+          state (qa-runner/drain-one-event context {:commands [{:type :pause}]
+                                                    :fresh false})]
+      (should (:fresh state))
+      (should= "tmp/case.edn" (:scenario-path state))
+      (should= :title (core/screen state))
       (should= [] @pending))))

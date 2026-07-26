@@ -167,6 +167,10 @@
   {:doc "Remove disposable generated outputs; keep source, SwarmForge state, and package locks"
    :task (shell "clojure" "-M" "-m" "missile-command.generated-artifacts")}
 
+  qa-suite
+  {:doc "Run QA scripts by mode: smoke | feature <name> | full"
+   :task (apply shell "bb" "qa/scripts/run-suite.bb" *command-line-args*)}
+
   arch-check
   {:doc "Architecture boundary check (pure core vs hosts/IO/acceptance)"
    :task (shell "bb" "script/arch_check.bb")}
