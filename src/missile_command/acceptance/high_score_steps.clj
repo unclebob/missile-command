@@ -2,7 +2,8 @@
   "Gherkin steps for high-score table and initials entry."
   (:require [missile-command.acceptance.step-support :as support]
             [missile-command.core :as core]
-            [missile-command.high-scores :as high-scores]))
+            [missile-command.high-scores :as high-scores]
+            [missile-command.host-input :as host-input]))
 
 (def handlers
   [{:pattern #"^the high score table capacity is <([A-Za-z0-9_]+)>$"
@@ -42,6 +43,15 @@
    {:pattern #"^the player opens high scores from the title$"
     :fn (fn [world _ _]
           (assoc world :state (core/open-high-scores (:state world))))}
+
+   {:pattern #"^the player presses Escape while viewing high scores$"
+    :fn (fn [world _ _]
+          (let [state (:state world)
+                intent (host-input/key-intent state "" {:escape? true})
+                command (:command intent)]
+            (assoc world :state (if command
+                                  (:state (core/handle state command))
+                                  state))))}
 
    {:pattern #"^the screen is high-score-entry$"
     :fn (fn [world _ _]

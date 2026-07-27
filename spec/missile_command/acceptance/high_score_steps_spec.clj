@@ -150,6 +150,11 @@
                          {}))
       (should= world
                (dispatch world "the high score table has 2 entries" {}))
+      (should= world
+               (dispatch world
+                         "the player presses Escape while viewing high scores"
+                         {}))
+      (should= world (dispatch world "the screen is high-scores" {}))
       (should-throw Exception #"rank 1 initials"
         (dispatch world
                   "the high score at rank 1 has initials ZZZ and score 1000"
