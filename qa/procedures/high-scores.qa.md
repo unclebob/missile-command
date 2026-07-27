@@ -4,7 +4,7 @@
 **Suite:** high-scores  
 **Gherkin:** `features/high-scores.feature`
 
-Verify top-**N** high scores (default **10**): **3-character initials** + score; after **THE END**, qualifying scores open **high-score-entry**; non-qualifying go to **title**; submit inserts in ranked order; table capped at N; view table from **title**; host **persists** scores across relaunch.
+Verify top-**N** high scores (default **10**): **3-character initials** + score; after **THE END**, qualifying scores open **high-score-entry**; non-qualifying go to **title**; submit inserts in ranked order; table capped at N; view table from **title**; `H` returns from the table; desktop `Esc` quits instead of closing the table; host **persists** scores across relaunch.
 
 Depends on US-14 THE END and US-15 title. Out of scope: online leaderboards.
 
@@ -18,6 +18,7 @@ Depends on US-14 THE END and US-15 title. Out of scope: online leaderboards.
 | Order | Descending by score |
 | Cap | Insert then drop lowest beyond N |
 | Flow | THE END → (entry if qualify) → title; title can open high-scores view |
+| Table keys | `H` returns to title; desktop `Esc` is reserved for host quit |
 | Persist | JVM file (e.g. `~/.missile-command/scores.edn` or project path); browser `localStorage` |
 
 ## Preconditions
@@ -66,12 +67,14 @@ initials BOB
 
 ### F. Initials — lowercase becomes uppercase; length 3.
 
-### G. View — from title open high scores; ranks visible.
+### G. View — from title open high scores; ranks visible; `H` closes the table.
 
-### H. Persist — write a score; quit; relaunch; table still contains it (host file/localStorage).
+### H. Escape boundary — Escape while viewing high scores is not consumed as a return-to-title action; on desktop it quits the host.
+
+### I. Persist — write a score; quit; relaunch; table still contains it (host file/localStorage).
 
 ## Pass criteria
 
 - Acceptance for `high-scores` passes.
-- Qualify/entry/order/cap/view match Gherkin.
+- Qualify/entry/order/cap/view/Escape boundary match Gherkin.
 - Persistence verified on host.

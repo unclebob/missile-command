@@ -1,0 +1,16 @@
+{
+  "name": "missile-command-leaderboard-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --local",
+    "deploy": "wrangler deploy",
+    "test": "node --test test/*.test.mjs",
+    "d1:create": "wrangler d1 create missile-command-leaderboard",
+    "d1:migrate:local": "wrangler d1 migrations apply missile-command-leaderboard --local",
+    "d1:migrate:remote": "wrangler d1 migrations apply missile-command-leaderboard --remote"
+  },
+  "devDependencies": {
+    "wrangler": "^4.26.0"
+  }
+}

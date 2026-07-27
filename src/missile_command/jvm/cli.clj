@@ -90,7 +90,19 @@
       (drop 2 xs)])
    "--scores-file"
    (fn [opts xs]
-     [(assoc opts :scores-file (second xs)) (drop 2 xs)])})
+     [(assoc opts :scores-file (second xs)) (drop 2 xs)])
+   "--leaderboard-url"
+   (fn [opts xs]
+     [(assoc opts :leaderboard-url (second xs)) (drop 2 xs)])
+   "--leaderboard-name"
+   (fn [opts xs]
+     [(assoc opts :leaderboard-name (second xs)) (drop 2 xs)])
+   "--player-name"
+   (fn [opts xs]
+     [(assoc opts :player-name (second xs)) (drop 2 xs)])
+   "--no-global-scores"
+   (fn [opts xs]
+     [(assoc opts :no-global-scores? true) (rest xs)])})
 
 (defn apply-switch
   "Consume one CLI switch from xs. Returns [opts remaining-xs] or nil."
@@ -125,7 +137,11 @@
                 :qa-enemies []
                 :qa-fireballs []
                 :no-keyfocus? false
-                :scores-file nil}]
+                :scores-file nil
+                :leaderboard-url nil
+                :leaderboard-name nil
+                :player-name nil
+                :no-global-scores? false}]
      (if-not xs
        (-> opts
            (dissoc :size-phase)

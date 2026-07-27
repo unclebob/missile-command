@@ -7,13 +7,20 @@
 (defn -main [& _]
   (assert! (.exists (io/file "qa/procedures/high-scores.qa.md")) "missing procedure")
   (assert! (.exists (io/file "features/high-scores.feature")) "missing feature")
-  (let [readme (slurp "README.md")]
+  (let [readme (slurp "README.md")
+        feature (slurp "features/high-scores.feature")
+        procedure (slurp "qa/procedures/high-scores.qa.md")]
     (assert! (re-find #"(?m)high_score_count=" readme) "README missing high_score_count=")
     (assert! (re-find #"(?m)pending_high_score=" readme) "README missing pending_high_score=")
     (assert! (re-find #"(?m)open-high-scores" readme) "README missing open-high-scores")
+    (assert! (re-find #"(?m)desktop Esc quits" readme) "README missing desktop Esc high-score behavior")
     (assert! (re-find #"(?m)initials" readme) "README missing initials event")
     (assert! (re-find #"(?m)scores\.edn" readme) "README missing scores.edn path")
-    (assert! (re-find #"(?m)--scores-file" readme) "README missing --scores-file"))
+    (assert! (re-find #"(?m)--scores-file" readme) "README missing --scores-file")
+    (assert! (re-find #"(?m)Escape does not close the high score table" feature)
+             "feature missing Escape high-score scenario")
+    (assert! (re-find #"(?m)desktop `Esc` quits" procedure)
+             "procedure missing desktop Esc high-score behavior"))
 
   (let [c (run! "arch" "bb arch-check")]
     (assert! (zero? (:exit c)) "arch failed"))
@@ -114,7 +121,10 @@
     (assert! (= "BBB" (field view "hs_rank2_initials")) (str "G rank2: " view))
     (assert! back (str "G never closed to title: " (map #(field % "screen") all))))
 
-  ;; H: persist across relaunch
+  ;; H: Escape boundary is covered by Gherkin/unit host-input policy; the JVM
+  ;; real-key path exits on unhandled Escape.
+
+  ;; I: persist across relaunch
   (let [scores-path "tmp/hs-persist-scores.edn"]
     (when (.exists (io/file scores-path))
       (.delete (io/file scores-path)))
@@ -151,7 +161,7 @@
       (assert! (= 1234 (long-field view "hs_rank1_score"))
                (str "H relaunch score: " view))))
 
-  (println "\nPASS: high-scores automated QA (A–H)")
+  (println "\nPASS: high-scores automated QA (A–I)")
   (System/exit 0))
 
 (when (= *file* (System/getProperty "babashka.file"))

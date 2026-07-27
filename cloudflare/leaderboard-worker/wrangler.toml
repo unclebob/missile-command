@@ -1,0 +1,17 @@
+name = "missile-command-leaderboard"
+main = "src/index.mjs"
+compatibility_date = "2026-07-27"
+workers_dev = true
+
+[vars]
+LEADERBOARD_ID = "missile-command-official"
+LEADERBOARD_DISPLAY_NAME = "Official Missile Command"
+LEADERBOARD_OPERATOR = "Uncle Bob"
+LEADERBOARD_POLICY = "best-score-per-player"
+ALLOWED_ORIGIN = "*"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "missile-command-leaderboard"
+database_id = "a8d3aa65-9a36-4e1b-a552-46c8291df0f0"
+preview_database_id = "local-missile-command-leaderboard"
