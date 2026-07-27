@@ -150,7 +150,8 @@
                  (str "H disk content: " disk))))
     (write-edn! "tmp/hs-persist-reread.edn" {})
     (write-events! "tmp/hs-persist-read.txt"
-                   ["wait 0.15" "open-high-scores" "wait 0.15" "quit"])
+                   ["wait 0.15" "open-high-scores" "wait 0.15" "close-high-scores"
+                    "wait 0.1" "quit"])
     (let [r (launch! {:scenario-path "tmp/hs-persist-reread.edn"
                       :events-path "tmp/hs-persist-read.txt"
                       :scores-path scores-path})
