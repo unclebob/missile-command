@@ -5,6 +5,55 @@
             [missile-command.jvm.global-scores :as client]))
 
 (describe "JVM global score client seam"
+  (it "builds initial state from JVM options"
+    (let [state (client/initial-state {:no-global-scores? true
+                                       :leaderboard-url "https://scores.test"
+                                       :leaderboard-name "Test Board"
+                                       :player-name "Ada"})]
+      (should= false (:enabled? state))
+      (should= "https://scores.test" (:url state))
+      (should= "Test Board" (:configured-name state))
+      (should= "Ada" (:player-name state))))
+
+  (it "persists and reloads the player without disturbing other settings"
+    (let [path (str (java.io.File/createTempFile "missile-command-player" ".edn"))
+          player {:player-id "p1" :player-token "tok"}]
+      (spit path (pr-str {:volume 2}))
+      (should= player (client/save-player! path player))
+      (should= player (client/load-player path))
+      (should= 2 (:volume (read-string (slurp path))))))
+
+  (it "returns nil for missing or unreadable player settings"
+    (let [missing (str (java.io.File/createTempFile "missile-command-missing-player" ".edn"))]
+      (.delete (java.io.File. missing))
+      (should= nil (client/load-player missing))
+      (spit missing "{")
+      (should= nil (client/load-player missing))))
+
+  (it "builds JSON HTTP requests"
+    (let [get-request (#'client/json-request :get "https://scores.test/leaderboard" nil)
+          post-request (#'client/json-request :post "https://scores.test/scores" {:score 10})]
+      (should= "GET" (.method get-request))
+      (should= "POST" (.method post-request))
+      (should= ["application/json"] (.allValues (.headers get-request) "accept"))
+      (should= ["application/json"] (.allValues (.headers post-request) "content-type"))))
+
+  (it "skips submit when global scores are disabled"
+    (let [state (atom (assoc global/empty-state
+                             :enabled? false
+                             :read-succeeded? true))]
+      (should= :skipped_disabled
+               (:submit-status
+                (client/submit-score! "tmp/no-file.edn"
+                                      state
+                                      (core/new-game {:width 800 :height 600})
+                                      "AAA"
+                                      nil
+                                      {:ensure-player (fn [_] (throw (ex-info "unused" {})))
+                                       :submit-score (fn [_ _] (throw (ex-info "unused" {})))}
+                                      (constantly "run")
+                                      "test")))))
+
   (it "skips submit until a leaderboard read has succeeded"
     (let [state (atom global/empty-state)]
       (should= :skipped_no_read

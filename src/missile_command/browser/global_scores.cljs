@@ -7,7 +7,7 @@
 
 (defn initial-state
   []
-  (let [cfg (or (.-MISSILE_COMMAND_LEADERBOARD js/window) #js {})]
+  (let [cfg (or (.-MISSILE_COMMAND_LEADERBOARD js/window) (js-obj))]
     (assoc global/empty-state
            :enabled? (not (true? (.-disabled cfg)))
            :url (or (.-url cfg) global/default-url)

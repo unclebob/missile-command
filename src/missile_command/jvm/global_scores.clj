@@ -131,6 +131,30 @@
   ([settings-path global-state display-name transport]
    ((:ensure-player transport) display-name)))
 
+(defn- submit-skip-status
+  [global-state]
+  (cond
+    (not (:enabled? @global-state)) :skipped_disabled
+    (not (:read-succeeded? @global-state)) :skipped_no_read
+    :else nil))
+
+(defn- submit-score-body
+  [settings-path global-state state initials display-name transport run-id game-version]
+  (future
+    (try
+      (let [current @global-state
+            selected-name (global/select-player-display-name current display-name initials)
+            player (ensure-player! settings-path global-state selected-name transport)
+            payload (global/score-submit-payload state player initials "desktop"
+                                                 (run-id) game-version)
+            response ((:submit-score transport) player payload)]
+        (swap! global-state assoc
+               :submit-status (global/submit-status-from-response response)))
+      (catch Exception e
+        (swap! global-state assoc
+               :submit-status :failed
+               :error (or (.getMessage e) "submit failed"))))))
+
 (defn submit-score!
   ([settings-path global-state state initials display-name]
    (submit-score! settings-path global-state state initials display-name
@@ -138,27 +162,9 @@
                   #(str (UUID/randomUUID))
                   "dev"))
   ([settings-path global-state state initials display-name transport run-id game-version]
-   (cond
-     (not (:enabled? @global-state))
-     (swap! global-state assoc :submit-status :skipped_disabled)
-
-     (not (:read-succeeded? @global-state))
-     (swap! global-state assoc :submit-status :skipped_no_read)
-
-     :else
+   (if-let [status (submit-skip-status global-state)]
+     (swap! global-state assoc :submit-status status)
      (do
        (swap! global-state assoc :submit-status :pending)
-       (future
-         (try
-           (let [current @global-state
-                 selected-name (global/select-player-display-name current display-name initials)
-                 player (ensure-player! settings-path global-state selected-name transport)
-                 payload (global/score-submit-payload state player initials "desktop"
-                                                      (run-id) game-version)
-                 response ((:submit-score transport) player payload)]
-             (swap! global-state assoc
-                    :submit-status (global/submit-status-from-response response)))
-           (catch Exception e
-             (swap! global-state assoc
-                    :submit-status :failed
-                    :error (or (.getMessage e) "submit failed")))))))))
+       (submit-score-body settings-path global-state state initials display-name
+                          transport run-id game-version)))))
