@@ -37,7 +37,14 @@
     (let [table (hs/insert [] 0 "AAA" 100)]
       (should= 1 (count table))
       (should= "AAA" (:initials (first table)))
-      (should= 100 (:score (first table))))))
+      (should= 100 (:score (first table)))))
+
+  (it "stores display names and public codes while preserving initials"
+    (let [entry (first (hs/insert [] 10 "Uncle Bob" 1000 "Uncle Bob" "AB12CD"))]
+      (should= "UNC" (:initials entry))
+      (should= "Uncle Bob" (:display-name entry))
+      (should= "AB12CD" (:public-code entry))
+      (should= 1000 (:score entry)))))
 
 (describe "high-score screens"
   (it "opens entry for a qualifying score after THE END confirm"

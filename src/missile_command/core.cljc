@@ -272,13 +272,17 @@
 
 (defn submit-high-score-initials
   "Insert pending score with initials, then return to title."
-  [state initials]
+  ([state initials]
+   (submit-high-score-initials state initials nil nil))
+  ([state initials display-name public-code]
   (shell/submit-high-score-initials
    state
    (high-score-entry? state)
    (long (or (pending-high-score state) (final-score state)))
    initials
-   blank-shell))
+   display-name
+   public-code
+   blank-shell)))
 
 (defn end-message
   [state]
@@ -507,7 +511,10 @@
    :open-high-scores (fn [state _] (no-events (open-high-scores state)))
    :close-high-scores (fn [state _] (no-events (close-high-scores state)))
    :submit-high-score
-   (fn [state cmd] (no-events (submit-high-score-initials state (:initials cmd))))
+   (fn [state cmd] (no-events (submit-high-score-initials state
+                                                          (:initials cmd)
+                                                          (:display-name cmd)
+                                                          (:public-code cmd))))
    :open-options (fn [state _] (no-events (open-options state)))
    :leave-options (fn [state _] (no-events (leave-options state)))
    :set-mute (fn [state cmd] (no-events (set-mute state (:mute cmd))))

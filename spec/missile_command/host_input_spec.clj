@@ -35,17 +35,26 @@
       (should= {:command {:type :resume}}
                (host-input/key-intent paused "" {:ch \p :key-name "p"}))))
 
-  (it "edits and submits initials"
+  (it "leaves high scores with H but leaves Escape unhandled for host quit"
+    (let [high-scores (assoc (core/new-game {:width 800 :height 600})
+                             :screen :high-scores)]
+      (should= {:command {:type :close-high-scores}}
+               (host-input/key-intent high-scores "" {:ch \h :key-name "h"}))
+      (should-not (host-input/key-intent high-scores "" {:escape? true}))))
+
+  (it "edits and submits a player name"
     (let [entry (assoc (core/new-game {:width 800 :height 600})
                        :screen :high-score-entry)]
-      (should= {:draft "AB"}
+      (should= {:draft "Ab"}
                (host-input/key-intent entry "A" {:ch \b :key-name "b"}))
-      (should= {:draft "ABC"}
-               (host-input/key-intent entry "ABC" {:ch \d :key-name "d"}))
+      (should= {:draft "Uncle Bob"}
+               (host-input/key-intent entry "Uncle Bo" {:ch \b :key-name "b"}))
       (should= {:draft "A"}
                (host-input/key-intent entry "AB" {:backspace? true}))
-      (should= {:command {:type :submit-high-score :initials "AB"}}
-               (host-input/key-intent entry "AB" {:enter? true}))))
+      (should= {:command {:type :submit-high-score
+                          :initials "Uncle Bob"
+                          :display-name "Uncle Bob"}}
+               (host-input/key-intent entry " Uncle Bob " {:enter? true}))))
 
   (it "forwards playing keys to core remappable fire handling"
     (let [playing (assoc (core/new-game {:width 800 :height 600}) :screen :playing)]

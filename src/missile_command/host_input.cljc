@@ -8,7 +8,7 @@
             [missile-command.options :as options]
             [missile-command.screens :as screens]))
 
-(def max-initials-length 3)
+(def max-player-name-length 16)
 
 (defn- key-name
   [key-event]
@@ -46,8 +46,6 @@
   (cond
     (or (screens/playing? state) (screens/paused? state))
     (toggle-pause-command state)
-    (screens/high-scores-view? state)
-    (command {:type :close-high-scores})
     (screens/options? state)
     (command {:type :leave-options})
     :else nil))
@@ -96,12 +94,15 @@
     (screens/title? state) (command {:type :start})
     (screens/the-end? state) {:command {:type :confirm} :draft ""}
     (and (screens/high-score-entry? state) (seq initials-draft))
-    (command {:type :submit-high-score :initials initials-draft})
+    (let [name (str/trim initials-draft)]
+      (command {:type :submit-high-score
+                :initials name
+                :display-name name}))
     :else nil))
 
-(defn- initials-char?
+(defn- name-char?
   [ch]
-  (and ch (re-matches #"[A-Za-z0-9]" (str ch))))
+  (and ch (re-matches #"[A-Za-z0-9 ._-]" (str ch))))
 
 (defn- initials-edit
   [state initials-draft key-event]
@@ -112,10 +113,10 @@
                (subs initials-draft 0 (dec (count initials-draft)))
                initials-draft))
 
-      (initials-char? (key-char key-event))
-      (if (< (count initials-draft) max-initials-length)
+      (name-char? (key-char key-event))
+      (if (< (count initials-draft) max-player-name-length)
         (draft (str initials-draft
-                    (str/upper-case (str (key-char key-event)))))
+                    (str (key-char key-event))))
         (draft initials-draft))
 
       :else nil)))

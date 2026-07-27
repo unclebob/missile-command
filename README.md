@@ -93,6 +93,25 @@ input; rules stay in the pure core. The HUD includes ammo, score, and **wave**.
 High scores and options persist under `tmp/missile-command-settings.edn`
 (override with `MC_SETTINGS_PATH`).
 
+Global high scores are enabled by default and use:
+`https://missile-command-leaderboard.unclebob-missile-command.workers.dev`.
+The high-score screen starts with local scores, then rotates to network scores
+after five seconds once a leaderboard read succeeds. Network reads and writes
+run in the background; slow, unavailable, or rate-limited service responses do
+not block play. Accepted network score submissions are limited by the service to
+one per minute and twenty per day for both player id and source IP.
+
+Desktop overrides:
+
+```sh
+bb play --leaderboard-url https://example.workers.dev --leaderboard-name "Club Board"
+bb play --player-name "Uncle Bob"
+bb play --no-global-scores
+```
+
+Environment overrides are also supported: `MC_LEADERBOARD_URL`,
+`MC_LEADERBOARD_NAME`, and `MC_PLAYER_NAME`.
+
 ### Launch (browser host)
 
 Needs Node/npm once for `shadow-cljs` and Quil’s `p5` dependency:
@@ -114,6 +133,22 @@ npx shadow-cljs watch browser
 **`resources/public/index.html`** (or **http://localhost:8020** in watch mode)
 for mouse/keyboard play with the same pure core. Options and high scores
 persist in **`localStorage`**.
+
+The browser host also uses the official global leaderboard by default. To point
+at another leaderboard, define `window.MISSILE_COMMAND_LEADERBOARD` before
+loading `js/main.js`:
+
+```html
+<script>
+  window.MISSILE_COMMAND_LEADERBOARD = {
+    url: "https://example.workers.dev",
+    name: "Club Board",
+    playerName: "Uncle Bob"
+  };
+</script>
+```
+
+Use `{ disabled: true }` to run without global scores.
 
 ### Sound effects
 
@@ -266,8 +301,8 @@ quit
 | `wait <n>` | Wait `n` **wall-clock** seconds (sim advances `n * qa-speed`) |
 | `start` | Leave title and begin a fresh playing run |
 | `confirm` | Confirm THE END → high-score-entry if score qualifies, else title |
-| `open-high-scores` / `close-high-scores` | View table from title / return to title (`H` also toggles) |
-| `initials ABC` | Submit 3-char initials on high-score-entry (normalized A–Z/0–9) |
+| `open-high-scores` / `close-high-scores` | View table from title / return to title (`H` also toggles; desktop Esc quits) |
+| `initials NAME` | Submit a high-score display name on high-score-entry; stored rows keep a normalized 3-char initials field plus display name and player id when available |
 | `open-options` / `leave-options` | Options from title / return to title (`O` also toggles) |
 | `mute true\|false` | Set mute on options (or any shell; stored in options) |
 | `difficulty easy\|normal\|arcade` | Set difficulty scaling for wave metrics |
@@ -281,13 +316,21 @@ quit
 Default file: `~/.missile-command/scores.edn`  
 Override for QA: `--scores-file path` (isolated EDN load/save).
 
-Host loads the table at startup; after a successful initials submit, the host
-rewrites the file. Shape:
+Host loads the table at startup; after a successful name submit, the host
+rewrites the file. Local rows preserve the display name and a short persistent
+local player id, while still keeping normalized initials for older tools. Shape:
 
 ```edn
-{:high-scores [{:initials "AAA" :score 1000} {:initials "BOB" :score 500}]
+{:high-scores [{:initials "UNC" :display-name "Uncle Bob" :public-code "AB12CD" :score 1000}
+               {:initials "BOB" :score 500}]
+ :local-player-code "AB12CD"
  :high-score-capacity 10}
 ```
+
+Network high scores are separate from the local table. A player can appear on
+both pages; the network page shows the configured leaderboard name plus each
+player display name. Network score submission is best-effort and
+skipped until the high-score screen has read the leaderboard successfully.
 
 #### Telemetry (stdout when `--qa`)
 
@@ -341,9 +384,9 @@ qa-sim t=1.5 missiles_in_flight=0 fireballs=1 enemy_missiles=1 center_x=200 cent
 | `end_fireball_radius=` | Screen-fill end blast radius (0 when not in THE END) |
 | `end_message_reveal=` | 0–1 reveal fraction for THE END lettering |
 | `high_score_count=` / `high_score_capacity=` | Table length and max N |
-| `pending_high_score=` | Score awaiting initials (`none` if not on entry) |
+| `pending_high_score=` | Score awaiting high-score name entry (`none` if not on entry) |
 | `submitted_initials=` | Last submitted initials (`none` if none) |
-| `initials_draft=` | Host typing buffer while entering (`none` if empty) |
+| `initials_draft=` | Host high-score name typing buffer while entering (`none` if empty) |
 | `hs_rankN_initials=` / `hs_rankN_score=` | Ranked rows 1–10 when present |
 | `mute=` / `difficulty=` | Options mute flag and difficulty preset |
 | `fire_key_left=` / `fire_key_center=` / `fire_key_right=` | Bound fire keys (comma-separated) |

@@ -35,6 +35,12 @@ Hand off **one task at a time** (SwarmForge: complete pipeline before starting t
 |------:|-----------|------|--------|
 | Q1 | `qa-consolidation-efficiency` | [qa-consolidation-efficiency.md](qa-consolidation-efficiency.md) | Ready |
 
+## Feature plans
+
+| Order | Task name | Plan | Status |
+|------:|-----------|------|--------|
+| F1 | `cloudflare-global-high-scores` | [cloudflare-global-high-scores.md](cloudflare-global-high-scores.md) | Draft |
+
 ## Rules for every PR
 
 1. Behavior-preserving unless the plan explicitly changes rules.

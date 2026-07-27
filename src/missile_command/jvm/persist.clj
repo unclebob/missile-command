@@ -12,6 +12,8 @@
   (or (System/getenv "MC_SETTINGS_PATH")
       (.getAbsolutePath (io/file "tmp" default-settings-filename))))
 
+(declare load-settings)
+
 (defn save-settings!
   "Write exported settings to path. Returns path."
   ([state]
@@ -19,7 +21,8 @@
   ([state path]
    (let [file (io/file path)]
      (io/make-parents file)
-     (spit file (pr-str (core/export-settings state)))
+     (spit file (pr-str (merge (or (load-settings path) {})
+                               (core/export-settings state))))
      path)))
 
 (defn load-settings
