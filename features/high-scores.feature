@@ -10,6 +10,7 @@
 # High scores 05 initials are three characters from the allowed set
 # High scores 06 high scores can be viewed from the title screen
 # High scores 07 after entry the screen returns to title
+# High scores 08 Escape does not close the high score table
 Feature: High scores
 
 Background:
@@ -29,6 +30,20 @@ Scenario: High scores 01 a non qualifying score does not open initials entry
   And the playfield height is <expected_height>
   And the screen is title
   And the screen is not high-score-entry
+
+Examples:
+  | width | height | expected_width | expected_height |
+  | 800   | 600    | 800            | 600             |
+  | 1920  | 1080   | 1920           | 1080            |
+
+Scenario: High scores 08 Escape does not close the high score table
+  And the high score table capacity is 10
+  And a high score entry initials AAA with score 1000
+  When the player opens high scores from the title
+  And the player presses Escape while viewing high scores
+  Then the playfield width is <expected_width>
+  And the playfield height is <expected_height>
+  And the screen is high-scores
 
 Examples:
   | width | height | expected_width | expected_height |

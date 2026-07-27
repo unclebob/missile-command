@@ -3,13 +3,16 @@
   (:require [quil.core :as q]
             [quil.middleware :as m]
             [quil.applet :as applet]
+            [clojure.java.io :as io]
             [clojure.string :as str]
             [missile-command.core :as core]
+            [missile-command.global-scores :as global]
             [missile-command.host-input :as host-input]
             [missile-command.missiles :as missiles]
-            [missile-command.jvm.input :as input]
             [missile-command.jvm.audio :as audio]
             [missile-command.jvm.frame :as frame]
+            [missile-command.jvm.global-scores :as global-client]
+            [missile-command.jvm.input :as input]
             [missile-command.jvm.persist :as persist]
             [missile-command.jvm.qa-runner :as qa-runner]
             [missile-command.jvm.render :as render]
@@ -30,6 +33,10 @@
          :qa-fireballs []
          :no-keyfocus? false
          :scores-file nil
+         :leaderboard-url nil
+         :leaderboard-name nil
+         :player-name nil
+         :no-global-scores? false
          :launch-anchor nil
          :restore-focus-app nil}))
 
@@ -38,6 +45,39 @@
 (defonce last-frame-ms (atom nil))
 (defonce initials-draft (atom ""))
 (defonce sfx-emitted-count (atom 0))
+(defonce global-scores (atom global/empty-state))
+(defonce high-scores-opened-ms (atom 0))
+(defonce local-player-code (atom nil))
+
+(declare settings-path)
+(declare escape-key?)
+
+(defn- new-player-code
+  []
+  (-> (str (java.util.UUID/randomUUID))
+      (str/replace #"-" "")
+      (subs 0 6)
+      str/upper-case))
+
+(defn- load-local-player-code
+  []
+  (:local-player-code (persist/load-settings (settings-path))))
+
+(defn- save-local-player-code!
+  [code]
+  (let [path (settings-path)
+        file (io/file path)
+        settings (or (persist/load-settings path) {})]
+    (io/make-parents file)
+    (spit file (pr-str (assoc settings :local-player-code code))))
+  code)
+
+(defn- ensure-local-player-code!
+  []
+  (or @local-player-code
+      (let [code (or (load-local-player-code) (new-player-code))]
+        (reset! local-player-code code)
+        (save-local-player-code! code))))
 
 (defn configure!
   [opts]
@@ -51,6 +91,10 @@
                                             :qa-fireballs
                                             :no-keyfocus?
                                             :scores-file
+                                            :leaderboard-url
+                                            :leaderboard-name
+                                            :player-name
+                                            :no-global-scores?
                                             :launch-anchor
                                             :restore-focus-app]))
   (reset! pending-qa-events
@@ -60,7 +104,10 @@
   (reset! fireball-phases {})
   (reset! last-frame-ms nil)
   (reset! initials-draft "")
-  (reset! sfx-emitted-count 0))
+  (reset! sfx-emitted-count 0)
+  (reset! global-scores (global-client/initial-state opts))
+  (reset! local-player-code nil)
+  (reset! high-scores-opened-ms 0))
 
 (defn- settings-path
   "QA --scores-file overrides host settings path; else MC_SETTINGS_PATH/default."
@@ -117,7 +164,12 @@
 
 (defn- apply-handle
   [state command]
-  (let [result (core/handle state command)
+  (let [command (cond-> command
+                  (= :submit-high-score (:type command))
+                  (assoc :public-code (ensure-local-player-code!)
+                         :display-name (or (:display-name command)
+                                           (:initials command))))
+        result (core/handle state command)
         state' (:state result)]
     (when (#{:fire :click :key} (:type command))
       (emit-telemetry-fire! result))
@@ -125,8 +177,18 @@
     (when (and (= :submit-high-score (:type command))
                (not (core/high-score-entry? state'))
                (core/high-score-entry? state))
+      (global-client/submit-score! (settings-path)
+                                   global-scores
+                                   state
+                                   (or (core/submitted-high-score-initials state')
+                                       (:initials command))
+                                   (:display-name command))
       (reset! initials-draft "")
       (persist-settings! state'))
+    (when (and (= :open-high-scores (:type command))
+               (core/high-scores-view? state'))
+      (reset! high-scores-opened-ms (System/currentTimeMillis))
+      (global-client/fetch-leaderboard! global-scores))
     (when (#{:set-mute :set-difficulty :bind-fire-key :leave-options} (:type command))
       (persist-settings! state'))
     state'))
@@ -256,7 +318,7 @@
   ([ch enter? backspace?]
    {:ch ch
     :key-name (when ch (str/lower-case (str ch)))
-    :escape? (input/escape-key? ch)
+    :escape? (escape-key? ch)
     :enter? enter?
     :backspace? backspace?}))
 
@@ -272,6 +334,12 @@
   (or (= \backspace ch)
       (when ch
         (= (char 8) ch))))
+
+(defn- escape-key?
+  [ch]
+  (or (input/escape-key? ch)
+      (try (= 27 (q/key-code))
+           (catch Exception _ false))))
 
 (defn- toggle-pause
   "Pause while playing, resume while paused; otherwise leave state alone."
@@ -317,7 +385,9 @@
         drain-one-qa-event))))
 (defn draw
   [state]
-  (render/draw-world! state @initials-draft)
+  (render/draw-world!
+   (global/attach state @global-scores @high-scores-opened-ms (System/currentTimeMillis))
+   @initials-draft)
   (render/crosshair-at! (q/mouse-x) (q/mouse-y)))
 
 (defn mouse-moved

@@ -4,6 +4,7 @@
 .gitlibs/
 .nrepl-port
 .shadow-cljs/
+.wrangler/
 node_modules/
 target/
 .DS_Store

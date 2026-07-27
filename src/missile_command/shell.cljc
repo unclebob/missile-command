@@ -64,12 +64,14 @@
 
 (defn submit-high-score-initials
   "Insert pending score with initials, then return to title."
-  [state entry? pending-score initials blank-shell]
+  [state entry? pending-score initials display-name public-code blank-shell]
   (apply-shell
    (high-scores/submit-entry state
                              entry?
                              pending-score
                              initials
+                             display-name
+                             public-code
                              (blank-shell state))
    state))
 

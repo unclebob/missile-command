@@ -75,6 +75,7 @@
                    "missile_command/screens"
                    "missile_command/hud"
                    "missile_command/high_scores"
+                   "missile_command/global_scores"
                    "missile_command/options"
                    "missile_command/sfx"
                    "missile_command/wave_banner"
@@ -86,7 +87,8 @@
                    "missile_command/rng"
                    "missile_command/testing"
                    "missile_command/acceptance"
-                   "missile_command/jvm/input"]))}
+                   "missile_command/jvm/input"
+                   "missile_command/jvm/global_scores"]))}
 
   dry
   {:doc "DRY structural duplication analysis for testable modules"
@@ -107,6 +109,7 @@
                    "src/missile_command/screens.cljc"
                    "src/missile_command/hud.cljc"
                    "src/missile_command/high_scores.cljc"
+                   "src/missile_command/global_scores.cljc"
                    "src/missile_command/options.cljc"
                    "src/missile_command/sfx.cljc"
                    "src/missile_command/wave_banner.cljc"
@@ -118,7 +121,8 @@
                    "src/missile_command/rng.cljc"
                    "src/missile_command/testing.cljc"
                    "src/missile_command/acceptance"
-                   "src/missile_command/jvm/input.clj"]))}
+                   "src/missile_command/jvm/input.clj"
+                   "src/missile_command/jvm/global_scores.clj"]))}
 
   parse-acceptance
   {:doc "Parse Gherkin features to JSON IR"

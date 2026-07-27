@@ -4,7 +4,9 @@
             [quil.core :as q :include-macros true]
             [quil.middleware :as m]
             [missile-command.core :as core]
+            [missile-command.global-scores :as global]
             [missile-command.host-input :as host-input]
+            [missile-command.browser.global-scores :as global-client]
             [missile-command.browser.persist :as persist]
             [missile-command.browser.render :as render]
             [missile-command.browser.audio :as audio]))
@@ -16,6 +18,40 @@
 
 (defonce initials-draft (atom ""))
 (defonce sfx-cursor (atom 0))
+(defonce global-scores (atom global/empty-state))
+(defonce high-scores-opened-ms (atom 0))
+(defonce local-player-code (atom nil))
+
+(def local-player-code-key "missile-command-local-player-code")
+
+(defn- new-player-code
+  []
+  (-> (str (random-uuid))
+      (str/replace #"-" "")
+      (subs 0 6)
+      str/upper-case))
+
+(defn- read-local-player-code
+  []
+  (try
+    (when (exists? js/localStorage)
+      (.getItem js/localStorage local-player-code-key))
+    (catch :default _ nil)))
+
+(defn- save-local-player-code!
+  [code]
+  (try
+    (when (exists? js/localStorage)
+      (.setItem js/localStorage local-player-code-key code))
+    (catch :default _ nil))
+  code)
+
+(defn- ensure-local-player-code!
+  []
+  (or @local-player-code
+      (let [code (or (read-local-player-code) (new-player-code))]
+        (reset! local-player-code code)
+        (save-local-player-code! code))))
 
 (defn- canvas-size
   []
@@ -52,14 +88,28 @@
 (defn- apply-handle
   "Apply a core command; persist settings when options/scores change."
   [state command]
-  (let [result (core/handle state command)
+  (let [command (cond-> command
+                  (= :submit-high-score (:type command))
+                  (assoc :public-code (ensure-local-player-code!)
+                         :display-name (or (:display-name command)
+                                           (:initials command))))
+        result (core/handle state command)
         state' (:state result)]
     (play-new-sfx! state state')
     (when (and (= :submit-high-score (:type command))
                (core/high-score-entry? state)
                (not (core/high-score-entry? state')))
+      (global-client/submit-score! global-scores
+                                   state
+                                   (or (core/submitted-high-score-initials state')
+                                       (:initials command))
+                                   (:display-name command))
       (reset! initials-draft "")
       (persist/save-settings! state'))
+    (when (and (= :open-high-scores (:type command))
+               (core/high-scores-view? state'))
+      (reset! high-scores-opened-ms (.now js/Date))
+      (global-client/fetch-leaderboard! global-scores))
     (when (#{:set-mute :set-difficulty :bind-fire-key :leave-options} (:type command))
       (persist/save-settings! state'))
     state'))
@@ -115,6 +165,9 @@
   (audio/warm!)
   (reset! initials-draft "")
   (reset! sfx-cursor 0)
+  (reset! global-scores (global-client/initial-state))
+  (reset! high-scores-opened-ms 0)
+  (reset! local-player-code nil)
   (js/setTimeout focus-canvas! 0)
   (let [[w h] (canvas-size)]
     (q/resize-sketch w h)
@@ -137,7 +190,9 @@
 
 (defn draw
   [state]
-  (render/draw-world! state @initials-draft)
+  (render/draw-world!
+   (global/attach state @global-scores @high-scores-opened-ms (.now js/Date))
+   @initials-draft)
   (when (or (core/playing? state) (core/paused? state))
     (render/crosshair-at! (q/mouse-x) (q/mouse-y))))
 
