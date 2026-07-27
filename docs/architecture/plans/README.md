@@ -40,6 +40,7 @@ Hand off **one task at a time** (SwarmForge: complete pipeline before starting t
 | Order | Task name | Plan | Status |
 |------:|-----------|------|--------|
 | F1 | `cloudflare-global-high-scores` | [cloudflare-global-high-scores.md](cloudflare-global-high-scores.md) | Draft |
+| F2 | `global-score-pure-client-seam` | [global-score-pure-client-seam.md](global-score-pure-client-seam.md) | Ready |
 
 ## Rules for every PR
 
