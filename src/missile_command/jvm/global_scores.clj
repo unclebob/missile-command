@@ -131,13 +131,6 @@
   ([settings-path global-state display-name transport]
    ((:ensure-player transport) display-name)))
 
-(defn- submit-skip-status
-  [global-state]
-  (cond
-    (not (:enabled? @global-state)) :skipped_disabled
-    (not (:read-succeeded? @global-state)) :skipped_no_read
-    :else nil))
-
 (defn- submit-score-body
   [settings-path global-state state initials display-name transport run-id game-version]
   (future
@@ -162,7 +155,7 @@
                   #(str (UUID/randomUUID))
                   "dev"))
   ([settings-path global-state state initials display-name transport run-id game-version]
-   (if-let [status (submit-skip-status global-state)]
+   (if-let [status (global/submit-skip-status @global-state)]
      (swap! global-state assoc :submit-status status)
      (do
        (swap! global-state assoc :submit-status :pending)

@@ -88,4 +88,18 @@
   (it "maps submit responses to accepted or failed"
     (should= :accepted (global/submit-status-from-response {:accepted true}))
     (should= :failed (global/submit-status-from-response {:accepted false}))
-    (should= :failed (global/submit-status-from-response {}))))
+    (should= :failed (global/submit-status-from-response {})))
+
+  (it "decides when host clients must skip submit"
+    (should= :skipped_disabled
+             (global/submit-skip-status (assoc global/empty-state
+                                               :enabled? false
+                                               :read-succeeded? true)))
+    (should= :skipped_no_read
+             (global/submit-skip-status (assoc global/empty-state
+                                               :enabled? true
+                                               :read-succeeded? false)))
+    (should= nil
+             (global/submit-skip-status (assoc global/empty-state
+                                               :enabled? true
+                                               :read-succeeded? true)))))

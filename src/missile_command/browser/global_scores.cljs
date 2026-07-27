@@ -113,14 +113,8 @@
                   #(str (random-uuid))
                   "dev"))
   ([global-state state initials display-name transport run-id game-version]
-   (cond
-     (not (:enabled? @global-state))
-     (swap! global-state assoc :submit-status :skipped_disabled)
-
-     (not (:read-succeeded? @global-state))
-     (swap! global-state assoc :submit-status :skipped_no_read)
-
-     :else
+   (if-let [status (global/submit-skip-status @global-state)]
+     (swap! global-state assoc :submit-status status)
      (do
        (swap! global-state assoc :submit-status :pending)
        (let [current @global-state

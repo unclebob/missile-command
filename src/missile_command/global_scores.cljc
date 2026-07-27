@@ -105,6 +105,14 @@
   [response]
   (if (:accepted response) :accepted :failed))
 
+(defn submit-skip-status
+  "Return the host-visible submit status when a score must not be sent."
+  [global-state]
+  (cond
+    (not (:enabled? global-state)) :skipped_disabled
+    (not (:read-succeeded? global-state)) :skipped_no_read
+    :else nil))
+
 (defn page
   [opened-ms now-ms]
   (if (even? (quot (max 0 (- (long now-ms) (long (or opened-ms now-ms))))
