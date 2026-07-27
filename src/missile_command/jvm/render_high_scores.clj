@@ -107,3 +107,7 @@
     (q/text-size 16)
     (q/text "H to return, Esc to quit" (/ w 2.0) (+ start-y 50 (* 11 28)))
     (q/text-align :left :baseline)))
+
+;; clj-mutate-manifest-begin
+;; {:version 1, :tested-at "2026-07-27T13:34:26.187161-05:00", :module-hash "555350046", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 5, :hash "1057077092"} {:id "defn-/dim!", :kind "defn-", :line 7, :end-line 11, :hash "2128645096"} {:id "defn/entry-overlay!", :kind "defn", :line 13, :end-line 35, :hash "865490904"} {:id "defn-/short-row", :kind "defn-", :line 37, :end-line 39, :hash "-853525910"} {:id "defn-/local-table", :kind "defn-", :line 41, :end-line 48, :hash "-893323580"} {:id "defn-/global-table", :kind "defn-", :line 50, :end-line 57, :hash "-757410515"} {:id "defn-/draw-rows!", :kind "defn-", :line 59, :end-line 70, :hash "1397065254"} {:id "defn-/draw-global!", :kind "defn-", :line 72, :end-line 86, :hash "2113148132"} {:id "defn/table-overlay!", :kind "defn", :line 88, :end-line 109, :hash "1071362492"}]}
+;; clj-mutate-manifest-end

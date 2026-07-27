@@ -210,3 +210,7 @@
     (q/text-size 32)
     (q/text "PAUSED" (/ w 2.0) (/ h 2.0))
     (q/text-align :left :baseline)))
+
+;; clj-mutate-manifest-begin
+;; {:version 1, :tested-at "2026-07-27T13:33:57.953845-05:00", :module-hash "-70103497", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 6, :hash "996861459"} {:id "defn-/dim!", :kind "defn-", :line 8, :end-line 12, :hash "2128645096"} {:id "defn/title-overlay!", :kind "defn", :line 14, :end-line 30, :hash "-1868220003"} {:id "defn/high-score-entry-overlay!", :kind "defn", :line 32, :end-line 53, :hash "2113507380"} {:id "defn-/local-table", :kind "defn-", :line 55, :end-line 62, :hash "-893323580"} {:id "defn-/global-table", :kind "defn-", :line 64, :end-line 71, :hash "-757410515"} {:id "defn-/draw-rows!", :kind "defn-", :line 73, :end-line 84, :hash "-978260945"} {:id "defn-/draw-global!", :kind "defn-", :line 86, :end-line 99, :hash "1771366859"} {:id "defn/high-scores-table-overlay!", :kind "defn", :line 101, :end-line 121, :hash "851832052"} {:id "defn/options-overlay!", :kind "defn", :line 123, :end-line 153, :hash "38343320"} {:id "defn/wave-banner-overlay!", :kind "defn", :line 155, :end-line 173, :hash "287092233"} {:id "defn/the-end-overlay!", :kind "defn", :line 175, :end-line 200, :hash "-224692311"} {:id "defn/pause-overlay!", :kind "defn", :line 202, :end-line 212, :hash "976185252"}]}
+;; clj-mutate-manifest-end

@@ -134,3 +134,7 @@
                        (swap! global-state assoc
                               :submit-status :failed
                               :error (.-message error))))))))))
+
+;; clj-mutate-manifest-begin
+;; {:version 1, :tested-at "2026-07-27T13:33:50.901177-05:00", :module-hash "-1871055518", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 3, :hash "2084261773"} {:id "def/player-storage-key", :kind "def", :line 5, :end-line 5, :hash "368427957"} {:id "def/timeout-ms", :kind "def", :line 6, :end-line 6, :hash "-1499539124"} {:id "defn/initial-state", :kind "defn", :line 8, :end-line 15, :hash "594570905"} {:id "defn-/read-player", :kind "defn-", :line 17, :end-line 24, :hash "1177416150"} {:id "defn-/save-player!", :kind "defn-", :line 26, :end-line 31, :hash "-926619364"} {:id "defn-/timeout-signal", :kind "defn-", :line 33, :end-line 38, :hash "-1166828431"} {:id "defn-/fetch-json!", :kind "defn-", :line 40, :end-line 54, :hash "-513957058"} {:id "defn-/player-from-response", :kind "defn-", :line 56, :end-line 61, :hash "-1325201342"} {:id "defn-/http-client", :kind "defn-", :line 63, :end-line 85, :hash "1420914148"} {:id "defn/fetch-leaderboard!", :kind "defn", :line 87, :end-line 101, :hash "279555978"} {:id "defn/ensure-player!", :kind "defn", :line 103, :end-line 107, :hash "456162932"} {:id "defn/submit-score!", :kind "defn", :line 109, :end-line 136, :hash "-814284401"}]}
+;; clj-mutate-manifest-end
