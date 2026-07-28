@@ -70,17 +70,49 @@
       :score (:score e)})
    (get-in state [:global-high-scores :scores])))
 
+(def table-width 430)
+(def rank-column-width 42)
+(def name-column-width 250)
+(def column-gap 22)
+
+(defn- column-x
+  []
+  (let [left (- (/ (q/width) 2.0) (/ table-width 2.0))
+        rank-x (+ left rank-column-width)
+        name-x (+ rank-x column-gap)
+        score-x (+ name-x name-column-width column-gap)]
+    {:rank rank-x
+     :name name-x
+     :score score-x}))
+
+(defn- dotted-name
+  [name]
+  (let [name-text (str name)
+        dot-width (max 1.0 (q/text-width "."))
+        gap-width (q/text-width " ")
+        available (- name-column-width (q/text-width name-text) gap-width)
+        dot-count (max 0 (long (js/Math.floor (/ available dot-width))))
+        dotted (str name-text " " (apply str (repeat dot-count ".")))]
+    (if (pos? dot-count)
+      dotted
+      name-text)))
+
 (defn- draw-rows!
   [rows start-y empty-text]
   (q/text-size 18)
   (if (seq rows)
-    (doseq [e rows]
-      (let [i (dec (long (:rank e)))
-            y (+ start-y 50 (* i 28))
-            line (str (:rank e) ".  " (:name e) "   " (:score e))]
-        (q/fill 230)
-        (q/text line (/ (q/width) 2.0) y)))
+    (let [{rank-x :rank name-x :name score-x :score} (column-x)]
+      (doseq [e rows]
+        (let [i (dec (long (:rank e)))
+              y (+ start-y 50 (* i 28))]
+          (q/fill 230)
+          (q/text-align :right :center)
+          (q/text (str (:rank e) ".") rank-x y)
+          (q/text-align :left :center)
+          (q/text (dotted-name (:name e)) name-x y)
+          (q/text (str (:score e)) score-x y))))
     (do (q/fill 200)
+        (q/text-align :center :center)
         (q/text empty-text (/ (q/width) 2.0) (+ start-y 60)))))
 
 (defn- draw-global!
