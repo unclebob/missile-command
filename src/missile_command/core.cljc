@@ -275,14 +275,17 @@
   ([state initials]
    (submit-high-score-initials state initials nil nil))
   ([state initials display-name public-code]
-  (shell/submit-high-score-initials
-   state
-   (high-score-entry? state)
-   (long (or (pending-high-score state) (final-score state)))
-   initials
-   display-name
-   public-code
-   blank-shell)))
+   (submit-high-score-initials state initials display-name public-code nil))
+  ([state initials display-name public-code created-at]
+   (shell/submit-high-score-initials
+    state
+    (high-score-entry? state)
+    (long (or (pending-high-score state) (final-score state)))
+    initials
+    display-name
+    public-code
+    created-at
+    blank-shell)))
 
 (defn end-message
   [state]
@@ -514,7 +517,8 @@
    (fn [state cmd] (no-events (submit-high-score-initials state
                                                           (:initials cmd)
                                                           (:display-name cmd)
-                                                          (:public-code cmd))))
+                                                          (:public-code cmd)
+                                                          (:created-at cmd))))
    :open-options (fn [state _] (no-events (open-options state)))
    :leave-options (fn [state _] (no-events (leave-options state)))
    :set-mute (fn [state cmd] (no-events (set-mute state (:mute cmd))))
@@ -635,6 +639,20 @@
                                                  :age (missiles/fireball-lifetime fb)
                                                  :radius 0.0)))
         (update-end-message-reveal (assoc state :end-fireball result))))
+    state))
+
+(defn- end-sequence-complete?
+  [state]
+  (let [fb (end-fireball state)]
+    (and (the-end? state)
+         fb
+         (>= (double (:age fb 0.0))
+             (double (missiles/fireball-lifetime fb))))))
+
+(defn- maybe-complete-end-sequence
+  [state]
+  (if (end-sequence-complete? state)
+    (confirm-end-screen state)
     state))
 
 (defn- add-score
@@ -778,7 +796,8 @@
       (the-end? state)
       (wrap (-> state
                 (advance-clock applied)
-                (tick-end-fireball applied)))
+                (tick-end-fireball applied)
+                (maybe-complete-end-sequence)))
 
       (paused? state)
       (wrap (assoc state :last-applied-dt 0.0))

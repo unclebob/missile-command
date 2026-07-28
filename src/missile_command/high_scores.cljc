@@ -56,13 +56,17 @@
   ([entries capacity initials score]
    (insert entries capacity initials score nil nil))
   ([entries capacity initials score display-name public-code]
+   (insert entries capacity initials score display-name public-code nil))
+  ([entries capacity initials score display-name public-code created-at]
    (let [norm (normalize-initials initials)
          name (normalize-display-name display-name)
          code (normalize-public-code public-code)
+         created-at-text (some-> created-at str)
          entry (cond-> {:initials norm
                         :score (long score)}
                  (seq name) (assoc :display-name name)
-                 (seq code) (assoc :public-code code))
+                 (seq code) (assoc :public-code code)
+                 (seq created-at-text) (assoc :created-at created-at-text))
          cap (max 1 (long capacity))]
      (->> (conj (vec entries) entry)
           sort-entries
@@ -145,10 +149,12 @@
   ([state initials score]
    (with-submitted-entry state initials score nil nil))
   ([state initials score display-name public-code]
+   (with-submitted-entry state initials score display-name public-code nil))
+  ([state initials score display-name public-code created-at]
    (let [norm (normalize-initials initials)]
      (-> state
          (assoc :high-scores (insert (table state) (capacity state) norm score
-                                     display-name public-code))
+                                     display-name public-code created-at))
          (assoc :submitted-high-score-initials norm)))))
 
 (defn qualifies-state?
@@ -183,9 +189,11 @@
   ([state on-entry-screen? score initials blank-title]
    (submit-entry state on-entry-screen? score initials nil nil blank-title))
   ([state on-entry-screen? score initials display-name public-code blank-title]
+   (submit-entry state on-entry-screen? score initials display-name public-code nil blank-title))
+  ([state on-entry-screen? score initials display-name public-code created-at blank-title]
    (if-not on-entry-screen?
      state
-     (let [with-entry (with-submitted-entry state initials score display-name public-code)]
+     (let [with-entry (with-submitted-entry state initials score display-name public-code created-at)]
        (-> (to-shell blank-title with-entry screens/title)
            (assoc :submitted-high-score-initials
                   (submitted-initials with-entry)))))))

@@ -51,6 +51,13 @@
   [entry]
   (str (or (:display-name entry) (:initials entry) "PLAYER")))
 
+(defn date-time-label
+  [created-at]
+  (let [s (str (or created-at ""))]
+    (if (>= (count s) 16)
+      (str (subs s 0 10) " " (subs s 11 16) "Z")
+      "")))
+
 (defn normalize-response
   [payload url configured-name]
   (let [leaderboard (:leaderboard payload)]

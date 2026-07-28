@@ -92,7 +92,8 @@
                   (= :submit-high-score (:type command))
                   (assoc :public-code (ensure-local-player-code!)
                          :display-name (or (:display-name command)
-                                           (:initials command))))
+                                           (:initials command))
+                         :created-at (.toISOString (js/Date.))))
         result (core/handle state command)
         state' (:state result)]
     (play-new-sfx! state state')
@@ -168,6 +169,7 @@
   (reset! global-scores (global-client/initial-state))
   (reset! high-scores-opened-ms 0)
   (reset! local-player-code nil)
+  (global-client/fetch-leaderboard! global-scores)
   (js/setTimeout focus-canvas! 0)
   (let [[w h] (canvas-size)]
     (q/resize-sketch w h)

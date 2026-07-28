@@ -24,6 +24,11 @@
       (should= "AB12CD" (:public-code entry))
       (should= "Uncle Bob" (global/entry-label entry))))
 
+  (it "formats score date/time labels"
+    (should= "2026-07-28 12:34Z"
+             (global/date-time-label "2026-07-28T12:34:56.789Z"))
+    (should= "" (global/date-time-label nil)))
+
   (it "builds a ready state from a leaderboard wire payload"
     (let [state (global/leaderboard-ready-state
                  {:leaderboard {:display_name "Club Board"}

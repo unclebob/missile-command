@@ -989,6 +989,7 @@
 
   (it "destroys targets inside a fireball and leaves distant targets alone"
     (let [base (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+                   (assoc :wave-complete? true)
                    (core/handle {:type :aim :x 400 :y 200})
                    :state
                    (#(:state (core/handle % {:type :fire :battery :center})))
@@ -1154,4 +1155,3 @@
           back (:state (core/handle ended {:type :confirm}))]
       (should (core/the-end? ended))
       (should (core/title? back)))))
-

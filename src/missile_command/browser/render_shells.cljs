@@ -58,7 +58,8 @@
    (fn [i e]
      {:rank (inc i)
       :name (global/entry-label e)
-      :score (:score e)})
+      :score (:score e)
+      :created-at (:created-at e)})
    (core/high-score-table state)))
 
 (defn- global-table
@@ -67,23 +68,27 @@
    (fn [e]
      {:rank (:rank e)
       :name (global/entry-label e)
-      :score (:score e)})
+      :score (:score e)
+      :created-at (:created-at e)})
    (get-in state [:global-high-scores :scores])))
 
-(def table-width 430)
+(def table-width 570)
 (def rank-column-width 42)
-(def name-column-width 250)
-(def column-gap 22)
+(def name-column-width 220)
+(def score-column-width 90)
+(def column-gap 18)
 
 (defn- column-x
   []
   (let [left (- (/ (q/width) 2.0) (/ table-width 2.0))
         rank-x (+ left rank-column-width)
         name-x (+ rank-x column-gap)
-        score-x (+ name-x name-column-width column-gap)]
+        score-x (+ name-x name-column-width column-gap)
+        date-x (+ score-x score-column-width column-gap)]
     {:rank rank-x
      :name name-x
-     :score score-x}))
+     :score score-x
+     :date date-x}))
 
 (defn- dotted-name
   [name]
@@ -101,7 +106,7 @@
   [rows start-y empty-text]
   (q/text-size 18)
   (if (seq rows)
-    (let [{rank-x :rank name-x :name score-x :score} (column-x)]
+    (let [{rank-x :rank name-x :name score-x :score date-x :date} (column-x)]
       (doseq [e rows]
         (let [i (dec (long (:rank e)))
               y (+ start-y 50 (* i 28))]
@@ -110,7 +115,8 @@
           (q/text (str (:rank e) ".") rank-x y)
           (q/text-align :left :center)
           (q/text (dotted-name (:name e)) name-x y)
-          (q/text (str (:score e)) score-x y))))
+          (q/text (str (:score e)) score-x y)
+          (q/text (global/date-time-label (:created-at e)) date-x y))))
     (do (q/fill 200)
         (q/text-align :center :center)
         (q/text empty-text (/ (q/width) 2.0) (+ start-y 60)))))

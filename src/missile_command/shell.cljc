@@ -64,16 +64,19 @@
 
 (defn submit-high-score-initials
   "Insert pending score with initials, then return to title."
-  [state entry? pending-score initials display-name public-code blank-shell]
-  (apply-shell
-   (high-scores/submit-entry state
-                             entry?
-                             pending-score
-                             initials
-                             display-name
-                             public-code
-                             (blank-shell state))
-   state))
+  ([state entry? pending-score initials display-name public-code blank-shell]
+   (submit-high-score-initials state entry? pending-score initials display-name public-code nil blank-shell))
+  ([state entry? pending-score initials display-name public-code created-at blank-shell]
+   (apply-shell
+    (high-scores/submit-entry state
+                              entry?
+                              pending-score
+                              initials
+                              display-name
+                              public-code
+                              created-at
+                              (blank-shell state))
+    state)))
 
 ;; clj-mutate-manifest-begin
 ;; {:version 1, :tested-at "2026-07-27T13:34:36.659406-05:00", :module-hash "55700105", :forms [{:id "form/0/ns", :kind "ns", :line 1, :end-line 6, :hash "231099063"} {:id "defn-/switch-screen-when", :kind "defn-", :line 8, :end-line 13, :hash "1192285012"} {:id "defn/pause-game", :kind "defn", :line 15, :end-line 18, :hash "-61201790"} {:id "defn/resume-game", :kind "defn", :line 20, :end-line 23, :hash "-1808709720"} {:id "defn/apply-shell", :kind "defn", :line 25, :end-line 28, :hash "1840097145"} {:id "defn/export-settings", :kind "defn", :line 30, :end-line 35, :hash "-998698733"} {:id "defn/import-settings", :kind "defn", :line 37, :end-line 46, :hash "-71389308"} {:id "defn/start-game", :kind "defn", :line 48, :end-line 53, :hash "-978828198"} {:id "defn/confirm-end-screen", :kind "defn", :line 55, :end-line 63, :hash "1167624982"} {:id "defn/submit-high-score-initials", :kind "defn", :line 65, :end-line 76, :hash "-352054871"}]}

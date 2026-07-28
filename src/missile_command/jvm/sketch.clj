@@ -107,6 +107,7 @@
   (reset! sfx-emitted-count 0)
   (reset! global-scores (global-client/initial-state opts))
   (reset! local-player-code nil)
+  (global-client/fetch-leaderboard! global-scores)
   (reset! high-scores-opened-ms 0))
 
 (defn- settings-path
@@ -168,7 +169,8 @@
                   (= :submit-high-score (:type command))
                   (assoc :public-code (ensure-local-player-code!)
                          :display-name (or (:display-name command)
-                                           (:initials command))))
+                                           (:initials command))
+                         :created-at (.toString (java.time.Instant/now))))
         result (core/handle state command)
         state' (:state result)]
     (when (#{:fire :click :key} (:type command))
@@ -219,6 +221,7 @@
     (let [surface (.getSurface (applet/current-applet))
           anchor (:launch-anchor @launch-options)
           prev (:restore-focus-app @launch-options)]
+      (window/install-exit-on-close! surface q/exit)
       (window/place-on-launch-screen! surface (q/width) (q/height) anchor prev (no-keyfocus-qa?)))
     (catch Exception e
       (binding [*out* *err*]

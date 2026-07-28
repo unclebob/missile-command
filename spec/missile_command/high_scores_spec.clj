@@ -44,7 +44,12 @@
       (should= "UNC" (:initials entry))
       (should= "Uncle Bob" (:display-name entry))
       (should= "AB12CD" (:public-code entry))
-      (should= 1000 (:score entry)))))
+      (should= 1000 (:score entry))))
+
+  (it "stores creation date/time when supplied"
+    (let [entry (first (hs/insert [] 10 "Ada" 1000 "Ada" "AB12CD"
+                                  "2026-07-28T12:34:56Z"))]
+      (should= "2026-07-28T12:34:56Z" (:created-at entry)))))
 
 (describe "high-score screens"
   (it "opens entry for a qualifying score after THE END confirm"
@@ -55,6 +60,20 @@
                     (core/set-bonus-city-reserve 0)
                     core/evaluate-game-over
                     core/confirm-end-screen)]
+      (should (core/high-score-entry? state))
+      (should= 500 (core/pending-high-score state))))
+
+  (it "opens entry automatically after THE END sequence completes"
+    (let [ended (-> (core/new-game {:width 800 :height 600})
+                    (core/set-high-score-capacity 10)
+                    (core/set-score 500)
+                    (#(reduce core/destroy-city % (map :id (core/cities %))))
+                    (core/set-bonus-city-reserve 0)
+                    core/evaluate-game-over)
+          state (loop [s ended n 0]
+                  (if (or (not (core/the-end? s)) (> n 200))
+                    s
+                    (recur (:state (core/tick s 0.05)) (inc n))))]
       (should (core/high-score-entry? state))
       (should= 500 (core/pending-high-score state))))
 

@@ -96,10 +96,11 @@ High scores and options persist under `tmp/missile-command-settings.edn`
 Global high scores are enabled by default and use:
 `https://missile-command-leaderboard.unclebob-missile-command.workers.dev`.
 The high-score screen starts with local scores, then rotates to network scores
-after five seconds once a leaderboard read succeeds. Network reads and writes
-run in the background; slow, unavailable, or rate-limited service responses do
-not block play. Accepted network score submissions are limited by the service to
-one per minute and twenty per day for both player id and source IP.
+after five seconds once a leaderboard read succeeds. Score rows show name,
+score, and submission date/time. Network reads and writes run in the background;
+slow, unavailable, or rate-limited service responses do not block play. Accepted
+network score submissions are limited by the service to one per minute and
+twenty per day for both player id and source IP.
 
 Desktop overrides:
 
@@ -318,10 +319,12 @@ Override for QA: `--scores-file path` (isolated EDN load/save).
 
 Host loads the table at startup; after a successful name submit, the host
 rewrites the file. Local rows preserve the display name and a short persistent
-local player id, while still keeping normalized initials for older tools. Shape:
+local player id plus `created-at` submit time, while still keeping normalized
+initials for older tools. Shape:
 
 ```edn
-{:high-scores [{:initials "UNC" :display-name "Uncle Bob" :public-code "AB12CD" :score 1000}
+{:high-scores [{:initials "UNC" :display-name "Uncle Bob" :public-code "AB12CD"
+                :score 1000 :created-at "2026-07-28T12:34:56Z"}
                {:initials "BOB" :score 500}]
  :local-player-code "AB12CD"
  :high-score-capacity 10}
@@ -330,7 +333,7 @@ local player id, while still keeping normalized initials for older tools. Shape:
 Network high scores are separate from the local table. A player can appear on
 both pages; the network page shows the configured leaderboard name plus each
 player display name. Network score submission is best-effort and
-skipped until the high-score screen has read the leaderboard successfully.
+skipped until a leaderboard read has succeeded.
 
 #### Telemetry (stdout when `--qa`)
 

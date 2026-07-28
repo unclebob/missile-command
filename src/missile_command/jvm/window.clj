@@ -2,6 +2,7 @@
   "Host window placement: open on the screen where bb was typed; no focus steal."
   (:require [clojure.string :as str])
   (:import [java.awt GraphicsEnvironment MouseInfo Window Component]
+           [java.awt.event WindowAdapter]
            [javax.swing SwingUtilities]
            [java.lang ProcessHandle]))
 
@@ -232,6 +233,22 @@
       (try (.setVisible ^Window awt true) (catch Exception _))
       (try (.setVisible surface true) (catch Exception _)))
     (make-non-focusable! native)))
+
+(defn install-exit-on-close!
+  "Ensure native window close actions terminate the Quil sketch."
+  [surface exit!]
+  (let [native (try (.getNative surface) (catch Exception _ nil))
+        awt (as-awt-window native)
+        exited? (atom false)
+        exit-once! (fn []
+                     (when (compare-and-set! exited? false true)
+                       (try (exit!) (catch Exception _))))]
+    (when (instance? Window awt)
+      (.addWindowListener
+       ^Window awt
+       (proxy [WindowAdapter] []
+         (windowClosing [_] (exit-once!))
+         (windowClosed [_] (exit-once!)))))))
 
 (defn place-on-launch-screen!
   "Center the Processing surface on the screen of launch-anchor {:x :y}.
