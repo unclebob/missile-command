@@ -260,7 +260,7 @@
 
 (defn setup
   []
-  (q/frame-rate 60)
+  (q/frame-rate 30)
   (q/cursor)
   (configure-display!)
   (audio/warm!)

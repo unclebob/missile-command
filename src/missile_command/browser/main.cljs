@@ -216,7 +216,7 @@
 
 (defn setup
   []
-  (q/frame-rate 60)
+  (q/frame-rate 30)
   (set-canvas-cursor! true)
   ;; Avoid 2× retina pixel density cost in p5/Quil.
   (try (q/pixel-density 1) (catch :default _))
@@ -245,7 +245,7 @@
                                             :y (q/mouse-y)}))
                 state)
         ;; Fixed step keeps sim stable in the browser; wall-clock lag only drops FPS.
-        ticked (:state (core/tick state (/ 1.0 60.0)))]
+        ticked (:state (core/tick state (/ 1.0 30.0)))]
     (play-new-sfx! state ticked)
     (resolve-high-score-entry ticked)))
 

@@ -4,6 +4,18 @@
             [missile-command.core :as core]
             [missile-command.world :as world]))
 
+(def baseline-width 800.0)
+(def baseline-height 600.0)
+
+(defn- icon-scale
+  [state]
+  (min (/ (double (core/playfield-width state)) baseline-width)
+       (/ (double (core/playfield-height state)) baseline-height)))
+
+(defn- s
+  [scale n]
+  (* scale n))
+
 (defn sky!
   [w h]
   (q/no-stroke)
@@ -23,104 +35,106 @@
     (q/rect 0 top w 3)))
 
 (defn- city-building!
-  [cx base-y bw bh]
+  [scale cx base-y bw bh]
   (q/fill 160 175 195)
-  (q/rect (- cx (quot bw 2)) (- base-y bh) bw bh)
+  (q/rect (- cx (/ bw 2.0)) (- base-y bh) bw bh)
   (q/fill 220 230 140)
-  (let [left (+ (- cx (quot bw 2)) 2)
-        top (+ (- base-y bh) 4)
-        right (- (+ cx (quot bw 2)) 2)]
-    (when (> (- right left) 2)
-      (q/rect left top (- right left) 2)
-      (when (> bh 14)
-        (q/rect left (+ top 8) (- right left) 2)))))
+  (let [window-margin (s scale 2)
+        window-top (s scale 4)
+        window-height (max 1.0 (s scale 2))
+        window-row-gap (s scale 8)
+        left (+ (- cx (/ bw 2.0)) window-margin)
+        top (+ (- base-y bh) window-top)
+        right (- (+ cx (/ bw 2.0)) window-margin)]
+    (when (> (- right left) (s scale 2))
+      (q/rect left top (- right left) window-height)
+      (when (> bh (s scale 14))
+        (q/rect left (+ top window-row-gap) (- right left) window-height)))))
 
 (defn- city-rubble!
   "Destroyed city: plaza + broken building stubs (rubble), not empty ground."
-  [x y]
+  [scale x y]
   (q/no-stroke)
-  ;; scorched pad
   (q/fill 55 45 40)
-  (q/rect (- x 18) (- y 4) 36 6)
-  ;; rubble piles
+  (q/rect (- x (s scale 18)) (- y (s scale 4)) (s scale 36) (s scale 6))
   (q/fill 90 80 70)
-  (q/triangle (- x 14) y (- x 8) (- y 10) (- x 2) y)
-  (q/triangle (- x 4) y (+ x 2) (- y 14) (+ x 8) y)
-  (q/triangle (+ x 4) y (+ x 12) (- y 8) (+ x 16) y)
-  ;; charred stubs
+  (q/triangle (- x (s scale 14)) y (- x (s scale 8)) (- y (s scale 10)) (- x (s scale 2)) y)
+  (q/triangle (- x (s scale 4)) y (+ x (s scale 2)) (- y (s scale 14)) (+ x (s scale 8)) y)
+  (q/triangle (+ x (s scale 4)) y (+ x (s scale 12)) (- y (s scale 8)) (+ x (s scale 16)) y)
   (q/fill 70 60 55)
-  (q/rect (- x 12) (- y 8) 5 6)
-  (q/rect (+ x 4) (- y 6) 4 4)
+  (q/rect (- x (s scale 12)) (- y (s scale 8)) (s scale 5) (s scale 6))
+  (q/rect (+ x (s scale 4)) (- y (s scale 6)) (s scale 4) (s scale 4))
   (q/fill 40 30 28)
-  (q/ellipse x (- y 2) 10 4))
+  (q/ellipse x (- y (s scale 2)) (s scale 10) (s scale 4)))
 
 (defn cities!
   [state]
-  (doseq [city (core/cities state)]
-    (let [x (:x city)
-          y (:y city)]
-      (if (:alive? city)
-        (do
-          (city-building! (- x 10) y 8 22)
-          (city-building! x y 10 30)
-          (city-building! (+ x 11) y 7 18)
-          (q/fill 90 100 110)
-          (q/rect (- x 16) (- y 3) 32 4))
-        (city-rubble! x y)))))
+  (let [scale (icon-scale state)]
+    (doseq [city (core/cities state)]
+      (let [x (:x city)
+            y (:y city)]
+        (if (:alive? city)
+          (do
+            (city-building! scale (- x (s scale 10)) y (s scale 8) (s scale 22))
+            (city-building! scale x y (s scale 10) (s scale 30))
+            (city-building! scale (+ x (s scale 11)) y (s scale 7) (s scale 18))
+            (q/fill 90 100 110)
+            (q/rect (- x (s scale 16)) (- y (s scale 3)) (s scale 32) (s scale 4)))
+          (city-rubble! scale x y))))))
 
 (defn- ammo-triangle-positions
   "Classic 10-missile triangle under a battery: rows 4-3-2-1 bottom→top.
   Returns positions bottom-left first so depleting ammo removes the apex first."
-  [cx base-y]
+  [scale cx base-y]
   (let [row-counts [4 3 2 1]
-        spacing 5
-        row-h 5
-        ;; first row sits just below the launcher pad
-        y0 (+ base-y 8)]
+        spacing (s scale 5)
+        row-h (s scale 5)
+        y0 (+ base-y (s scale 8))]
     (vec
      (mapcat (fn [row n]
                (let [y (+ y0 (* row row-h))
                      width (* (dec n) spacing)
-                     x0 (- cx (quot width 2))]
+                     x0 (- cx (/ width 2.0))]
                  (map (fn [i] [(+ x0 (* i spacing)) y]) (range n))))
              (range)
              row-counts))))
 
 (defn- ammo-dots!
   "Draw remaining missiles as a triangle of dots under the battery."
-  [cx base-y ammo]
+  [scale cx base-y ammo]
   (let [n (max 0 (min 10 (long ammo)))
-        dots (take n (ammo-triangle-positions cx base-y))]
+        dots (take n (ammo-triangle-positions scale cx base-y))
+        dot-size (max 1.0 (s scale 3))]
     (q/no-stroke)
     (q/fill 240 230 120)
     (doseq [[dx dy] dots]
-      (q/ellipse dx dy 3 3))))
+      (q/ellipse dx dy dot-size dot-size))))
 
 (defn- launcher!
-  [x y destroyed? ammo]
+  [scale x y destroyed? ammo]
   (q/no-stroke)
   (if destroyed?
     (do
       (q/fill 70 35 35)
-      (q/rect (- x 12) (- y 6) 24 6)
+      (q/rect (- x (s scale 12)) (- y (s scale 6)) (s scale 24) (s scale 6))
       (q/fill 55 30 30)
-      (q/triangle x (- y 22) (- x 6) (- y 6) (+ x 6) (- y 6)))
+      (q/triangle x (- y (s scale 22)) (- x (s scale 6)) (- y (s scale 6)) (+ x (s scale 6)) (- y (s scale 6))))
     (do
       (q/fill 90 90 95)
-      (q/rect (- x 14) (- y 5) 28 6)
+      (q/rect (- x (s scale 14)) (- y (s scale 5)) (s scale 28) (s scale 6))
       (q/fill 210 205 190)
-      (q/rect (- x 5) (- y 28) 10 24)
+      (q/rect (- x (s scale 5)) (- y (s scale 28)) (s scale 10) (s scale 24))
       (q/fill 200 80 70)
-      (q/triangle x (- y 40) (- x 5) (- y 28) (+ x 5) (- y 28))
+      (q/triangle x (- y (s scale 40)) (- x (s scale 5)) (- y (s scale 28)) (+ x (s scale 5)) (- y (s scale 28)))
       (q/fill 170 165 150)
-      (q/triangle (- x 5) (- y 10) (- x 12) (- y 4) (- x 5) (- y 4))
-      (q/triangle (+ x 5) (- y 10) (+ x 12) (- y 4) (+ x 5) (- y 4))
+      (q/triangle (- x (s scale 5)) (- y (s scale 10)) (- x (s scale 12)) (- y (s scale 4)) (- x (s scale 5)) (- y (s scale 4)))
+      (q/triangle (+ x (s scale 5)) (- y (s scale 10)) (+ x (s scale 12)) (- y (s scale 4)) (+ x (s scale 5)) (- y (s scale 4)))
       (q/fill 60 90 160)
-      (q/rect (- x 5) (- y 18) 10 3)
-      (ammo-dots! x y (or ammo 0)))))
+      (q/rect (- x (s scale 5)) (- y (s scale 18)) (s scale 10) (s scale 3))
+      (ammo-dots! scale x y (or ammo 0)))))
 
 (defn batteries!
   [state]
-  (doseq [bat (core/batteries state)]
-    (launcher! (:x bat) (:y bat) (:destroyed? bat) (:missiles bat))))
-
+  (let [scale (icon-scale state)]
+    (doseq [bat (core/batteries state)]
+      (launcher! scale (:x bat) (:y bat) (:destroyed? bat) (:missiles bat)))))
