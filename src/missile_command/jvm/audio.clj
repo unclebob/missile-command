@@ -21,6 +21,7 @@
    :sfx/ui "ui.wav"})
 
 (defonce ^:private bytes-cache (atom {}))
+(defonce ^:private active-clips (atom #{}))
 (defonce ^:private active-title-clips (atom #{}))
 
 (defn- load-bytes
@@ -56,27 +57,43 @@
           (.open clip ais2)
           clip)))))
 
-(defn- track-title-clip!
-  "Remember title warning clip so it can be stopped when play starts."
+(defn- close-clip!
   [^Clip clip]
-  (swap! active-title-clips conj clip)
+  (when (contains? @active-clips clip)
+    (swap! active-clips disj clip)
+    (swap! active-title-clips disj clip)
+    (try
+      (when (.isRunning clip) (.stop clip))
+      (.close clip)
+      (catch Exception _ nil))))
+
+(defn- track-clip!
+  "Remember open clips so window close can release audio lines."
+  [^Clip clip title?]
+  (swap! active-clips conj clip)
+  (when title?
+    (swap! active-title-clips conj clip))
   (.addLineListener
    clip
    (reify LineListener
      (update [_ event]
        (when (or (= LineEvent$Type/STOP (.getType event))
                  (= LineEvent$Type/CLOSE (.getType event)))
-         (swap! active-title-clips disj clip)
-         (try (.close clip) (catch Exception _ nil)))))))
+         (close-clip! clip))))))
 
 (defn stop-title!
   "Stop any in-flight title warning sound."
   []
   (doseq [^Clip c @active-title-clips]
-    (try
-      (when (.isRunning c) (.stop c))
-      (.close c)
-      (catch Exception _ nil)))
+    (close-clip! c))
+  (reset! active-title-clips #{}))
+
+(defn stop-all!
+  "Stop and close every open audio clip."
+  []
+  (doseq [^Clip c @active-clips]
+    (close-clip! c))
+  (reset! active-clips #{})
   (reset! active-title-clips #{}))
 
 (defn play!
@@ -88,8 +105,7 @@
             filename (get type->file kw)]
         (when filename
           (when-let [^Clip clip (open-clip filename)]
-            (when (= kw :sfx/warning)
-              (track-title-clip! clip))
+            (track-clip! clip (= kw :sfx/warning))
             ;; Fresh clip per play so overlapping SFX work.
             (doto clip
               (.setFramePosition 0)

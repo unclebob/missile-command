@@ -24,8 +24,8 @@ Scenario: New game layout 01 starting cities and batteries
 Examples:
   | width | height | expected_width | expected_height | city_count | battery_count | ammo |
   | 800   | 600    | 800            | 600             | 6          | 3             | 10   |
-  | 1920  | 1080   | 1920           | 1080            | 6          | 3             | 10   |
-  | 1024  | 1024   | 1024           | 1024            | 6          | 3             | 10   |
+  | 1920  | 1080   | 1440           | 1080            | 6          | 3             | 10   |
+  | 1024  | 1024   | 1024           | 768            | 6          | 3             | 10   |
 
 Scenario: New game layout 02 cities ordered on the ground
   Then the playfield width is <expected_width>
@@ -39,7 +39,7 @@ Scenario: New game layout 02 cities ordered on the ground
 Examples:
   | width | height | expected_width | expected_height |
   | 800   | 600    | 800            | 600             |
-  | 1920  | 1080   | 1920           | 1080            |
+  | 1920  | 1080   | 1440           | 1080            |
   | 1024  | 768    | 1024           | 768             |
 
 Scenario: New game layout 03 batteries left center right on the ground
@@ -55,8 +55,8 @@ Scenario: New game layout 03 batteries left center right on the ground
 Examples:
   | width | height | expected_width | expected_height |
   | 800   | 600    | 800            | 600             |
-  | 1920  | 1080   | 1920           | 1080            |
-  | 1024  | 1024   | 1024           | 1024            |
+  | 1920  | 1080   | 1440           | 1080            |
+  | 1024  | 1024   | 1024           | 768            |
 
 Scenario: New game layout 04 center battery is faster
   Then the playfield width is <expected_width>
@@ -67,7 +67,7 @@ Scenario: New game layout 04 center battery is faster
 Examples:
   | width | height | expected_width | expected_height |
   | 800   | 600    | 800            | 600             |
-  | 1920  | 1080   | 1920           | 1080            |
+  | 1920  | 1080   | 1440           | 1080            |
 
 Scenario: New game layout 05 city span scales with playfield width
   Then the playfield width is <expected_width>
@@ -78,5 +78,5 @@ Scenario: New game layout 05 city span scales with playfield width
 Examples:
   | width | height | expected_width | expected_height |
   | 800   | 600    | 800            | 600             |
-  | 1600  | 600    | 1600           | 600             |
-  | 1920  | 1080   | 1920           | 1080            |
+  | 1600  | 600    | 800            | 600             |
+  | 1920  | 1080   | 1440           | 1080            |

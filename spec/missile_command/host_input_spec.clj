@@ -27,6 +27,11 @@
       (should= {:command {:type :set-difficulty :difficulty "normal"}}
                (host-input/key-intent options "" {:ch \2 :key-name "2"}))))
 
+  (it "does not open options from a phone title screen"
+    (let [phone-title (assoc (core/new-game {:width 390 :height 844}) :phone? true)]
+      (should-not
+       (host-input/key-intent phone-title "" {:ch \o :key-name "o"}))))
+
   (it "toggles pause from playing and paused"
     (let [playing (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
           paused (assoc playing :screen :paused)]

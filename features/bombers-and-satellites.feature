@@ -53,7 +53,7 @@ Scenario: Bombers and satellites 01c bomber moves on a large playfield
 
 Examples:
   | width | height | expected_width | expected_height |
-  | 1920  | 1080   | 1920           | 1080            |
+  | 1920  | 1080   | 1440           | 1080            |
 
 Scenario: Bombers and satellites 02 a flyer drops enemy missiles during its pass
   And a bomber flyer from 0 80 toward 800 80 at speed 100
@@ -210,4 +210,4 @@ Scenario: Bombers and satellites 07c wave five schedules bomber and satellite
 Examples:
   | width | height | expected_width | expected_height |
   | 800   | 600    | 800            | 600             |
-  | 1920  | 1080   | 1920           | 1080            |
+  | 1920  | 1080   | 1440           | 1080            |

@@ -17,7 +17,9 @@
             [missile-command.jvm.qa-runner :as qa-runner]
             [missile-command.jvm.render :as render]
             [missile-command.jvm.telemetry-emitter :as telemetry-emitter]
-            [missile-command.jvm.window :as window]))
+            [missile-command.jvm.window :as window]
+            [missile-command.world :as world])
+  (:import [javax.swing JOptionPane]))
 
 (def default-width 800)
 (def default-height 600)
@@ -48,6 +50,7 @@
 (defonce global-scores (atom global/empty-state))
 (defonce high-scores-opened-ms (atom 0))
 (defonce local-player-code (atom nil))
+(defonce name-prompt-open? (atom false))
 
 (declare settings-path)
 (declare escape-key?)
@@ -107,6 +110,7 @@
   (reset! sfx-emitted-count 0)
   (reset! global-scores (global-client/initial-state opts))
   (reset! local-player-code nil)
+  (reset! name-prompt-open? false)
   (global-client/fetch-leaderboard! global-scores)
   (reset! high-scores-opened-ms 0))
 
@@ -120,6 +124,10 @@
   []
   (and (:qa-telemetry? @launch-options)
        (:no-keyfocus? @launch-options)))
+
+(defn- fitted-playfield-size
+  [width height]
+  (world/fit-playfield-size width height))
 
 (defn- real-input-enabled?
   []
@@ -215,13 +223,30 @@
   [state]
   (input/apply-qa-fireballs state (:qa-fireballs @launch-options)))
 
+(defn- close-game!
+  []
+  (audio/stop-all!)
+  (try (q/exit) (catch Exception _))
+  (shutdown-agents)
+  (System/exit 0))
+
+(defn- play-screen?
+  [state]
+  (core/playing? state))
+
+(defn- apply-cursor-policy!
+  [state]
+  (if (play-screen? state)
+    (q/no-cursor)
+    (q/cursor)))
+
 (defn- configure-display!
   []
   (try
     (let [surface (.getSurface (applet/current-applet))
           anchor (:launch-anchor @launch-options)
           prev (:restore-focus-app @launch-options)]
-      (window/install-exit-on-close! surface q/exit)
+      (window/install-exit-on-close! surface close-game!)
       (window/place-on-launch-screen! surface (q/width) (q/height) anchor prev (no-keyfocus-qa?)))
     (catch Exception e
       (binding [*out* *err*]
@@ -236,11 +261,12 @@
 (defn setup
   []
   (q/frame-rate 60)
-  (q/no-cursor)
+  (q/cursor)
   (configure-display!)
   (audio/warm!)
   (reset! last-frame-ms (System/currentTimeMillis))
-  (let [state (-> (core/new-game {:width (q/width) :height (q/height)})
+  (let [{:keys [width height]} (fitted-playfield-size (q/width) (q/height))
+        state (-> (core/new-game {:width width :height height})
                   load-persisted
                   apply-destroy-options
                   apply-qa-scenario
@@ -313,6 +339,37 @@
 
     :else state))
 
+(defn- usable-player-name
+  [raw]
+  (let [name (str/trim (str (or raw "")))]
+    (if (seq name) name "PLAYER")))
+
+(defn- prompt-player-name!
+  [state]
+  (let [score (or (core/pending-high-score state) (core/final-score state) 0)
+        default-name (usable-player-name
+                      (or (:player-name @launch-options)
+                          @initials-draft))
+        response (JOptionPane/showInputDialog nil
+                                             (str "High score: " score "\nPlayer name:")
+                                             default-name)]
+    (usable-player-name response)))
+
+(defn- resolve-high-score-entry
+  [state]
+  (if (and (core/high-score-entry? state)
+           (not (:qa-telemetry? @launch-options))
+           (not @name-prompt-open?))
+    (try
+      (reset! name-prompt-open? true)
+      (let [name (prompt-player-name! state)]
+        (apply-handle state {:type :submit-high-score
+                             :initials name
+                             :display-name name}))
+      (finally
+        (reset! name-prompt-open? false)))
+    state))
+
 (defn- normalized-key-event
   ([ch]
    (normalized-key-event ch false false))
@@ -358,7 +415,7 @@
     :qa-telemetry? (:qa-telemetry? @launch-options)
     :emit-sim! emit-sim!
     :persist-settings! persist-settings!
-    :exit! q/exit
+    :exit! close-game!
     :apply-handle apply-handle
     :apply-destroy-options apply-destroy-options
     :apply-enemy-spec apply-enemy-spec
@@ -366,7 +423,8 @@
     :apply-scenario input/apply-scenario
     :load-scenario-edn input/load-scenario-edn
     :load-persisted load-persisted
-    :new-game #(core/new-game {:width (q/width) :height (q/height)})
+    :new-game #(let [{:keys [width height]} (fitted-playfield-size (q/width) (q/height))]
+                 (core/new-game {:width width :height height}))
     :toggle-pause toggle-pause
     :initials-draft initials-draft}
    state))
@@ -374,24 +432,29 @@
 (defn update-state
   [state]
   (let [scripted? (seq @pending-qa-events)
+        {:keys [width height]} (fitted-playfield-size (q/width) (q/height))
         state (-> state
-                  (input/resize-if-needed (q/width) (q/height)
+                  (input/resize-if-needed width height
                                           core/resize core/playfield-width core/playfield-height)
                   tick-state)]
-    (if scripted?
-      (drain-one-qa-event state)
-      (cond-> state
-        (real-input-enabled?)
-        (apply-handle (input/aim-command (q/mouse-x) (q/mouse-y)))
+    (-> (if scripted?
+          (drain-one-qa-event state)
+          (cond-> state
+            (real-input-enabled?)
+            (apply-handle (input/aim-command (q/mouse-x) (q/mouse-y)))
 
-        true
-        drain-one-qa-event))))
+            true
+            drain-one-qa-event))
+        resolve-high-score-entry)))
+
 (defn draw
   [state]
+  (apply-cursor-policy! state)
   (render/draw-world!
    (global/attach state @global-scores @high-scores-opened-ms (System/currentTimeMillis))
    @initials-draft)
-  (render/crosshair-at! (q/mouse-x) (q/mouse-y)))
+  (when (play-screen? state)
+    (render/crosshair-at! (q/mouse-x) (q/mouse-y))))
 
 (defn mouse-moved
   [state _event]
@@ -426,7 +489,7 @@
       (if intent
         (apply-input-intent state intent)
         (if (:escape? event)
-          (do (persist-settings! state) (q/exit) state)
+          (do (persist-settings! state) (close-game!) state)
           state)))
     state))
 
@@ -434,8 +497,9 @@
   ([]
    (run-sketch! default-width default-height))
   ([width height]
-   (let [opts [:title "Missile Command"
-               :size [width height]
+   (let [{fitted-width :width fitted-height :height} (fitted-playfield-size width height)
+         opts [:title "Missile Command"
+               :size [fitted-width fitted-height]
                ;; java2d → AWT Frame so setAutoRequestFocus(false) can prevent focus steal
                :renderer :java2d
                :setup setup

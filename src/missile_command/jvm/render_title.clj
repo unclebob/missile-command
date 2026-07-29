@@ -3,6 +3,18 @@
   (:require [quil.core :as q]
             [missile-command.core :as core]))
 
+(defn- button!
+  [{:keys [x y w h label]}]
+  (q/fill 20 30 45 220)
+  (q/stroke 255 220 80)
+  (q/stroke-weight 2)
+  (q/rect x y w h 6)
+  (q/no-stroke)
+  (q/fill 245)
+  (q/text-size 18)
+  (q/text-align :center :center)
+  (q/text label (+ x (/ w 2.0)) (+ y (/ h 2.0))))
+
 (defn overlay!
   [state]
   (let [w (core/playfield-width state)
@@ -19,7 +31,6 @@
     (q/fill 220)
     (q/text-size 18)
     (q/text prompt (/ w 2.0) (+ (/ h 2.0) 60))
-    (q/fill 180)
-    (q/text-size 16)
-    (q/text "H high scores   O options" (/ w 2.0) (+ (/ h 2.0) 95))
+    (doseq [button (core/title-buttons state)]
+      (button! button))
     (q/text-align :left :baseline)))

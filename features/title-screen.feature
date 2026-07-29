@@ -24,7 +24,7 @@ Scenario: Title screen 01 a new session starts on the title screen
 Examples:
   | width | height | expected_width | expected_height |
   | 800   | 600    | 800            | 600             |
-  | 1920  | 1080   | 1920           | 1080            |
+  | 1920  | 1080   | 1440           | 1080            |
   | 1024  | 768    | 1024           | 768             |
 
 Scenario: Title screen 02 the title screen shows the game name
@@ -36,7 +36,7 @@ Scenario: Title screen 02 the title screen shows the game name
 Examples:
   | width | height | game_name       | expected_width | expected_height |
   | 800   | 600    | Missile Command | 800            | 600             |
-  | 1920  | 1080   | Missile Command | 1920           | 1080            |
+  | 1920  | 1080   | Missile Command | 1440           | 1080            |
 
 Scenario: Title screen 03 the title screen shows a start affordance
   Then the playfield width is <expected_width>
@@ -47,7 +47,7 @@ Scenario: Title screen 03 the title screen shows a start affordance
 Examples:
   | width | height | expected_width | expected_height |
   | 800   | 600    | 800            | 600             |
-  | 1920  | 1080   | 1920           | 1080            |
+  | 1920  | 1080   | 1440           | 1080            |
 
 Scenario: Title screen 04 start enters playing with a fresh layout
   When the player starts the game
@@ -61,7 +61,7 @@ Scenario: Title screen 04 start enters playing with a fresh layout
 Examples:
   | width | height | city_count | battery_count | ammo | expected_width | expected_height |
   | 800   | 600    | 6          | 3             | 10   | 800            | 600             |
-  | 1920  | 1080   | 6          | 3             | 10   | 1920           | 1080            |
+  | 1920  | 1080   | 6          | 3             | 10   | 1440           | 1080            |
   | 1024  | 768    | 6          | 3             | 10   | 1024           | 768             |
 
 Scenario: Title screen 05 start resets score and wave for a new run
@@ -81,7 +81,7 @@ Examples:
   | width | height | prior_score | prior_wave | expected_prior_score | expected_prior_wave | score | wave | multiplier | expected_width | expected_height |
   | 800   | 600    | 2500        | 5          | 2500                 | 5                   | 0     | 1    | 1          | 800            | 600             |
   | 800   | 600    | 99999       | 12         | 99999                | 12                  | 0     | 1    | 1          | 800            | 600             |
-  | 1920  | 1080   | 100         | 3          | 100                  | 3                   | 0     | 1    | 1          | 1920           | 1080            |
+  | 1920  | 1080   | 100         | 3          | 100                  | 3                   | 0     | 1    | 1          | 1440           | 1080            |
 
 Scenario: Title screen 06 start uses the current playfield dimensions
   When the player starts the game
@@ -93,8 +93,8 @@ Scenario: Title screen 06 start uses the current playfield dimensions
 Examples:
   | width | height | expected_width | expected_height |
   | 800   | 600    | 800            | 600             |
-  | 1600  | 600    | 1600           | 600             |
-  | 1920  | 1080   | 1920           | 1080            |
+  | 1600  | 600    | 800            | 600             |
+  | 1920  | 1080   | 1440           | 1080            |
 
 Scenario: Title screen 07 fire does not launch on the title screen
   When the player aims at 400 200
@@ -109,7 +109,7 @@ Examples:
   | 800   | 600    | left    | 800            | 600             |
   | 800   | 600    | center  | 800            | 600             |
   | 800   | 600    | right   | 800            | 600             |
-  | 1920  | 1080   | center  | 1920           | 1080            |
+  | 1920  | 1080   | center  | 1440           | 1080            |
 
 Scenario: Title screen 08 confirm from THE END without high score returns to title
   And all cities have been destroyed
@@ -124,5 +124,5 @@ Scenario: Title screen 08 confirm from THE END without high score returns to tit
 Examples:
   | width | height | expected_width | expected_height |
   | 800   | 600    | 800            | 600             |
-  | 1920  | 1080   | 1920           | 1080            |
+  | 1920  | 1080   | 1440           | 1080            |
   | 1024  | 768    | 1024           | 768             |

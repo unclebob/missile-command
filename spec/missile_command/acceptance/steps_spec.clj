@@ -58,7 +58,7 @@
           resized (dispatch world
                             "the playfield is resized to width <new_width> and height <new_height>"
                             {"new_width" "1920" "new_height" "1080"})]
-      (should= 1920 (core/playfield-width (:state resized)))
+      (should= 1440 (core/playfield-width (:state resized)))
       (should= 1080 (core/playfield-height (:state resized)))
       (should= 6 (count (core/living-cities (:state resized))))))
 

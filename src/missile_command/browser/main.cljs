@@ -9,7 +9,8 @@
             [missile-command.browser.global-scores :as global-client]
             [missile-command.browser.persist :as persist]
             [missile-command.browser.render :as render]
-            [missile-command.browser.audio :as audio]))
+            [missile-command.browser.audio :as audio]
+            [missile-command.world :as world]))
 
 (def default-width 800)
 (def default-height 600)
@@ -21,6 +22,7 @@
 (defonce global-scores (atom global/empty-state))
 (defonce high-scores-opened-ms (atom 0))
 (defonce local-player-code (atom nil))
+(defonce name-prompt-open? (atom false))
 
 (def local-player-code-key "missile-command-local-player-code")
 
@@ -60,18 +62,34 @@
         scale (min 1.0
                    (/ (double max-canvas-edge) (double (max w 1)))
                    (/ (double max-canvas-edge) (double (max h 1))))]
-    [(max 320 (long (* w scale)))
-     (max 240 (long (* h scale)))]))
+    (let [raw-width (max 320 (long (* w scale)))
+          raw-height (max 240 (long (* h scale)))
+          fitted (world/fit-playfield-size raw-width raw-height)]
+      [(:width fitted) (:height fitted)])))
+
+(defn- phone-browser?
+  []
+  (let [w (or (.-innerWidth js/window) default-width)
+        h (or (.-innerHeight js/window) default-height)
+        ua (str/lower-case (or (.-userAgent (.-navigator js/window)) ""))
+        narrow? (<= (min w h) 520)
+        mobile-ua? (boolean (re-find #"iphone|ipod|android.+mobile|mobile" ua))]
+    (or narrow? mobile-ua?)))
+
+(defn- with-browser-traits
+  [state]
+  (assoc state :phone? (phone-browser?)))
 
 (defn- maybe-resize
   "Resize playfield only when the canvas size actually changed."
   [state]
   (let [w (q/width)
         h (q/height)]
-    (if (or (not= w (core/playfield-width state))
-            (not= h (core/playfield-height state)))
-      (core/resize state w h)
-      state)))
+    (with-browser-traits
+      (if (or (not= w (core/playfield-width state))
+              (not= h (core/playfield-height state)))
+        (core/resize state w h)
+        state))))
 
 (defn- play-new-sfx!
   "Play SFX appended since the host cursor."
@@ -129,6 +147,34 @@
 
     :else state))
 
+(defn- usable-player-name
+  [raw]
+  (let [name (str/trim (str (or raw "")))]
+    (if (seq name) name "PLAYER")))
+
+(defn- prompt-player-name!
+  [state]
+  (let [score (or (core/pending-high-score state) (core/final-score state) 0)
+        default-name (usable-player-name
+                      (or (:player-name @global-scores)
+                          @initials-draft))
+        response (js/prompt (str "High score: " score "\nPlayer name:") default-name)]
+    (usable-player-name response)))
+
+(defn- resolve-high-score-entry
+  [state]
+  (if (and (core/high-score-entry? state)
+           (not @name-prompt-open?))
+    (try
+      (reset! name-prompt-open? true)
+      (let [name (prompt-player-name! state)]
+        (apply-handle state {:type :submit-high-score
+                             :initials name
+                             :display-name name}))
+      (finally
+        (reset! name-prompt-open? false)))
+    state))
+
 (defn- key-name
   [ch]
   (when ch (str/lower-case (str ch))))
@@ -157,10 +203,21 @@
       (.focus c))
     (catch :default _ nil)))
 
+(defn- game-crosshair-screen?
+  [state]
+  (core/playing? state))
+
+(defn- set-canvas-cursor!
+  [visible?]
+  (try
+    (when-let [c (.querySelector js/document "canvas")]
+      (.style.setProperty (.-style c) "cursor" (if visible? "default" "none")))
+    (catch :default _ nil)))
+
 (defn setup
   []
   (q/frame-rate 60)
-  (q/no-cursor)
+  (set-canvas-cursor! true)
   ;; Avoid 2× retina pixel density cost in p5/Quil.
   (try (q/pixel-density 1) (catch :default _))
   (audio/warm!)
@@ -169,18 +226,20 @@
   (reset! global-scores (global-client/initial-state))
   (reset! high-scores-opened-ms 0)
   (reset! local-player-code nil)
+  (reset! name-prompt-open? false)
   (global-client/fetch-leaderboard! global-scores)
   (js/setTimeout focus-canvas! 0)
   (let [[w h] (canvas-size)]
     (q/resize-sketch w h)
     (-> (core/new-game {:width w :height h})
-        persist/load-into)))
+        persist/load-into
+        with-browser-traits)))
 
 (defn update-state
   [state]
   (let [state (maybe-resize state)
-        ;; Only aim while playing/paused; shell screens skip aim work.
-        state (if (or (core/playing? state) (core/paused? state))
+        ;; Only aim while playing; shell screens skip aim work.
+        state (if (game-crosshair-screen? state)
                 (:state (core/handle state {:type :aim
                                             :x (q/mouse-x)
                                             :y (q/mouse-y)}))
@@ -188,14 +247,15 @@
         ;; Fixed step keeps sim stable in the browser; wall-clock lag only drops FPS.
         ticked (:state (core/tick state (/ 1.0 60.0)))]
     (play-new-sfx! state ticked)
-    ticked))
+    (resolve-high-score-entry ticked)))
 
 (defn draw
   [state]
+  (set-canvas-cursor! (not (game-crosshair-screen? state)))
   (render/draw-world!
    (global/attach state @global-scores @high-scores-opened-ms (.now js/Date))
    @initials-draft)
-  (when (or (core/playing? state) (core/paused? state))
+  (when (game-crosshair-screen? state)
     (render/crosshair-at! (q/mouse-x) (q/mouse-y))))
 
 (defn mouse-pressed
@@ -203,12 +263,9 @@
   (focus-canvas!)
   (let [first-unlock? (not @audio/unlocked?)]
     (audio/unlock!)
-    ;; First click on title only unlocks audio + starts title warning (browsers
-    ;; block autoplay). Second click (or Enter) starts the game.
-    (if (and (core/title? state) first-unlock?)
-      (do (audio/ensure-title! (core/mute? state))
-          state)
-      (apply-handle state {:type :click :x (q/mouse-x) :y (q/mouse-y)}))))
+    (when (and (core/title? state) first-unlock?)
+      (audio/ensure-title! (core/mute? state)))
+    (apply-handle state {:type :click :x (q/mouse-x) :y (q/mouse-y)})))
 
 (defn- escape-key?
   [ch]

@@ -27,7 +27,7 @@ Examples:
   | width | height | announced_wave | banner_text | expected_width | expected_height |
   | 800   | 600    | 2              | WAVE 2      | 800            | 600             |
   | 1024  | 768    | 2              | WAVE 2      | 1024           | 768             |
-  | 1920  | 1080   | 2              | WAVE 2      | 1920           | 1080            |
+  | 1920  | 1080   | 2              | WAVE 2      | 1440           | 1080            |
 
 Scenario: Wave banner 02 banner text moves in toward the center
   And the current wave has 1 scheduled enemies still active
@@ -44,7 +44,7 @@ Scenario: Wave banner 02 banner text moves in toward the center
 Examples:
   | width | height | expected_width | expected_height |
   | 800   | 600    | 800            | 600             |
-  | 1920  | 1080   | 1920           | 1080            |
+  | 1920  | 1080   | 1440           | 1080            |
 
 Scenario: Wave banner 03 banner text moves out after arriving
   And the current wave has 1 scheduled enemies still active
@@ -60,7 +60,7 @@ Scenario: Wave banner 03 banner text moves out after arriving
 Examples:
   | width | height | expected_width | expected_height |
   | 800   | 600    | 800            | 600             |
-  | 1920  | 1080   | 1920           | 1080            |
+  | 1920  | 1080   | 1440           | 1080            |
 
 Scenario: Wave banner 04 after the banner finishes play resumes on the announced wave
   And the current wave has 1 scheduled enemies still active
@@ -76,7 +76,7 @@ Scenario: Wave banner 04 after the banner finishes play resumes on the announced
 Examples:
   | width | height | wave | ammo | expected_width | expected_height |
   | 800   | 600    | 2    | 10   | 800            | 600             |
-  | 1920  | 1080   | 2    | 10   | 1920           | 1080            |
+  | 1920  | 1080   | 2    | 10   | 1440           | 1080            |
   | 1024  | 768    | 2    | 10   | 1024           | 768             |
 
 Scenario: Wave banner 05 enemies do not advance while the wave banner is showing
@@ -93,4 +93,4 @@ Scenario: Wave banner 05 enemies do not advance while the wave banner is showing
 Examples:
   | width | height | expected_width | expected_height |
   | 800   | 600    | 800            | 600             |
-  | 1920  | 1080   | 1920           | 1080            |
+  | 1920  | 1080   | 1440           | 1080            |

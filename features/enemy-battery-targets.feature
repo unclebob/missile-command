@@ -25,7 +25,7 @@ Examples:
   | width | height | remaining | expected_remaining | expected_width | expected_height |
   | 800   | 600    | 9         | 9                  | 800            | 600             |
   | 800   | 600    | 12        | 12                 | 800            | 600             |
-  | 1920  | 1080   | 9         | 9                  | 1920           | 1080            |
+  | 1920  | 1080   | 9         | 9                  | 1440           | 1080            |
 
 Scenario: Enemy battery targets 02 an unintercepted wave enemy destroys its battery target
   And a wave enemy missile targeting battery <battery>
@@ -41,7 +41,7 @@ Examples:
   | 800   | 600    | left    | 6             | 800            | 600             |
   | 800   | 600    | center  | 6             | 800            | 600             |
   | 800   | 600    | right   | 6             | 800            | 600             |
-  | 1920  | 1080   | left    | 6             | 1920           | 1080            |
+  | 1920  | 1080   | left    | 6             | 1440           | 1080            |
 
 Scenario: Enemy battery targets 03 a full target sweep includes every battery and city
   And the current wave has <remaining> scheduled enemies still active
@@ -54,7 +54,7 @@ Scenario: Enemy battery targets 03 a full target sweep includes every battery an
 Examples:
   | width | height | remaining | expected_remaining | expected_width | expected_height |
   | 800   | 600    | 9         | 9                  | 800            | 600             |
-  | 1920  | 1080   | 9         | 9                  | 1920           | 1080            |
+  | 1920  | 1080   | 9         | 9                  | 1440           | 1080            |
 
 Scenario: Enemy battery targets 04 destroyed batteries are not chosen as wave targets
   And the <battery> battery has been destroyed
@@ -70,4 +70,4 @@ Examples:
   | 800   | 600    | left    | 8         | 8                  | 800            | 600             |
   | 800   | 600    | center  | 8         | 8                  | 800            | 600             |
   | 800   | 600    | right   | 8         | 8                  | 800            | 600             |
-  | 1920  | 1080   | left    | 8         | 8                  | 1920           | 1080            |
+  | 1920  | 1080   | left    | 8         | 8                  | 1440           | 1080            |

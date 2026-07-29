@@ -24,7 +24,7 @@ Scenario: Waves and rearm 01 new game starts at wave one
 Examples:
   | width | height | wave | expected_wave | ammo | expected_width | expected_height |
   | 800   | 600    | 1    | 1             | 10   | 800            | 600             |
-  | 1920  | 1080   | 1    | 1             | 10   | 1920           | 1080            |
+  | 1920  | 1080   | 1    | 1             | 10   | 1440           | 1080            |
 
 Scenario: Waves and rearm 02 wave does not complete while enemies remain
   Given a new game with width <width> and height <height>
@@ -44,7 +44,7 @@ Examples:
   | width | height | remaining | wave | enemy_count | expected_applied_dt | expected_width | expected_height |
   | 800   | 600    | 1         | 1    | 1           | 0.05                | 800            | 600             |
   | 800   | 600    | 3         | 1    | 3           | 0.05                | 800            | 600             |
-  | 1920  | 1080   | 2         | 1    | 2           | 0.05                | 1920           | 1080            |
+  | 1920  | 1080   | 2         | 1    | 2           | 0.05                | 1440           | 1080            |
 
 Scenario: Waves and rearm 03 wave completes when all enemies are gone
   Given a new game with width <width> and height <height>
@@ -62,7 +62,7 @@ Examples:
   | width | height | remaining | wave | expected_wave | enemy_count | expected_width | expected_height |
   | 800   | 600    | 1         | 2    | 2             | 0           | 800            | 600             |
   | 800   | 600    | 2         | 2    | 2             | 0           | 800            | 600             |
-  | 1920  | 1080   | 1         | 2    | 2             | 0           | 1920           | 1080            |
+  | 1920  | 1080   | 1         | 2    | 2             | 0           | 1440           | 1080            |
 
 Scenario: Waves and rearm 07 hud shows the current wave number
   Given a new game with width <width> and height <height>
@@ -75,7 +75,7 @@ Scenario: Waves and rearm 07 hud shows the current wave number
 Examples:
   | width | height | wave | expected_wave | expected_width | expected_height |
   | 800   | 600    | 1    | 1             | 800            | 600             |
-  | 1920  | 1080   | 1    | 1             | 1920           | 1080            |
+  | 1920  | 1080   | 1    | 1             | 1440           | 1080            |
 
 Scenario: Waves and rearm 04 surviving batteries rearm to full after wave
   Given a new game with width <width> and height <height>
@@ -96,7 +96,7 @@ Examples:
   | width | height | spent_ammo | expected_spent_ammo | remaining | expected_remaining | ammo | wave | expected_wave | expected_width | expected_height |
   | 800   | 600    | 3          | 3                   | 1         | 1                  | 10   | 2    | 2             | 800            | 600             |
   | 800   | 600    | 7          | 7                   | 1         | 1                  | 10   | 2    | 2             | 800            | 600             |
-  | 1920  | 1080   | 0          | 0                   | 1         | 1                  | 10   | 2    | 2             | 1920           | 1080            |
+  | 1920  | 1080   | 0          | 0                   | 1         | 1                  | 10   | 2    | 2             | 1440           | 1080            |
 
 Scenario: Waves and rearm 05 destroyed batteries are restored after rearm
   Given a new game with width <width> and height <height>
@@ -134,4 +134,4 @@ Examples:
   | width | height | low_wave | high_wave | low_count | low_speed | high_count | high_speed | expected_width | expected_height |
   | 800   | 600    | 1        | 2         | 3         | 40.0      | 3          | 45.0       | 800            | 600             |
   | 800   | 600    | 1        | 3         | 3         | 40.0      | 3          | 50.0       | 800            | 600             |
-  | 1920  | 1080   | 2        | 4         | 3         | 45.0      | 3          | 55.0       | 1920           | 1080            |
+  | 1920  | 1080   | 2        | 4         | 3         | 45.0      | 3          | 55.0       | 1440           | 1080            |

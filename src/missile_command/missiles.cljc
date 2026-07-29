@@ -34,6 +34,21 @@
     {:x (+ (:x0 missile) (* p (- (:x1 missile) (:x0 missile))))
      :y (+ (:y0 missile) (* p (- (:y1 missile) (:y0 missile))))}))
 
+(defn retime-for-path
+  "Keep normalized progress and total transit time when a path changes."
+  [old-missile new-missile]
+  (let [old-length (path-length old-missile)
+        new-length (path-length new-missile)
+        old-speed (double (:speed old-missile))]
+    (assoc new-missile
+           :speed (if (zero? old-length)
+                    old-speed
+                    (* old-speed (/ new-length old-length))))))
+
+(defn with-current-position
+  [missile]
+  (merge missile (position-at-progress missile (:progress missile 0.0))))
+
 (defn make-defensive
   "Create a defensive missile from a battery toward an aim point."
   [missile-id battery-id bat aim]

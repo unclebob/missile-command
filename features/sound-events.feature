@@ -30,7 +30,7 @@ Examples:
   | 800   | 600    | left    | 800            | 600             |
   | 800   | 600    | center  | 800            | 600             |
   | 800   | 600    | right   | 800            | 600             |
-  | 1920  | 1080   | center  | 1920           | 1080            |
+  | 1920  | 1080   | center  | 1440           | 1080            |
 
 Scenario: Sound events 02 destroying an enemy with a fireball emits an intercepted event
   And an enemy missile targeting city 1
@@ -45,7 +45,7 @@ Scenario: Sound events 02 destroying an enemy with a fireball emits an intercept
 Examples:
   | width | height | expected_width | expected_height |
   | 800   | 600    | 800            | 600             |
-  | 1920  | 1080   | 1920           | 1080            |
+  | 1920  | 1080   | 1440           | 1080            |
 
 Scenario: Sound events 03 destroying a city emits a city destroyed event
   And an enemy missile targeting city 0
@@ -58,7 +58,7 @@ Scenario: Sound events 03 destroying a city emits a city destroyed event
 Examples:
   | width | height | expected_width | expected_height |
   | 800   | 600    | 800            | 600             |
-  | 1920  | 1080   | 1920           | 1080            |
+  | 1920  | 1080   | 1440           | 1080            |
 
 Scenario: Sound events 04 destroying a battery emits a battery destroyed event
   And an enemy missile targeting battery <battery>
@@ -73,7 +73,7 @@ Examples:
   | 800   | 600    | left    | sfx/battery-destroyed  | 800            | 600             |
   | 800   | 600    | center  | sfx/battery-destroyed  | 800            | 600             |
   | 800   | 600    | right   | sfx/battery-destroyed  | 800            | 600             |
-  | 1920  | 1080   | left    | sfx/battery-destroyed  | 1920           | 1080            |
+  | 1920  | 1080   | left    | sfx/battery-destroyed  | 1440           | 1080            |
 
 Scenario: Sound events 05 firing to the low ammo threshold emits a low ammo event
   And every non-destroyed battery has 2 missiles
@@ -89,7 +89,7 @@ Examples:
   | 800   | 600    | left    | 800            | 600             |
   | 800   | 600    | center  | 800            | 600             |
   | 800   | 600    | right   | 800            | 600             |
-  | 1920  | 1080   | left    | 1920           | 1080            |
+  | 1920  | 1080   | left    | 1440           | 1080            |
 
 Scenario: Sound events 06 completing a wave emits a wave banner event
   And every non-destroyed battery has 10 missiles
@@ -103,7 +103,7 @@ Scenario: Sound events 06 completing a wave emits a wave banner event
 Examples:
   | width | height | expected_width | expected_height |
   | 800   | 600    | 800            | 600             |
-  | 1920  | 1080   | 1920           | 1080            |
+  | 1920  | 1080   | 1440           | 1080            |
 
 Scenario: Sound events 07 earning a bonus city emits a bonus city event
   When the score becomes <score>
@@ -116,7 +116,7 @@ Examples:
   | width | height | score | event           | award_count | expected_width | expected_height |
   | 800   | 600    | 10000 | sfx/bonus-city  | 1           | 800            | 600             |
   | 800   | 600    | 20000 | sfx/bonus-city  | 2           | 800            | 600             |
-  | 1920  | 1080   | 10000 | sfx/bonus-city  | 1           | 1920           | 1080            |
+  | 1920  | 1080   | 10000 | sfx/bonus-city  | 1           | 1440           | 1080            |
 
 Scenario: Sound events 08 entering THE END emits a the end event
   And all cities have been destroyed
@@ -130,7 +130,7 @@ Scenario: Sound events 08 entering THE END emits a the end event
 Examples:
   | width | height | event       | expected_width | expected_height |
   | 800   | 600    | sfx/the-end | 800            | 600             |
-  | 1920  | 1080   | sfx/the-end | 1920           | 1080            |
+  | 1920  | 1080   | sfx/the-end | 1440           | 1080            |
   | 1024  | 768    | sfx/the-end | 1024           | 768             |
 
 Scenario: Sound events 09 mute does not remove core sfx events
@@ -145,4 +145,4 @@ Scenario: Sound events 09 mute does not remove core sfx events
 Examples:
   | width | height | expected_width | expected_height |
   | 800   | 600    | 800            | 600             |
-  | 1920  | 1080   | 1920           | 1080            |
+  | 1920  | 1080   | 1440           | 1080            |

@@ -2,6 +2,7 @@
   (:require [speclj.core :refer :all]
             [missile-command.combat :as combat]
             [missile-command.core :as core]
+            [missile-command.missiles :as missiles]
             [missile-command.wave-schedule :as wave-schedule]))
 
 (describe "new-game"
@@ -10,9 +11,9 @@
       (should= 800 (core/playfield-width state))
       (should= 600 (core/playfield-height state))))
 
-  (it "records other playfield sizes"
+  (it "fits other requested sizes to the default aspect ratio"
     (let [state (assoc (core/new-game {:width 1920 :height 1080}) :screen :playing)]
-      (should= 1920 (core/playfield-width state))
+      (should= 1440 (core/playfield-width state))
       (should= 1080 (core/playfield-height state))))
 
   (it "starts with six living cities and three full batteries"
@@ -156,7 +157,26 @@
       (should (> (:speed (by-battery :center))
                  (:speed (by-battery :left))))
       (should (> (:speed (by-battery :center))
-                 (:speed (by-battery :right)))))))
+                 (:speed (by-battery :right))))))
+
+  (it "keeps proportional defensive missile transit time stable across sizes"
+    (let [baseline (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+                       (core/handle {:type :aim :x 400 :y 200})
+                       :state
+                       (core/handle {:type :fire :battery :left})
+                       :state
+                       core/defensive-missiles
+                       first)
+          doubled (-> (assoc (core/new-game {:width 1600 :height 1200}) :screen :playing)
+                      (core/handle {:type :aim :x 800 :y 400})
+                      :state
+                      (core/handle {:type :fire :battery :left})
+                      :state
+                      core/defensive-missiles
+                      first)
+          baseline-time (/ (missiles/path-length baseline) (:speed baseline))
+          doubled-time (/ (missiles/path-length doubled) (:speed doubled))]
+      (should= baseline-time doubled-time))))
 
 (describe "click zone fire"
   (it "maps horizontal thirds to batteries and aims at the click"
@@ -195,7 +215,7 @@
 
   (it "recomputes zones after resize"
     (let [state (-> (assoc (core/new-game {:width 900 :height 600}) :screen :playing)
-                    (core/resize 1800 600))
+                    (core/resize 1800 1350))
           after (:state (core/handle state {:type :click :x 500 :y 100}))]
       (should= :left (:battery (first (core/defensive-missiles after)))))))
 
@@ -1018,19 +1038,19 @@
           city-xs (mapv :x (core/cities state))
           left (core/battery state :left)
           right (core/battery state :right)]
-      (should= 1920 (core/playfield-width state))
+      (should= 1440 (core/playfield-width state))
       (should= 1080 (core/playfield-height state))
       (should= 6 (count (core/living-cities state)))
-      (should (every? #(and (<= 0 %) (< % 1920)) city-xs))
+      (should (every? #(and (<= 0 %) (< % 1440)) city-xs))
       (should (every? #(core/city-on-ground? state %) (core/cities state)))
-      (should (< (:x left) (/ 1920 3.0)))
-      (should (> (:x right) (* 1920 (/ 2.0 3))))
+      (should (< (:x left) (/ 1440 3.0)))
+      (should (> (:x right) (* 1440 (/ 2.0 3))))
       (doseq [b (core/batteries state)]
         (should= 10 (:missiles b)))))
 
   (it "does not leave city positions from the previous size"
     (let [before (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
-          after (core/resize before 1600 600)]
+          after (core/resize before 1600 1200)]
       (should-not= (mapv :x (core/cities before))
                    (mapv :x (core/cities after)))))
 
@@ -1053,6 +1073,56 @@
       (should (:destroyed? left))
       (should= 4 (:missiles left))
       (should (every? #(core/city-on-ground? after %) (core/cities after)))))
+
+  (it "rescales in-flight defensive missiles without changing transit time"
+    (let [before (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+                     (core/handle {:type :aim :x 400 :y 200})
+                     :state
+                     (core/handle {:type :fire :battery :left})
+                     :state
+                     (core/tick 0.05)
+                     :state)
+          missile-before (first (core/defensive-missiles before))
+          remaining-before (/ (* (- 1.0 (:progress missile-before))
+                                 (missiles/path-length missile-before))
+                              (:speed missile-before))
+          after (core/resize before 1600 1200)
+          missile-after (first (core/defensive-missiles after))
+          remaining-after (/ (* (- 1.0 (:progress missile-after))
+                                (missiles/path-length missile-after))
+                             (:speed missile-after))]
+      (should= (:progress missile-before) (:progress missile-after))
+      (should= (* 2.0 (:x missile-before)) (:x missile-after))
+      (should= (* 2.0 (:y missile-before)) (:y missile-after))
+      (should= 128 (:x0 missile-after))
+      (should= 1140 (:y0 missile-after))
+      (should= 800.0 (:x1 missile-after))
+      (should= 400.0 (:y1 missile-after))
+      (should= remaining-before remaining-after)))
+
+  (it "rescales in-flight enemy missiles and reanchors their targets"
+    (let [before (-> (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
+                     (core/spawn-enemy-targeting-city-from 100 0 0)
+                     (core/tick 0.05)
+                     :state)
+          missile-before (first (core/enemy-missiles before))
+          remaining-before (/ (* (- 1.0 (:progress missile-before))
+                                 (missiles/path-length missile-before))
+                              (:speed missile-before))
+          after (core/resize before 1600 1200)
+          missile-after (first (core/enemy-missiles after))
+          remaining-after (/ (* (- 1.0 (:progress missile-after))
+                                (missiles/path-length missile-after))
+                             (:speed missile-after))
+          target-city (first (core/cities after))]
+      (should= (:progress missile-before) (:progress missile-after))
+      (should= (* 2.0 (:x missile-before)) (:x missile-after))
+      (should= (* 2.0 (:y missile-before)) (:y missile-after))
+      (should= 200.0 (:x0 missile-after))
+      (should= 0.0 (:y0 missile-after))
+      (should= (:x target-city) (:x1 missile-after))
+      (should= (:y target-city) (:y1 missile-after))
+      (should= remaining-before remaining-after)))
 
   (it "reclamps the crosshair into the new playfield"
     (let [before (:state (core/handle (assoc (core/new-game {:width 800 :height 600}) :screen :playing)
@@ -1143,6 +1213,35 @@
       (should= 0 (core/score started))
       (should= 1 (core/wave started))
       (should (core/playing? clicked))))
+
+  (it "opens high scores from the title button"
+    (let [title (core/new-game {:width 800 :height 600})
+          button (first (core/title-buttons title))
+          x (+ (:x button) (/ (:w button) 2.0))
+          y (+ (:y button) (/ (:h button) 2.0))
+          state (:state (core/handle title {:type :click :x x :y y}))]
+      (should (core/high-scores-view? state))))
+
+  (it "does not open options from a phone title screen"
+    (let [title (assoc (core/new-game {:width 390 :height 844}) :phone? true)
+          state (:state (core/handle title {:type :open-options}))]
+      (should (core/title? state))))
+
+  (it "closes high scores from the footer button"
+    (let [view (core/open-high-scores (core/new-game {:width 800 :height 600}))
+          button (first (core/high-scores-buttons view))
+          x (+ (:x button) (/ (:w button) 2.0))
+          y (+ (:y button) (/ (:h button) 2.0))
+          state (:state (core/handle view {:type :click :x x :y y}))]
+      (should (core/title? state))))
+
+  (it "leaves options from the footer button"
+    (let [options (core/open-options (core/new-game {:width 800 :height 600}))
+          button (first (core/options-buttons options))
+          x (+ (:x button) (/ (:w button) 2.0))
+          y (+ (:y button) (/ (:h button) 2.0))
+          state (:state (core/handle options {:type :click :x x :y y}))]
+      (should (core/title? state))))
 
   (it "returns to title when THE END is confirmed"
     (let [ended (core/evaluate-game-over

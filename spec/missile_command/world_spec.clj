@@ -15,6 +15,23 @@
     (should-not (world/in-ground-band? 539 600))
     (should-not (world/in-ground-band? 601 600))))
 
+(describe "playfield aspect fit"
+  (it "keeps the default 800 by 600 playfield"
+    (should= {:width 800 :height 600}
+             (world/fit-playfield-size 800 600)))
+
+  (it "fits a 4:3 playfield inside wider screens"
+    (should= {:width 1440 :height 1080}
+             (world/fit-playfield-size 1920 1080))
+    (should= {:width 960 :height 720}
+             (world/fit-playfield-size 1280 720)))
+
+  (it "fits a 4:3 playfield inside square and short screens"
+    (should= {:width 1024 :height 768}
+             (world/fit-playfield-size 1024 1024))
+    (should= {:width 800 :height 600}
+             (world/fit-playfield-size 1600 600))))
+
 (describe "city layout"
   (it "places six cities with increasing x"
     (let [xs (mapv :x (world/layout-cities 800 600))]
@@ -67,7 +84,18 @@
       (should (> (get-in by-id [:center :missile-speed])
                  (get-in by-id [:left :missile-speed])))
       (should (> (get-in by-id [:center :missile-speed])
-                 (get-in by-id [:right :missile-speed]))))))
+                 (get-in by-id [:right :missile-speed])))))
+
+  (it "scales missile speeds by playfield dimensions"
+    (let [baseline (into {} (map (juxt :id identity))
+                         (world/layout-batteries 800 600))
+          doubled (into {} (map (juxt :id identity))
+                        (world/layout-batteries 1600 1200))]
+      (should= 2.0 (world/dimension-speed-scale 1600 1200))
+      (should= (* 2.0 (:missile-speed (baseline :left)))
+               (:missile-speed (doubled :left)))
+      (should= (* 2.0 (:missile-speed (baseline :center)))
+               (:missile-speed (doubled :center))))))
 
 (describe "apply-layout"
   (it "preserves entity progress when reflowing positions"

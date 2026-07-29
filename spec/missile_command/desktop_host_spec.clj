@@ -13,7 +13,7 @@
           blob (core/export-settings prior)
           restarted (-> (core/new-game {:width 1280 :height 720})
                         (core/import-settings blob))]
-      (should= 1280 (core/playfield-width restarted))
+      (should= 960 (core/playfield-width restarted))
       (should (core/mute? restarted))
       (should= :easy (core/difficulty restarted))
       (should= "BOB" (:initials (first (core/high-score-table restarted))))))

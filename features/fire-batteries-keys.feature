@@ -26,9 +26,9 @@ Examples:
   | 800   | 600    | 400   | 200   | 800            | 600             | left    | 9    | 1             | 400        | 200        |
   | 800   | 600    | 400   | 200   | 800            | 600             | center  | 9    | 1             | 400        | 200        |
   | 800   | 600    | 400   | 200   | 800            | 600             | right   | 9    | 1             | 400        | 200        |
-  | 1920  | 1080   | 960   | 300   | 1920           | 1080            | left    | 9    | 1             | 960        | 300        |
-  | 1920  | 1080   | 960   | 300   | 1920           | 1080            | center  | 9    | 1             | 960        | 300        |
-  | 1920  | 1080   | 960   | 300   | 1920           | 1080            | right   | 9    | 1             | 960        | 300        |
+  | 1920  | 1080   | 960   | 300   | 1440           | 1080            | left    | 9    | 1             | 960        | 300        |
+  | 1920  | 1080   | 960   | 300   | 1440           | 1080            | center  | 9    | 1             | 960        | 300        |
+  | 1920  | 1080   | 960   | 300   | 1440           | 1080            | right   | 9    | 1             | 960        | 300        |
 
 Scenario: Fire batteries keys 02 firing one battery leaves others full
   Given a new game with width 800 and height 600
@@ -87,4 +87,4 @@ Scenario: Fire batteries keys 05 center missile is faster than side missiles
 Examples:
   | width | height | expected_width | expected_height | missile_count |
   | 800   | 600    | 800            | 600             | 3             |
-  | 1920  | 1080   | 1920           | 1080            | 3             |
+  | 1920  | 1080   | 1440           | 1080            | 3             |

@@ -34,7 +34,7 @@ Scenario: High scores 01 a non qualifying score does not open initials entry
 Examples:
   | width | height | expected_width | expected_height |
   | 800   | 600    | 800            | 600             |
-  | 1920  | 1080   | 1920           | 1080            |
+  | 1920  | 1080   | 1440           | 1080            |
 
 Scenario: High scores 08 Escape does not close the high score table
   And the high score table capacity is 10
@@ -48,7 +48,7 @@ Scenario: High scores 08 Escape does not close the high score table
 Examples:
   | width | height | expected_width | expected_height |
   | 800   | 600    | 800            | 600             |
-  | 1920  | 1080   | 1920           | 1080            |
+  | 1920  | 1080   | 1440           | 1080            |
 
 Scenario: High scores 02 a qualifying score opens initials entry after THE END
   And the high score table capacity is 3
@@ -69,7 +69,7 @@ Examples:
   | 800   | 600    | 500   | 500            | 800            | 600             |
   | 800   | 600    | 950   | 950            | 800            | 600             |
   | 800   | 600    | 1000  | 1000           | 800            | 600             |
-  | 1920  | 1080   | 1     | 1              | 1920           | 1080            |
+  | 1920  | 1080   | 1     | 1              | 1440           | 1080            |
 
 Scenario: High scores 03 submitting initials inserts the score in ranked order
   And the high score table capacity is 10
@@ -91,7 +91,7 @@ Examples:
   | width | height | score | expected_score | rank | entry_count | expected_width | expected_height |
   | 800   | 600    | 750   | 750            | 2    | 3           | 800            | 600             |
   | 800   | 600    | 1200  | 1200           | 1    | 3           | 800            | 600             |
-  | 1920  | 1080   | 600   | 600            | 2    | 3           | 1920           | 1080            |
+  | 1920  | 1080   | 600   | 600            | 2    | 3           | 1440           | 1080            |
 
 Scenario: High scores 04 the table is capped at the maximum entries
   And the high score table capacity is <capacity>
@@ -115,7 +115,7 @@ Examples:
   | width | height | capacity | expected_capacity | score | expected_score | lowest | rank | expected_width | expected_height |
   | 800   | 600    | 3        | 3                 | 850   | 850            | 850    | 3    | 800            | 600             |
   | 800   | 600    | 3        | 3                 | 950   | 950            | 900    | 2    | 800            | 600             |
-  | 1920  | 1080   | 3        | 3                 | 801   | 801            | 801    | 3    | 1920           | 1080            |
+  | 1920  | 1080   | 3        | 3                 | 801   | 801            | 801    | 3    | 1440           | 1080            |
 
 Scenario: High scores 05 initials are three characters from the allowed set
   And the high score table capacity is 10
@@ -133,7 +133,7 @@ Scenario: High scores 05 initials are three characters from the allowed set
 Examples:
   | width | height | expected_width | expected_height |
   | 800   | 600    | 800            | 600             |
-  | 1920  | 1080   | 1920           | 1080            |
+  | 1920  | 1080   | 1440           | 1080            |
 
 Scenario: High scores 06 high scores can be viewed from the title screen
   And the high score table capacity is 10
@@ -149,7 +149,7 @@ Scenario: High scores 06 high scores can be viewed from the title screen
 Examples:
   | width | height | expected_width | expected_height |
   | 800   | 600    | 800            | 600             |
-  | 1920  | 1080   | 1920           | 1080            |
+  | 1920  | 1080   | 1440           | 1080            |
 
 Scenario: High scores 07 after entry the screen returns to title
   And the high score table capacity is 10
@@ -166,4 +166,4 @@ Scenario: High scores 07 after entry the screen returns to title
 Examples:
   | width | height | expected_width | expected_height |
   | 800   | 600    | 800            | 600             |
-  | 1920  | 1080   | 1920           | 1080            |
+  | 1920  | 1080   | 1440           | 1080            |

@@ -25,7 +25,7 @@ Scenario: Browser host 01 the project documents a browser build and open command
 Examples:
   | width | height | build_command | open_path | expected_width | expected_height |
   | 800   | 600    | bb browser    | index.html | 800           | 600             |
-  | 1920  | 1080   | bb browser    | index.html | 1920          | 1080            |
+  | 1920  | 1080   | bb browser    | index.html | 1440          | 1080            |
 
 Scenario: Browser host 02 starting play uses the canvas playfield size
   When the player starts the game
@@ -38,8 +38,8 @@ Scenario: Browser host 02 starting play uses the canvas playfield size
 Examples:
   | width | height | expected_width | expected_height |
   | 800   | 600    | 800            | 600             |
-  | 1280  | 720    | 1280           | 720             |
-  | 1920  | 1080   | 1920           | 1080            |
+  | 1280  | 720    | 960            | 720             |
+  | 1920  | 1080   | 1440           | 1080            |
 
 Scenario: Browser host 03 resize reflows layout without a fixed magnified buffer
   When the player starts the game
@@ -54,8 +54,8 @@ Scenario: Browser host 03 resize reflows layout without a fixed magnified buffer
 
 Examples:
   | width | height | expected_start_width | expected_start_height | new_width | new_height | expected_width | expected_height |
-  | 800   | 600    | 800                  | 600                   | 1280      | 720        | 1280           | 720             |
-  | 800   | 600    | 800                  | 600                   | 1920      | 1080       | 1920           | 1080            |
+  | 800   | 600    | 800                  | 600                   | 1280      | 720        | 960            | 720             |
+  | 800   | 600    | 800                  | 600                   | 1920      | 1080       | 1440           | 1080            |
   | 1024  | 768    | 1024                 | 768                   | 800       | 600        | 800            | 600             |
 
 Scenario: Browser host 04 mouse aim and key fire match desktop behavior
@@ -73,7 +73,7 @@ Examples:
   | 800   | 600    | left    | 800            | 600             |
   | 800   | 600    | center  | 800            | 600             |
   | 800   | 600    | right   | 800            | 600             |
-  | 1920  | 1080   | center  | 1920           | 1080            |
+  | 1920  | 1080   | center  | 1440           | 1080            |
 
 Scenario: Browser host 05 click zone fire matches desktop behavior
   When the player starts the game
@@ -89,7 +89,7 @@ Examples:
   | 800   | 600    | 100   | 200   | 100        | 200        | left    | 800            | 600             |
   | 800   | 600    | 400   | 200   | 400        | 200        | center  | 800            | 600             |
   | 800   | 600    | 700   | 200   | 700        | 200        | right   | 800            | 600             |
-  | 1920  | 1080   | 100   | 400   | 100        | 400        | left    | 1920           | 1080            |
+  | 1920  | 1080   | 100   | 400   | 100        | 400        | left    | 1440           | 1080            |
 
 Scenario: Browser host 06 pause and resume work on the browser host
   When the player starts the game
@@ -103,7 +103,7 @@ Scenario: Browser host 06 pause and resume work on the browser host
 Examples:
   | width | height | expected_width | expected_height |
   | 800   | 600    | 800            | 600             |
-  | 1920  | 1080   | 1920           | 1080            |
+  | 1920  | 1080   | 1440           | 1080            |
 
 Scenario: Browser host 07 high scores and options persist in localStorage across reload
   When the player opens options from the title
@@ -121,7 +121,7 @@ Scenario: Browser host 07 high scores and options persist in localStorage across
 Examples:
   | width | height | expected_width | expected_height |
   | 800   | 600    | 800            | 600             |
-  | 1920  | 1080   | 1920           | 1080            |
+  | 1920  | 1080   | 1440           | 1080            |
 
 Scenario: Browser host 08 pure core stays free of host dependencies
   Then the playfield width is <expected_width>
@@ -131,4 +131,4 @@ Scenario: Browser host 08 pure core stays free of host dependencies
 Examples:
   | width | height | expected_width | expected_height |
   | 800   | 600    | 800            | 600             |
-  | 1920  | 1080   | 1920           | 1080            |
+  | 1920  | 1080   | 1440           | 1080            |

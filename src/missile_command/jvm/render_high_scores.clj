@@ -10,6 +10,18 @@
   (q/no-stroke)
   (q/rect 0 0 w h))
 
+(defn- button!
+  [{:keys [x y w h label]}]
+  (q/fill 20 30 45 220)
+  (q/stroke 255 220 80)
+  (q/stroke-weight 2)
+  (q/rect x y w h 6)
+  (q/no-stroke)
+  (q/fill 245)
+  (q/text-size 18)
+  (q/text-align :center :center)
+  (q/text label (+ x (/ w 2.0)) (+ y (/ h 2.0))))
+
 (defn entry-overlay!
   "Initials entry after a qualifying THE END score."
   [state draft]
@@ -137,9 +149,8 @@
     (if (= :global page)
       (draw-global! state start-y)
       (draw-rows! (local-table state) start-y "No local scores yet"))
-    (q/fill 180)
-    (q/text-size 16)
-    (q/text "H to return, Esc to quit" (/ w 2.0) (+ start-y 50 (* 11 28)))
+    (doseq [button (core/high-scores-buttons state)]
+      (button! button))
     (q/text-align :left :baseline)))
 
 ;; clj-mutate-manifest-begin

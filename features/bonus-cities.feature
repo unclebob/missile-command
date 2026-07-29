@@ -26,7 +26,7 @@ Scenario: Bonus cities 01 new game has empty bonus city reserve
 Examples:
   | width | height | score | reserve | living_cities | expected_width | expected_height |
   | 800   | 600    | 0     | 0       | 6             | 800            | 600             |
-  | 1920  | 1080   | 0     | 0       | 6             | 1920           | 1080            |
+  | 1920  | 1080   | 0     | 0       | 6             | 1440           | 1080            |
 
 Scenario: Bonus cities 02 crossing the score threshold awards a reserve city
   And the bonus city threshold is 10000
@@ -42,7 +42,7 @@ Examples:
   | 800   | 600    | 9999  | 9999           | 0       | 6             | 800            | 600             |
   | 800   | 600    | 10000 | 10000          | 1       | 6             | 800            | 600             |
   | 800   | 600    | 10001 | 10001          | 1       | 6             | 800            | 600             |
-  | 1920  | 1080   | 10000 | 10000          | 1       | 6             | 1920           | 1080            |
+  | 1920  | 1080   | 10000 | 10000          | 1       | 6             | 1440           | 1080            |
 
 Scenario: Bonus cities 02b alternate threshold awards at five thousand
   And the bonus city threshold is 5000
@@ -55,7 +55,7 @@ Scenario: Bonus cities 02b alternate threshold awards at five thousand
 
 Examples:
   | width | height | expected_score | reserve | living_cities | expected_width | expected_height |
-  | 1920  | 1080   | 5000           | 1       | 6             | 1920           | 1080            |
+  | 1920  | 1080   | 5000           | 1       | 6             | 1440           | 1080            |
 
 Scenario: Bonus cities 03 each crossed threshold awards one reserve city
   And the bonus city threshold is 10000
@@ -71,7 +71,7 @@ Examples:
   | 800   | 600    | 20000 | 20000          | 2       | 6             | 800            | 600             |
   | 800   | 600    | 29999 | 29999          | 2       | 6             | 800            | 600             |
   | 800   | 600    | 30000 | 30000          | 3       | 6             | 800            | 600             |
-  | 1920  | 1080   | 40000 | 40000          | 4       | 6             | 1920           | 1080            |
+  | 1920  | 1080   | 40000 | 40000          | 4       | 6             | 1440           | 1080            |
 
 Scenario: Bonus cities 04 earning a bonus does not restore cities mid-wave
   And the bonus city threshold is 10000
@@ -88,7 +88,7 @@ Scenario: Bonus cities 04 earning a bonus does not restore cities mid-wave
 Examples:
   | width | height | expected_score | reserve | expected_width | expected_height |
   | 800   | 600    | 10000          | 1       | 800            | 600             |
-  | 1920  | 1080   | 10000          | 1       | 1920           | 1080            |
+  | 1920  | 1080   | 10000          | 1       | 1440           | 1080            |
 
 Scenario: Bonus cities 04b mid-wave bonus leaves other destroyed cities unrestored
   And the bonus city threshold is 10000
@@ -118,7 +118,7 @@ Scenario: Bonus cities 04c mid-wave bonus leaves last city unrestored
 
 Examples:
   | width | height | reserve | expected_width | expected_height |
-  | 1920  | 1080   | 1       | 1920           | 1080            |
+  | 1920  | 1080   | 1       | 1440           | 1080            |
 
 Scenario: Bonus cities 05 multiple threshold awards stay in reserve until wave end
   And the bonus city threshold is 10000
@@ -137,7 +137,7 @@ Examples:
   | 800   | 600    | 10000 | 10000          | 1       | 800            | 600             |
   | 800   | 600    | 20000 | 20000          | 2       | 800            | 600             |
   | 800   | 600    | 30000 | 30000          | 3       | 800            | 600             |
-  | 1920  | 1080   | 30000 | 30000          | 3       | 1920           | 1080            |
+  | 1920  | 1080   | 30000 | 30000          | 3       | 1440           | 1080            |
 
 Scenario: Bonus cities 06 remaining reserve restores after wave resolution
   And city 0 has been destroyed
@@ -155,7 +155,7 @@ Examples:
   | 800   | 600    | 1                | 5             | 0                | 800            | 600             |
   | 800   | 600    | 2                | 6             | 0                | 800            | 600             |
   | 800   | 600    | 3                | 6             | 1                | 800            | 600             |
-  | 1920  | 1080   | 2                | 6             | 0                | 1920           | 1080            |
+  | 1920  | 1080   | 2                | 6             | 0                | 1440           | 1080            |
 
 Scenario: Bonus cities 07 bonus city earned event is recorded
   And the bonus city threshold is 10000
@@ -171,4 +171,4 @@ Examples:
   | 800   | 600    | 9999  | 9999           | 0           | 0       | 800            | 600             |
   | 800   | 600    | 10000 | 10000          | 1           | 1       | 800            | 600             |
   | 800   | 600    | 30000 | 30000          | 3           | 3       | 800            | 600             |
-  | 1920  | 1080   | 20000 | 20000          | 2           | 2       | 1920           | 1080            |
+  | 1920  | 1080   | 20000 | 20000          | 2           | 2       | 1440           | 1080            |

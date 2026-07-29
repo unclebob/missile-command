@@ -29,7 +29,7 @@ Examples:
   | 800   | 600    | 50       | 50                | 0          | 800            | 600             |
   | 800   | 600    | 750      | 750               | 0          | 800            | 600             |
   | 800   | 600    | 100      | 100               | 5          | 800            | 600             |
-  | 1920  | 1080   | 200      | 200               | 3          | 1920           | 1080            |
+  | 1920  | 1080   | 200      | 200               | 3          | 1440           | 1080            |
 
 Scenario: Enemy missile angles 02 unintercepted angled enemy destroys a city
   And an enemy missile from <origin_x> 0 targeting city <city_index>
@@ -45,7 +45,7 @@ Examples:
   | width | height | origin_x | expected_origin_x | city_index | expected_city_index | living_cities | expected_width | expected_height |
   | 800   | 600    | 50       | 50                | 0          | 0                   | 5             | 800            | 600             |
   | 800   | 600    | 700      | 700               | 2          | 2                   | 5             | 800            | 600             |
-  | 1920  | 1080   | 100      | 100               | 5          | 5                   | 5             | 1920           | 1080            |
+  | 1920  | 1080   | 100      | 100               | 5          | 5                   | 5             | 1440           | 1080            |
 
 Scenario: Enemy missile angles 03 unintercepted angled enemy destroys a battery
   And an enemy missile from <origin_x> 0 targeting battery <battery>
@@ -61,7 +61,7 @@ Examples:
   | 800   | 600    | 200      | 200               | left    | 800            | 600             |
   | 800   | 600    | 100      | 100               | center  | 800            | 600             |
   | 800   | 600    | 400      | 400               | right   | 800            | 600             |
-  | 1920  | 1080   | 50       | 50                | left    | 1920           | 1080            |
+  | 1920  | 1080   | 50       | 50                | left    | 1440           | 1080            |
 
 Scenario: Enemy missile angles 04 wave enemies enter from varied sky origins
   And the current wave has <remaining> scheduled enemies still active
@@ -77,4 +77,4 @@ Examples:
   | width | height | remaining | expected_remaining | expected_width | expected_height |
   | 800   | 600    | 3         | 3                  | 800            | 600             |
   | 800   | 600    | 4         | 4                  | 800            | 600             |
-  | 1920  | 1080   | 3         | 3                  | 1920           | 1080            |
+  | 1920  | 1080   | 3         | 3                  | 1440           | 1080            |

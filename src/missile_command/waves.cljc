@@ -1,5 +1,6 @@
 (ns missile-command.waves
-  (:require [missile-command.options :as options]))
+  (:require [missile-command.options :as options]
+            [missile-command.world :as world]))
 
 (def initial-wave 1)
 (def full-ammo 10)
@@ -59,16 +60,23 @@
 
 (defn schedule-metrics
   "Observable difficulty metrics for a wave.
-  Optional difficulty preset scales enemy count/speed (arcade default)."
+  Optional difficulty preset scales enemy count/speed (arcade default).
+  Optional width/height scales pixel speed from the 800x600 baseline."
   ([wave]
    (schedule-metrics wave options/difficulty-arcade))
   ([wave difficulty]
+   (schedule-metrics wave difficulty nil nil))
+  ([wave difficulty width height]
    (let [factor (options/difficulty-factor difficulty)
          arcade-count (enemy-count wave)
-         arcade-speed (enemy-speed wave)]
+         arcade-speed (enemy-speed wave)
+         dimension-scale (if (and width height)
+                           (world/dimension-speed-scale width height)
+                           1.0)]
      {:wave wave
       :enemy-count (options/scale-enemy-count arcade-count factor)
-      :enemy-speed (options/scale-enemy-speed arcade-speed factor)
+      :enemy-speed (* (options/scale-enemy-speed arcade-speed factor)
+                      dimension-scale)
       :multiplier (multiplier wave)
       :mirv-count (mirv-count wave)
       :smart-bomb-count (smart-bomb-count wave)
@@ -85,7 +93,9 @@
   "Wave schedule metrics using the state's difficulty options."
   [state wave-number]
   (schedule-metrics wave-number
-                    (options/difficulty (options/of state))))
+                    (options/difficulty (options/of state))
+                    (:width state)
+                    (:height state)))
 
 (defn sky-origin-x
   "Deterministic sky entry x for the i-th of n wave enemies across playfield width.

@@ -11,10 +11,12 @@
    :scenarios
    [{:name "new game records playfield size"
      :steps [{:text "a new game with width <width> and height <height>"}
-             {:text "the playfield width is <width>"}
-             {:text "the playfield height is <height>"}]
-     :examples [{"width" "800" "height" "600"}
-                {"width" "1920" "height" "1080"}]}]})
+             {:text "the playfield width is <expected_width>"}
+             {:text "the playfield height is <expected_height>"}]
+     :examples [{"width" "800" "height" "600"
+                 "expected_width" "800" "expected_height" "600"}
+                {"width" "1920" "height" "1080"
+                 "expected_width" "1440" "expected_height" "1080"}]}]})
 
 (describe "scenario-rows"
   (it "uses examples when present"
@@ -30,7 +32,9 @@
       (should= 2 (count planned))
       (should= 0 (:index (first planned)))
       (should= 1 (:index (second planned)))
-      (should= {"width" "800" "height" "600"} (:example (first planned))))))
+      (should= {"width" "800" "height" "600"
+                "expected_width" "800" "expected_height" "600"}
+               (:example (first planned))))))
 
 (describe "run-feature"
   (it "passes when all steps succeed"

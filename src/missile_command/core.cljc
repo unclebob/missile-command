@@ -23,6 +23,7 @@
             [missile-command.sfx :as sfx]
             [missile-command.shell :as shell]
             [missile-command.testing :as testing]
+            [missile-command.title-screen :as title-screen]
             [missile-command.wave-banner :as wave-banner]
             [missile-command.wave-lifecycle :as wave-lifecycle]
             [missile-command.wave-schedule :as wave-schedule]
@@ -50,6 +51,8 @@
 (def end-fireball-expand-seconds missiles/fireball-expand-seconds)
 (def end-fireball-contract-seconds missiles/fireball-contract-seconds)
 
+(declare battery playfield-width playfield-height)
+
 (defn- clamp
   [n lo hi]
   (max lo (min hi n)))
@@ -67,6 +70,119 @@
   [state width height]
   (let [crosshair (or (:crosshair state) default-crosshair)]
     (clamp-point width height (:x crosshair) (:y crosshair))))
+
+(defn- scale-coordinate
+  [n old-size new-size]
+  (if (pos? (double old-size))
+    (* (double n) (/ (double new-size) (double old-size)))
+    (double n)))
+
+(defn- scale-point
+  [point old-width old-height new-width new-height]
+  {:x (scale-coordinate (:x point) old-width new-width)
+   :y (scale-coordinate (:y point) old-height new-height)})
+
+(defn- entity-by-id
+  [entities id]
+  (first (filter #(= id (:id %)) entities)))
+
+(defn- target-point
+  [state target-kind target-id old-width old-height new-width new-height fallback]
+  (or (case target-kind
+        :city (when-let [city (entity-by-id (:cities state) target-id)]
+                (select-keys city [:x :y]))
+        :battery (when-let [battery (entity-by-id (:batteries state) target-id)]
+                   (select-keys battery [:x :y]))
+        nil)
+      (scale-point fallback old-width old-height new-width new-height)))
+
+(defn- reflow-path
+  [old-missile path-updates]
+  (->> (merge old-missile path-updates)
+       (missiles/retime-for-path old-missile)
+       missiles/with-current-position))
+
+(defn- reflow-defensive-missile
+  [state old-width old-height new-width new-height missile]
+  (let [battery-point (when-let [battery (battery state (:battery missile))]
+                        (select-keys battery [:x :y]))
+        origin (or battery-point
+                   (scale-point {:x (:x0 missile) :y (:y0 missile)}
+                                old-width old-height new-width new-height))
+        target (scale-point {:x (:x1 missile) :y (:y1 missile)}
+                            old-width old-height new-width new-height)]
+    (reflow-path missile {:x0 (:x origin)
+                          :y0 (:y origin)
+                          :x1 (:x target)
+                          :y1 (:y target)})))
+
+(defn- reflow-enemy-missile
+  [state old-width old-height new-width new-height missile]
+  (let [origin (scale-point {:x (:x0 missile) :y (:y0 missile)}
+                            old-width old-height new-width new-height)
+        target (target-point state
+                             (:target-kind missile)
+                             (:target-id missile)
+                             old-width old-height new-width new-height
+                             {:x (:x1 missile) :y (:y1 missile)})]
+    (reflow-path missile {:x0 (:x origin)
+                          :y0 (:y origin)
+                          :x1 (:x target)
+                          :y1 (:y target)})))
+
+(defn- reflow-flyer
+  [old-width old-height new-width new-height flyer]
+  (let [origin (scale-point {:x (:x0 flyer) :y (:y0 flyer)}
+                            old-width old-height new-width new-height)
+        target (scale-point {:x (:x1 flyer) :y (:y1 flyer)}
+                            old-width old-height new-width new-height)]
+    (reflow-path flyer {:x0 (:x origin)
+                        :y0 (:y origin)
+                        :x1 (:x target)
+                        :y1 (:y target)})))
+
+(defn- reflow-fireball
+  [old-width old-height new-width new-height fireball]
+  (let [point (scale-point fireball old-width old-height new-width new-height)
+        scale (world/dimension-speed-scale new-width new-height)
+        old-scale (world/dimension-speed-scale old-width old-height)
+        radius-scale (if (zero? old-scale) 1.0 (/ scale old-scale))]
+    (-> fireball
+        (assoc :x (:x point)
+               :y (:y point))
+        (update :radius #(when % (* (double %) radius-scale)))
+        (update :max-radius #(when % (* (double %) radius-scale))))))
+
+(defn- reflow-destroyable-target
+  [old-width old-height new-width new-height target]
+  (merge target (scale-point target old-width old-height new-width new-height)))
+
+(defn- reflow-combat-entities
+  [state old-width old-height new-width new-height]
+  (-> state
+      (update :defensive-missiles
+              #(mapv (fn [m]
+                       (reflow-defensive-missile state old-width old-height
+                                                 new-width new-height m))
+                     (or % [])))
+      (update :enemy-missiles
+              #(mapv (fn [m]
+                       (reflow-enemy-missile state old-width old-height
+                                            new-width new-height m))
+                     (or % [])))
+      (update :flyers
+              #(mapv (fn [f]
+                       (reflow-flyer old-width old-height new-width new-height f))
+                     (or % [])))
+      (update :fireballs
+              #(mapv (fn [fb]
+                       (reflow-fireball old-width old-height new-width new-height fb))
+                     (or % [])))
+      (update :destroyable-targets
+              #(mapv (fn [target]
+                       (reflow-destroyable-target old-width old-height
+                                                  new-width new-height target))
+                     (or % [])))))
 
 (defn- update-battery
   [state battery-id f]
@@ -92,8 +208,9 @@
 (defn new-game
   "Create a new game state for the given playfield size."
   [{:keys [width height]}]
-  (merge {:width width
-          :height height
+  (let [{:keys [width height]} (world/fit-playfield-size width height)]
+    (merge {:width width
+            :height height
           :score initial-score
           :wave waves/initial-wave
           :wave-complete? wave-starts-complete?
@@ -124,17 +241,21 @@
           :sim-time 0.0
           :last-applied-dt 0.0
           :last-enemy-fate nil
-          :next-entity-id initial-entity-id}
-         (world/apply-layout width height)))
+            :next-entity-id initial-entity-id}
+           (world/apply-layout width height))))
 
 (defn resize
   "Reflow layout for a new playfield size, preserving entity progress fields."
   [state width height]
-  (merge state
-         {:width width
-          :height height
-          :crosshair (reclamp-crosshair state width height)}
-         (world/apply-layout width height state)))
+  (let [{:keys [width height]} (world/fit-playfield-size width height)]
+    (let [old-width (playfield-width state)
+          old-height (playfield-height state)]
+      (-> (merge state
+                 {:width width
+                  :height height
+                  :crosshair (reclamp-crosshair state width height)}
+                 (world/apply-layout width height state))
+          (reflow-combat-entities old-width old-height width height)))))
 
 (defn playfield-width
   [state]
@@ -207,6 +328,11 @@
 (def the-end? screens/the-end?)
 (def title-game-name-of screens/title-game-name-of)
 (def title-shows-start-affordance? screens/title-shows-start-affordance?)
+(def title-buttons title-screen/buttons)
+(def title-command-at title-screen/command-at)
+(def high-scores-buttons title-screen/high-scores-buttons)
+(def options-buttons title-screen/options-buttons)
+(def mute-checkbox title-screen/mute-checkbox)
 
 (def high-score-table high-scores/table)
 (def high-score-capacity high-scores/capacity)
@@ -232,7 +358,11 @@
 (def mute? options/mute-state?)
 (def difficulty options/difficulty-of)
 (def options? options/screen?)
-(def open-options options/open)
+(defn open-options
+  [state]
+  (if (title-screen/phone? state)
+    state
+    (options/open state)))
 (def leave-options options/leave)
 (def set-mute options/set-mute-state)
 (def set-difficulty options/set-difficulty-state)
@@ -493,7 +623,22 @@
 (defn- handle-click
   [state x y]
   (cond
-    (title? state) (no-events (start-game state))
+    (title? state)
+    (case (:type (title-command-at state x y))
+      :open-high-scores (no-events (open-high-scores state))
+      :open-options (no-events (open-options state))
+      (no-events (start-game state)))
+    (high-scores-view? state)
+    (if (title-screen/high-scores-command-at state x y)
+      (no-events (close-high-scores state))
+      (no-events state))
+    (options? state)
+    (if-let [command (title-screen/options-command-at state x y)]
+      (case (:type command)
+        :set-mute (no-events (set-mute state (:mute command)))
+        :leave-options (no-events (leave-options state))
+        (no-events state))
+      (no-events state))
     (the-end? state) (no-events (confirm-end-screen state))
     (click-noop-shell? state) (no-events state)
     :else (click-fire state x y)))

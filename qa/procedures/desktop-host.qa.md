@@ -12,11 +12,11 @@ Depends on US-16, US-17, US-20 (and prior stories). Out of scope: browser host (
 
 ```sh
 bb play              # default size (e.g. 800×600)
-bb play 1280 720     # explicit size
+bb play 1280 720     # explicit size, fitted to a 960x720 4:3 playfield
 bb play --qa …       # QA telemetry / scenario / events
 ```
 
-Window: resizable; opens on launch screen; should not steal keyboard focus (existing host behavior). OS cursor hidden; game crosshair shown.
+Window: resizable; opens on launch screen; should not steal keyboard focus (existing host behavior). OS cursor hidden and game crosshair shown only while playing; every other screen shows the normal cursor.
 
 ## UI Event Boundary
 
@@ -50,7 +50,7 @@ Window: resizable; opens on launch screen; should not steal keyboard focus (exis
 
 2. `bb play` from project root; window opens at documented size.
 3. Title shows; start → playing; HUD visible.
-4. Pause / resume; options from title; high scores from title.
+4. Pause / resume; options from title; high scores from title. Confirm the normal cursor is visible on title/pause/options/high-score screens and hidden only while playing.
 
 ### C. Input and combat
 
@@ -61,7 +61,7 @@ Window: resizable; opens on launch screen; should not steal keyboard focus (exis
 
 ### D. Resize
 
-9. Resize window larger/smaller; layout reflows (cities/batteries reposition); not a stretched 800×600 buffer.
+9. Resize window larger/smaller; layout reflows inside the largest 4:3 playfield that fits the window; not a stretched 800×600 buffer.
 
 ### E. THE END and meta
 

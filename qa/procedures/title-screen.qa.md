@@ -4,14 +4,14 @@
 **Suite:** title-screen  
 **Gherkin:** `features/title-screen.feature`
 
-Verify launch begins on the **title** screen showing the game name **Missile Command** and a **start** affordance; start enters **playing** with a fresh six-city / three-battery run at current dimensions, score 0 and wave 1; fire does nothing on title; confirming **THE END** (when no high-score entry applies) returns to title.
+Verify launch begins on the **title** screen showing the game name **Missile Command**, a **start** affordance, and title buttons; start enters **playing** with a fresh six-city / three-battery run at current dimensions, score 0 and wave 1; fire does nothing on title; confirming **THE END** (when no high-score entry applies) returns to title.
 
-Out of scope: options menu (US-19), high-score table (US-18), pause (US-16), attract-mode polish (nice-to-have).
+Out of scope: options menu contents (US-19), high-score table contents (US-18), pause (US-16), attract-mode polish (nice-to-have).
 
 ## Preconditions
 
 - Host launch: `bb play` / `bb play --qa`.
-- Start input: documented key and/or click (e.g. Enter / primary click — match README).
+- Start input: documented key and/or click/tap (e.g. Enter / primary click outside title buttons — match README).
 
 ## UI Event Boundary
 
@@ -49,7 +49,7 @@ confirm
 ### B. Launch
 
 1. `bb play --qa`. Assert `screen=title` (not playing immediately).
-2. Visible: game name **Missile Command**, start prompt/affordance.
+2. Visible: game name **Missile Command**, start prompt/affordance, and title buttons.
 
 ### C. Start
 
@@ -60,11 +60,19 @@ confirm
 
 5. On title, aim + fire keys/click. Assert no defensive missiles; still title.
 
-### E. THE END return
+### E. High Scores Button
 
-6. Stage THE END; complete/confirm end screen without high-score path. Assert return to **title**.
+6. Click/tap the **High Scores** button. Assert `screen=high-scores`.
+
+### F. Mobile Options Boundary
+
+7. In a phone-sized browser session, assert the **High Scores** button is present and Options is not visible or reachable.
+
+### G. THE END return
+
+8. Stage THE END; complete/confirm end screen without high-score path. Assert return to **title**.
 
 ## Pass criteria
 
 - Acceptance for `title-screen` passes.
-- Launch → title; start → fresh playing; THE END confirm → title.
+- Launch → title; start → fresh playing; high-score button opens the table; phone hides Options; THE END confirm → title.

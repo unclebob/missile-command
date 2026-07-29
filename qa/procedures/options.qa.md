@@ -39,6 +39,7 @@ Examples wave 1 arcade: count 3, speed 50 → easy count 2, speed 35.
 ## UI Event Boundary
 
 - Scenario/events for open options, set mute/difficulty/bind key, leave, start, press remapped key.
+- Manual host UI shows mute as a clickable checkbox, not as an `M` keyboard prompt.
 - Telemetry: mute, difficulty, key bindings, wave metrics after start.
 
 ## Procedure
@@ -47,7 +48,7 @@ Examples wave 1 arcade: count 3, speed 50 → easy count 2, speed 35.
 
 ### B. Open / defaults — title → options; mute false, arcade, default keys.
 
-### C. Mute — set true; leave; reopen; still true.
+### C. Mute — click the mute checkbox; leave; reopen; still true.
 
 ### D. Remap — bind left to `q`; start; press `q`; left battery fires.
 

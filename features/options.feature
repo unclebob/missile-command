@@ -25,7 +25,7 @@ Scenario: Options 01 options are reachable from the title screen
 Examples:
   | width | height | expected_width | expected_height |
   | 800   | 600    | 800            | 600             |
-  | 1920  | 1080   | 1920           | 1080            |
+  | 1920  | 1080   | 1440           | 1080            |
   | 1024  | 768    | 1024           | 768             |
 
 Scenario: Options 02 defaults are unmuted arcade difficulty and default fire keys
@@ -42,7 +42,7 @@ Scenario: Options 02 defaults are unmuted arcade difficulty and default fire key
 Examples:
   | width | height | expected_width | expected_height |
   | 800   | 600    | 800            | 600             |
-  | 1920  | 1080   | 1920           | 1080            |
+  | 1920  | 1080   | 1440           | 1080            |
 
 Scenario: Options 03 mute can be toggled and is stored
   When the player opens options from the title
@@ -57,7 +57,7 @@ Scenario: Options 03 mute can be toggled and is stored
 Examples:
   | width | height | expected_width | expected_height |
   | 800   | 600    | 800            | 600             |
-  | 1920  | 1080   | 1920           | 1080            |
+  | 1920  | 1080   | 1440           | 1080            |
 
 Scenario: Options 04 remapped fire keys launch the matching battery
   When the player opens options from the title
@@ -75,7 +75,7 @@ Scenario: Options 04 remapped fire keys launch the matching battery
 Examples:
   | width | height | expected_width | expected_height |
   | 800   | 600    | 800            | 600             |
-  | 1920  | 1080   | 1920           | 1080            |
+  | 1920  | 1080   | 1440           | 1080            |
 
 Scenario: Options 05 difficulty scales wave enemy count and speed
   When the player opens options from the title
@@ -93,7 +93,7 @@ Examples:
   | width | height | wave | enemy_count | enemy_speed | expected_width | expected_height |
   | 800   | 600    | 1    | 2           | 28.0        | 800            | 600             |
   | 800   | 600    | 3    | 2           | 35.0        | 800            | 600             |
-  | 1920  | 1080   | 1    | 2           | 28.0        | 1920           | 1080            |
+  | 1920  | 1080   | 1    | 2           | 50.4        | 1440           | 1080            |
 
 Scenario: Options 06 difficulty change is stored and applies on start
   When the player opens options from the title
@@ -107,12 +107,12 @@ Scenario: Options 06 difficulty change is stored and applies on start
   Then the playfield width is <expected_width>
   And the playfield height is <expected_height>
   And wave 1 enemy count is 2
-  And wave 1 enemy speed is 34.0
+  And wave <wave> enemy speed is <enemy_speed>
 
 Examples:
-  | width | height | expected_width | expected_height |
-  | 800   | 600    | 800            | 600             |
-  | 1920  | 1080   | 1920           | 1080            |
+  | width | height | wave | expected_width | expected_height | enemy_speed |
+  | 800   | 600    | 1    | 800            | 600             | 34.0        |
+  | 1920  | 1080   | 1    | 1440           | 1080            | 61.2        |
 
 Scenario: Options 07 leaving options returns to the title screen
   When the player opens options from the title
@@ -125,5 +125,5 @@ Scenario: Options 07 leaving options returns to the title screen
 Examples:
   | width | height | expected_width | expected_height |
   | 800   | 600    | 800            | 600             |
-  | 1920  | 1080   | 1920           | 1080            |
+  | 1920  | 1080   | 1440           | 1080            |
   | 1024  | 768    | 1024           | 768             |

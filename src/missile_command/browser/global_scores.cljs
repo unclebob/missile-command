@@ -84,21 +84,26 @@
                                  :headers {"content-type" "application/json"}
                                  :body (js/JSON.stringify (clj->js payload))}))})
 
+(defn- refresh-leaderboard-promise!
+  [global-state transport now-ms]
+  (let [{:keys [url configured-name] :as current} @global-state]
+    (-> (js/Promise.resolve ((:fetch-leaderboard transport) current))
+        (.then (fn [payload]
+                 (swap! global-state merge
+                        (assoc (global/leaderboard-ready-state payload url configured-name (now-ms))
+                               :submit-status (:submit-status current))))))))
+
 (defn fetch-leaderboard!
   ([global-state]
    (fetch-leaderboard! global-state (http-client global-state) #(.now js/Date)))
   ([global-state transport now-ms]
    (when (:enabled? @global-state)
      (swap! global-state assoc :status :loading :error nil)
-     (let [{:keys [url configured-name] :as current} @global-state]
-       (-> (js/Promise.resolve ((:fetch-leaderboard transport) current))
-           (.then (fn [payload]
-                    (swap! global-state merge
-                           (global/leaderboard-ready-state payload url configured-name (now-ms)))))
-           (.catch (fn [error]
-                     (swap! global-state assoc
-                            :status :failed
-                            :error (.-message error)))))))))
+     (-> (refresh-leaderboard-promise! global-state transport now-ms)
+         (.catch (fn [error]
+                   (swap! global-state assoc
+                          :status :failed
+                          :error (.-message error))))))))
 
 (defn ensure-player!
   ([global-state display-name]
@@ -128,8 +133,16 @@
                   (global/score-submit-payload state player initials "browser"
                                                (run-id) game-version)))))
              (.then (fn [payload]
-                      (swap! global-state assoc
-                             :submit-status (global/submit-status-from-response payload))))
+                      (let [submit-status (global/submit-status-from-response payload)]
+                        (swap! global-state assoc
+                               :submit-status submit-status)
+                        (when (= :accepted submit-status)
+                          (swap! global-state assoc :status :loading :error nil)
+                          (-> (refresh-leaderboard-promise! global-state transport #(.now js/Date))
+                              (.catch (fn [error]
+                                        (swap! global-state assoc
+                                               :status :failed
+                                               :error (.-message error)))))))))
              (.catch (fn [error]
                        (swap! global-state assoc
                               :submit-status :failed

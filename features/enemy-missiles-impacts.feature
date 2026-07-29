@@ -26,7 +26,7 @@ Examples:
   | width | height | city_index | expected_city_index | expected_width | expected_height | enemy_count |
   | 800   | 600    | 0          | 0                   | 800            | 600             | 1           |
   | 800   | 600    | 3          | 3                   | 800            | 600             | 1           |
-  | 1920  | 1080   | 5          | 5                   | 1920           | 1080            | 1           |
+  | 1920  | 1080   | 5          | 5                   | 1440           | 1080            | 1           |
 
 Scenario: Enemy missiles impacts 02 unintercepted enemy destroys a city
   Given a new game with width <width> and height <height>
@@ -43,7 +43,7 @@ Examples:
   | width | height | city_index | expected_city_index | expected_width | expected_height | living_cities | enemy_count |
   | 800   | 600    | 0          | 0                   | 800            | 600             | 5             | 0           |
   | 800   | 600    | 2          | 2                   | 800            | 600             | 5             | 0           |
-  | 1920  | 1080   | 5          | 5                   | 1920           | 1080            | 5             | 0           |
+  | 1920  | 1080   | 5          | 5                   | 1440           | 1080            | 5             | 0           |
 
 Scenario: Enemy missiles impacts 03 unintercepted enemy destroys a battery
   Given a new game with width 800 and height 600
@@ -116,4 +116,4 @@ Examples:
   | width | height | spawn_count | expected_width | expected_height | living_cities | enemy_count |
   | 800   | 600    | 2           | 800            | 600             | 4             | 0           |
   | 800   | 600    | 3           | 800            | 600             | 3             | 0           |
-  | 1920  | 1080   | 2           | 1920           | 1080            | 4             | 0           |
+  | 1920  | 1080   | 2           | 1440           | 1080            | 4             | 0           |

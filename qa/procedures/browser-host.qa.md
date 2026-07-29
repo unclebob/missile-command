@@ -4,9 +4,9 @@
 **Suite:** browser-host  
 **Gherkin:** `features/browser-host.feature`
 
-Verify the **ClojureScript Quil browser host** plays the same game as desktop: documented build/open, full canvas resolution + resize reflow, mouse aim, key fire, click zones, title/start, pause, HUD, THE END, options, high scores, SFX, **`localStorage`** persistence, shared pure core, draw order §7.2.
+Verify the **ClojureScript Quil browser host** plays the same game as desktop: documented build/open, full canvas resolution + resize reflow, mouse/touch aim, key fire, click zones, title/start, pause, HUD, THE END, options on desktop/tablet, high scores, SFX, **`localStorage`** persistence, shared pure core, draw order §7.2.
 
-Depends on US-21 desktop host (shared shell behaviors). Out of scope: mobile touch-first redesign, full PWA packaging.
+Depends on US-21 desktop host (shared shell behaviors). Out of scope: full PWA packaging.
 
 ## Launch (document in README)
 
@@ -41,12 +41,12 @@ QA may use documented browser QA flags or URL params only if they are published 
 
 5. Title → start → play (aim, key fire, click zones).
 6. Pause / resume; HUD visible.
-7. Options and high scores reachable; SFX when unmuted.
-8. Reach THE END (or stage via documented QA); confirm flow toward title / high-score entry.
+7. Options and high scores reachable on desktop/tablet browser; their **Title** buttons return to the title screen; SFX when unmuted. The normal mouse cursor is visible on every non-play screen, and the game crosshair replaces it only while playing.
+8. Reach THE END (or stage via documented QA); qualifying scores open a browser player-name prompt, then return to title after submission.
 
 ### D. Resize
 
-9. Resize browser window; layout reflows; not a stretched fixed buffer.
+9. Resize browser window; layout reflows inside the largest 4:3 playfield that fits the viewport; not a stretched fixed buffer.
 
 ### E. localStorage
 
@@ -57,7 +57,11 @@ QA may use documented browser QA flags or URL params only if they are published 
 
 12. Spot-check same rules as desktop (wave, intercept, score) via shared core tests + short play.
 
+### G. Phone
+
+13. Open in a phone-sized/mobile browser. Assert the title shows a tappable **High Scores** button, Options is not shown or reachable, and a qualifying score opens the browser name prompt so the phone keyboard appears.
+
 ## Pass criteria
 
 - Acceptance for `browser-host` passes.
-- Documented build/open works; full loop + resize + localStorage + core isolation.
+- Documented build/open works; full loop + resize + localStorage + phone title controls + core isolation.

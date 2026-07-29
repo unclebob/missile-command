@@ -108,6 +108,14 @@
    :submit-score (fn [_player payload]
                    (post-json (str (:url @global-state) "/scores") payload))})
 
+(defn- refresh-leaderboard-body!
+  [global-state transport now-ms]
+  (let [{:keys [url configured-name] :as current} @global-state
+        payload ((:fetch-leaderboard transport) current)]
+    (swap! global-state merge
+           (assoc (global/leaderboard-ready-state payload url configured-name (now-ms))
+                  :submit-status (:submit-status current)))))
+
 (defn fetch-leaderboard!
   ([global-state]
    (fetch-leaderboard! global-state (http-client nil global-state) #(System/currentTimeMillis)))
@@ -116,10 +124,7 @@
      (swap! global-state assoc :status :loading :error nil)
      (future
        (try
-         (let [{:keys [url configured-name] :as current} @global-state
-               payload ((:fetch-leaderboard transport) current)]
-           (swap! global-state merge
-                  (global/leaderboard-ready-state payload url configured-name (now-ms))))
+         (refresh-leaderboard-body! global-state transport now-ms)
          (catch Exception e
            (swap! global-state assoc
                   :status :failed
@@ -140,9 +145,18 @@
             player (ensure-player! settings-path global-state selected-name transport)
             payload (global/score-submit-payload state player initials "desktop"
                                                  (run-id) game-version)
-            response ((:submit-score transport) player payload)]
+            response ((:submit-score transport) player payload)
+            submit-status (global/submit-status-from-response response)]
         (swap! global-state assoc
-               :submit-status (global/submit-status-from-response response)))
+               :submit-status submit-status)
+        (when (= :accepted submit-status)
+          (swap! global-state assoc :status :loading :error nil)
+          (try
+            (refresh-leaderboard-body! global-state transport #(System/currentTimeMillis))
+            (catch Exception e
+              (swap! global-state assoc
+                     :status :failed
+                     :error (or (.getMessage e) "refresh failed"))))))
       (catch Exception e
         (swap! global-state assoc
                :submit-status :failed

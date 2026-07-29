@@ -24,18 +24,18 @@ Scenario: Fire click zone 01 click fires battery for horizontal third
 
 Examples:
   | width | height | x    | y   | expected_width | expected_height | expected_x | expected_y | battery | ammo | missile_count |
-  | 900   | 600    | 0    | 100 | 900            | 600             | 0          | 100        | left    | 9    | 1             |
-  | 900   | 600    | 299  | 100 | 900            | 600             | 299        | 100        | left    | 9    | 1             |
-  | 900   | 600    | 300  | 100 | 900            | 600             | 300        | 100        | center  | 9    | 1             |
-  | 900   | 600    | 599  | 100 | 900            | 600             | 599        | 100        | center  | 9    | 1             |
-  | 900   | 600    | 600  | 100 | 900            | 600             | 600        | 100        | right   | 9    | 1             |
-  | 900   | 600    | 899  | 100 | 900            | 600             | 899        | 100        | right   | 9    | 1             |
-  | 1920  | 1080   | 0    | 200 | 1920           | 1080            | 0          | 200        | left    | 9    | 1             |
-  | 1920  | 1080   | 639  | 200 | 1920           | 1080            | 639        | 200        | left    | 9    | 1             |
-  | 1920  | 1080   | 640  | 200 | 1920           | 1080            | 640        | 200        | center  | 9    | 1             |
-  | 1920  | 1080   | 1279 | 200 | 1920           | 1080            | 1279       | 200        | center  | 9    | 1             |
-  | 1920  | 1080   | 1280 | 200 | 1920           | 1080            | 1280       | 200        | right   | 9    | 1             |
-  | 1920  | 1080   | 1500 | 200 | 1920           | 1080            | 1500       | 200        | right   | 9    | 1             |
+  | 900   | 675    | 0    | 100 | 900            | 675             | 0          | 100        | left    | 9    | 1             |
+  | 900   | 675    | 299  | 100 | 900            | 675             | 299        | 100        | left    | 9    | 1             |
+  | 900   | 675    | 300  | 100 | 900            | 675             | 300        | 100        | center  | 9    | 1             |
+  | 900   | 675    | 599  | 100 | 900            | 675             | 599        | 100        | center  | 9    | 1             |
+  | 900   | 675    | 600  | 100 | 900            | 675             | 600        | 100        | right   | 9    | 1             |
+  | 900   | 675    | 899  | 100 | 900            | 675             | 899        | 100        | right   | 9    | 1             |
+  | 1920  | 1080   | 0    | 200 | 1440           | 1080            | 0          | 200        | left    | 9    | 1             |
+  | 1920  | 1080   | 479  | 200 | 1440           | 1080            | 479        | 200        | left    | 9    | 1             |
+  | 1920  | 1080   | 480  | 200 | 1440           | 1080            | 480        | 200        | center  | 9    | 1             |
+  | 1920  | 1080   | 959  | 200 | 1440           | 1080            | 959        | 200        | center  | 9    | 1             |
+  | 1920  | 1080   | 960  | 200 | 1440           | 1080            | 960        | 200        | right   | 9    | 1             |
+  | 1920  | 1080   | 1439 | 200 | 1440           | 1080            | 1439       | 200        | right   | 9    | 1             |
 
 Scenario: Fire click zone 02 empty batteries fall back along the zone order
   Given a new game with width <width> and height <height>
@@ -51,12 +51,12 @@ Scenario: Fire click zone 02 empty batteries fall back along the zone order
 
 Examples:
   | width | height | x   | y   | expected_width | expected_height | expected_x | expected_y | battery | ammo | missile_count |
-  | 900   | 600    | 100 | 100 | 900            | 600             | 100        | 100        | center  | 9    | 1             |
-  | 900   | 600    | 100 | 100 | 900            | 600             | 100        | 100        | right   | 9    | 1             |
-  | 900   | 600    | 800 | 100 | 900            | 600             | 800        | 100        | center  | 9    | 1             |
-  | 900   | 600    | 800 | 100 | 900            | 600             | 800        | 100        | left    | 9    | 1             |
-  | 900   | 600    | 450 | 100 | 900            | 600             | 450        | 100        | left    | 9    | 1             |
-  | 900   | 600    | 450 | 100 | 900            | 600             | 450        | 100        | right   | 9    | 1             |
+  | 900   | 675    | 100 | 100 | 900            | 675             | 100        | 100        | center  | 9    | 1             |
+  | 900   | 675    | 100 | 100 | 900            | 675             | 100        | 100        | right   | 9    | 1             |
+  | 900   | 675    | 800 | 100 | 900            | 675             | 800        | 100        | center  | 9    | 1             |
+  | 900   | 675    | 800 | 100 | 900            | 675             | 800        | 100        | left    | 9    | 1             |
+  | 900   | 675    | 450 | 100 | 900            | 675             | 450        | 100        | left    | 9    | 1             |
+  | 900   | 675    | 450 | 100 | 900            | 675             | 450        | 100        | right   | 9    | 1             |
 
 Scenario: Fire click zone 03 destroyed batteries fall back along the zone order
   Given a new game with width <width> and height <height>
@@ -72,12 +72,12 @@ Scenario: Fire click zone 03 destroyed batteries fall back along the zone order
 
 Examples:
   | width | height | x   | y   | expected_width | expected_height | expected_x | expected_y | battery | ammo | missile_count |
-  | 900   | 600    | 100 | 100 | 900            | 600             | 100        | 100        | center  | 9    | 1             |
-  | 900   | 600    | 100 | 100 | 900            | 600             | 100        | 100        | right   | 9    | 1             |
-  | 900   | 600    | 800 | 100 | 900            | 600             | 800        | 100        | center  | 9    | 1             |
-  | 900   | 600    | 800 | 100 | 900            | 600             | 800        | 100        | left    | 9    | 1             |
-  | 900   | 600    | 450 | 100 | 900            | 600             | 450        | 100        | left    | 9    | 1             |
-  | 900   | 600    | 450 | 100 | 900            | 600             | 450        | 100        | right   | 9    | 1             |
+  | 900   | 675    | 100 | 100 | 900            | 675             | 100        | 100        | center  | 9    | 1             |
+  | 900   | 675    | 100 | 100 | 900            | 675             | 100        | 100        | right   | 9    | 1             |
+  | 900   | 675    | 800 | 100 | 900            | 675             | 800        | 100        | center  | 9    | 1             |
+  | 900   | 675    | 800 | 100 | 900            | 675             | 800        | 100        | left    | 9    | 1             |
+  | 900   | 675    | 450 | 100 | 900            | 675             | 450        | 100        | left    | 9    | 1             |
+  | 900   | 675    | 450 | 100 | 900            | 675             | 450        | 100        | right   | 9    | 1             |
 
 Scenario: Fire click zone 04 no battery can fire yields no missile
   Given a new game with width <width> and height <height>
@@ -91,12 +91,12 @@ Scenario: Fire click zone 04 no battery can fire yields no missile
 
 Examples:
   | width | height | x   | y   | expected_width | expected_height | expected_x | expected_y | missile_count |
-  | 900   | 600    | 100 | 100 | 900            | 600             | 100        | 100        | 0             |
-  | 900   | 600    | 450 | 100 | 900            | 600             | 450        | 100        | 0             |
-  | 900   | 600    | 800 | 100 | 900            | 600             | 800        | 100        | 0             |
+  | 900   | 675    | 100 | 100 | 900            | 675             | 100        | 100        | 0             |
+  | 900   | 675    | 450 | 100 | 900            | 675             | 450        | 100        | 0             |
+  | 900   | 675    | 800 | 100 | 900            | 675             | 800        | 100        | 0             |
 
 Scenario: Fire click zone 05 key fire after click left then key right
-  Given a new game with width 900 and height 600
+  Given a new game with width 900 and height 675
   And the player starts the game
   When the player clicks at 100 150
   And the player aims at 800 120
@@ -106,7 +106,7 @@ Scenario: Fire click zone 05 key fire after click left then key right
   And a defensive missile from the right battery targets 800 120
 
 Scenario: Fire click zone 05b key fire after click right then key left
-  Given a new game with width 900 and height 600
+  Given a new game with width 900 and height 675
   And the player starts the game
   When the player clicks at 800 150
   And the player aims at 100 120
@@ -116,7 +116,7 @@ Scenario: Fire click zone 05b key fire after click right then key left
   And a defensive missile from the left battery targets 100 120
 
 Scenario: Fire click zone 05c key fire after click left then key center
-  Given a new game with width 900 and height 600
+  Given a new game with width 900 and height 675
   And the player starts the game
   When the player clicks at 100 150
   And the player aims at 450 120
@@ -126,7 +126,7 @@ Scenario: Fire click zone 05c key fire after click left then key center
   And a defensive missile from the center battery targets 450 120
 
 Scenario: Fire click zone 06 zone mapping uses width after resize
-  Given a new game with width 900 and height 600
+  Given a new game with width 900 and height 675
   And the player starts the game
   When the playfield is resized to width <new_width> and height <new_height>
   And the player clicks at <x> <y>
@@ -137,7 +137,7 @@ Scenario: Fire click zone 06 zone mapping uses width after resize
 
 Examples:
   | new_width | new_height | x    | y   | expected_width | expected_height | expected_x | expected_y | battery | ammo |
-  | 1800      | 600        | 500  | 100 | 1800           | 600             | 500        | 100        | left    | 9    |
-  | 1800      | 600        | 900  | 100 | 1800           | 600             | 900        | 100        | center  | 9    |
-  | 1800      | 600        | 1500 | 100 | 1800           | 600             | 1500       | 100        | right   | 9    |
-  | 900       | 600        | 450  | 100 | 900            | 600             | 450        | 100        | center  | 9    |
+  | 1800      | 1350       | 500  | 100 | 1800           | 1350            | 500        | 100        | left    | 9    |
+  | 1800      | 1350       | 900  | 100 | 1800           | 1350            | 900        | 100        | center  | 9    |
+  | 1800      | 1350       | 1500 | 100 | 1800           | 1350            | 1500       | 100        | right   | 9    |
+  | 900       | 675        | 450  | 100 | 900            | 675             | 450        | 100        | center  | 9    |

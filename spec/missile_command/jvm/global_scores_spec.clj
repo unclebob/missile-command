@@ -233,6 +233,46 @@
                 :host "desktop"}
                (:payload @submitted))))
 
+  (it "refreshes leaderboard scores after an accepted submit"
+    (let [calls (atom [])
+          state (atom (assoc global/empty-state
+                             :read-succeeded? true
+                             :url "https://scores.test"
+                             :configured-name "Board"))
+          game (assoc (core/new-game {:width 800 :height 600})
+                      :pending-high-score 19300
+                      :wave 9)
+          f (client/submit-score! "tmp/no-file.edn"
+                                  state
+                                  game
+                                  "UNC"
+                                  "Uncle Bob"
+                                  {:ensure-player (fn [_]
+                                                    {:player-id "p1"
+                                                     :player-token "tok"
+                                                     :display-name "Uncle Bob"})
+                                   :submit-score (fn [_ _]
+                                                   (swap! calls conj :submit)
+                                                   {:accepted true})
+                                   :fetch-leaderboard (fn [_]
+                                                        (swap! calls conj :fetch)
+                                                        {:leaderboard {:display_name "Board"}
+                                                         :scores [{:rank 1
+                                                                   :display_name "Uncle Bob"
+                                                                   :initials "UNC"
+                                                                   :score 19300
+                                                                   :wave 9
+                                                                   :created_at "2026-07-29T15:35:49.083Z"}]})}
+                                  (constantly "run-123")
+                                  "test-version")]
+      @f
+      (should= [:submit :fetch] @calls)
+      (should= :accepted (:submit-status @state))
+      (should= :ready (:status @state))
+      (should= true (:read-succeeded? @state))
+      (should= 19300 (:score (first (:scores @state))))
+      (should= "Uncle Bob" (:display-name (first (:scores @state))))))
+
   (it "marks submit failures without throwing to callers"
     (let [state (atom (assoc global/empty-state :read-succeeded? true))
           f (client/submit-score! "tmp/no-file.edn"

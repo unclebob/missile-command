@@ -21,6 +21,6 @@ Scenario: Playfield resize 01 reflows a fresh game
 
 Examples:
   | new_width | new_height | expected_width | expected_height | city_count | ammo |
-  | 1920      | 1080       | 1920           | 1080            | 6          | 10   |
+  | 1920      | 1080       | 1440           | 1080            | 6          | 10   |
   | 800       | 600        | 800            | 600             | 6          | 10   |
-  | 1280      | 720        | 1280           | 720             | 6          | 10   |
+  | 1280      | 720        | 960            | 720             | 6          | 10   |

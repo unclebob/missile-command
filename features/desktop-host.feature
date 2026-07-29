@@ -24,7 +24,7 @@ Scenario: Desktop host 01 the project documents a desktop launch command
 Examples:
   | width | height | command | expected_width | expected_height |
   | 800   | 600    | bb play | 800            | 600             |
-  | 1920  | 1080   | bb play | 1920           | 1080            |
+  | 1920  | 1080   | bb play | 1440           | 1080            |
 
 Scenario: Desktop host 02 starting play uses the requested playfield size
   When the player starts the game
@@ -37,8 +37,8 @@ Scenario: Desktop host 02 starting play uses the requested playfield size
 Examples:
   | width | height | expected_width | expected_height |
   | 800   | 600    | 800            | 600             |
-  | 1280  | 720    | 1280           | 720             |
-  | 1920  | 1080   | 1920           | 1080            |
+  | 1280  | 720    | 960            | 720             |
+  | 1920  | 1080   | 1440           | 1080            |
 
 Scenario: Desktop host 03 resize reflows layout without a fixed magnified buffer
   When the player starts the game
@@ -53,8 +53,8 @@ Scenario: Desktop host 03 resize reflows layout without a fixed magnified buffer
 
 Examples:
   | width | height | expected_start_width | expected_start_height | new_width | new_height | expected_width | expected_height |
-  | 800   | 600    | 800                  | 600                   | 1280      | 720        | 1280           | 720             |
-  | 800   | 600    | 800                  | 600                   | 1920      | 1080       | 1920           | 1080            |
+  | 800   | 600    | 800                  | 600                   | 1280      | 720        | 960            | 720             |
+  | 800   | 600    | 800                  | 600                   | 1920      | 1080       | 1440           | 1080            |
   | 1024  | 768    | 1024                 | 768                   | 800       | 600        | 800            | 600             |
 
 Scenario: Desktop host 04 mouse aim and key fire are available while playing
@@ -72,7 +72,7 @@ Examples:
   | 800   | 600    | left    | 800            | 600             |
   | 800   | 600    | center  | 800            | 600             |
   | 800   | 600    | right   | 800            | 600             |
-  | 1920  | 1080   | center  | 1920           | 1080            |
+  | 1920  | 1080   | center  | 1440           | 1080            |
 
 Scenario: Desktop host 05 click zone fire is available while playing
   When the player starts the game
@@ -88,7 +88,7 @@ Examples:
   | 800   | 600    | 100   | 200   | 100        | 200        | left    | 800            | 600             |
   | 800   | 600    | 400   | 200   | 400        | 200        | center  | 800            | 600             |
   | 800   | 600    | 700   | 200   | 700        | 200        | right   | 800            | 600             |
-  | 1920  | 1080   | 100   | 400   | 100        | 400        | left    | 1920           | 1080            |
+  | 1920  | 1080   | 100   | 400   | 100        | 400        | left    | 1440           | 1080            |
 
 Scenario: Desktop host 06 pause and resume work on the desktop host
   When the player starts the game
@@ -102,7 +102,7 @@ Scenario: Desktop host 06 pause and resume work on the desktop host
 Examples:
   | width | height | expected_width | expected_height |
   | 800   | 600    | 800            | 600             |
-  | 1920  | 1080   | 1920           | 1080            |
+  | 1920  | 1080   | 1440           | 1080            |
 
 Scenario: Desktop host 07 high scores and options persist across desktop restarts
   When the player opens options from the title
@@ -120,7 +120,7 @@ Scenario: Desktop host 07 high scores and options persist across desktop restart
 Examples:
   | width | height | expected_width | expected_height |
   | 800   | 600    | 800            | 600             |
-  | 1920  | 1080   | 1920           | 1080            |
+  | 1920  | 1080   | 1440           | 1080            |
 
 Scenario: Desktop host 08 pure core stays free of host dependencies
   Then the playfield width is <expected_width>
@@ -130,4 +130,4 @@ Scenario: Desktop host 08 pure core stays free of host dependencies
 Examples:
   | width | height | expected_width | expected_height |
   | 800   | 600    | 800            | 600             |
-  | 1920  | 1080   | 1920           | 1080            |
+  | 1920  | 1080   | 1440           | 1080            |

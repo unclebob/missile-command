@@ -51,7 +51,7 @@
 
 (defn- enemy-speed-for-state
   [state]
-  (:enemy-speed (waves/schedule-metrics (wave state) (difficulty state))))
+  (:enemy-speed (waves/schedule-metrics-for-state state (wave state))))
 
 (defn- city [state city-id]
   (cities/by-id (:cities state) city-id))

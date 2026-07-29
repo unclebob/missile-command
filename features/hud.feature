@@ -32,7 +32,7 @@ Scenario: HUD 01 playing HUD shows score wave multiplier ammo cities and reserve
 Examples:
   | width | height | score | wave | multiplier | left_ammo | center_ammo | right_ammo | living_cities | bonus_cities | expected_width | expected_height |
   | 800   | 600    | 0     | 1    | 1          | 10        | 10          | 10         | 6             | 0            | 800            | 600             |
-  | 1920  | 1080   | 0     | 1    | 1          | 10        | 10          | 10         | 6             | 0            | 1920           | 1080            |
+  | 1920  | 1080   | 0     | 1    | 1          | 10        | 10          | 10         | 6             | 0            | 1440           | 1080            |
   | 1024  | 768    | 0     | 1    | 1          | 10        | 10          | 10         | 6             | 0            | 1024           | 768             |
 
 Scenario: HUD 02 HUD score matches core after a scoring event
@@ -48,7 +48,7 @@ Examples:
   | 800   | 600    | 25    | 25             | 800            | 600             |
   | 800   | 600    | 2500  | 2500           | 800            | 600             |
   | 800   | 600    | 12500 | 12500          | 800            | 600             |
-  | 1920  | 1080   | 100   | 100            | 1920           | 1080            |
+  | 1920  | 1080   | 100   | 100            | 1440           | 1080            |
 
 Scenario: HUD 03 HUD ammo matches batteries after fire
   When the player starts the game
@@ -64,7 +64,7 @@ Examples:
   | 800   | 600    | left    | 9    | 800            | 600             |
   | 800   | 600    | center  | 9    | 800            | 600             |
   | 800   | 600    | right   | 9    | 800            | 600             |
-  | 1920  | 1080   | center  | 9    | 1920           | 1080            |
+  | 1920  | 1080   | center  | 9    | 1440           | 1080            |
 
 Scenario: HUD 04 HUD wave and multiplier match core
   When the player starts the game
@@ -81,7 +81,7 @@ Examples:
   | 800   | 600    | 1    | 1          | 800            | 600             |
   | 800   | 600    | 3    | 2          | 800            | 600             |
   | 800   | 600    | 5    | 3          | 800            | 600             |
-  | 1920  | 1080   | 11   | 6          | 1920           | 1080            |
+  | 1920  | 1080   | 11   | 6          | 1440           | 1080            |
 
 Scenario: HUD 05 HUD living cities and bonus reserve match core
   When the player starts the game
@@ -99,7 +99,7 @@ Examples:
   | 800   | 600    | 5             | 0            | 0                     | 800            | 600             |
   | 800   | 600    | 5             | 2            | 2                     | 800            | 600             |
   | 800   | 600    | 5             | 1            | 1                     | 800            | 600             |
-  | 1920  | 1080   | 5             | 3            | 3                     | 1920           | 1080            |
+  | 1920  | 1080   | 5             | 3            | 3                     | 1440           | 1080            |
 
 Scenario: HUD 06 paused screen still exposes the HUD
   When the player starts the game
@@ -118,7 +118,7 @@ Examples:
   | width | height | score | expected_score | wave | multiplier | living_cities | bonus_cities | expected_width | expected_height |
   | 800   | 600    | 500   | 500            | 1    | 1          | 6             | 0            | 800            | 600             |
   | 800   | 600    | 0     | 0              | 1    | 1          | 6             | 0            | 800            | 600             |
-  | 1920  | 1080   | 1000  | 1000           | 1    | 1          | 6             | 0            | 1920           | 1080            |
+  | 1920  | 1080   | 1000  | 1000           | 1    | 1          | 6             | 0            | 1440           | 1080            |
 
 Scenario: HUD 07 title screen is not required to show the full HUD
   Then the playfield width is <expected_width>
@@ -129,4 +129,4 @@ Scenario: HUD 07 title screen is not required to show the full HUD
 Examples:
   | width | height | expected_width | expected_height |
   | 800   | 600    | 800            | 600             |
-  | 1920  | 1080   | 1920           | 1080            |
+  | 1920  | 1080   | 1440           | 1080            |

@@ -65,6 +65,28 @@
       (should (missiles/arrived? result))
       (should-not (missiles/arrived? m)))))
 
+(describe "retime-for-path"
+  (it "scales speed so path transit time is unchanged"
+    (let [old (assoc (missiles/make-defensive 1 :left
+                                               {:x 0 :y 0 :missile-speed 100.0}
+                                               {:x 100 :y 0})
+                     :progress 0.25)
+          new (missiles/retime-for-path old
+                                        (assoc old :x1 200 :y1 0))
+          old-time (/ (missiles/path-length old) (:speed old))
+          new-time (/ (missiles/path-length new) (:speed new))]
+      (should= 200.0 (:speed new))
+      (should= old-time new-time)))
+
+  (it "recomputes current position from unchanged progress"
+    (let [m (-> (missiles/make-defensive 1 :left
+                                          {:x 0 :y 0 :missile-speed 100.0}
+                                          {:x 200 :y 100})
+                (assoc :progress 0.5)
+                missiles/with-current-position)]
+      (should= 100.0 (:x m))
+      (should= 50.0 (:y m)))))
+
 (describe "fireballs"
   (it "expands then contracts then expires"
     (let [fb (missiles/make-fireball 1 0 0)

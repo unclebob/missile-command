@@ -20,6 +20,10 @@
     (should= 50.0 (waves/enemy-speed 3))
     (should (> (waves/enemy-speed 3) (waves/enemy-speed 1))))
 
+  (it "scales enemy missile speed by playfield dimensions"
+    (should= 40.0 (:enemy-speed (waves/schedule-metrics 1 :arcade 800 600)))
+    (should= 80.0 (:enemy-speed (waves/schedule-metrics 1 :arcade 1600 1200))))
+
   (it "reports harder metrics for higher waves"
     (let [low (waves/schedule-metrics 1)
           high (waves/schedule-metrics 4)

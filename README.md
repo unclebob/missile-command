@@ -81,15 +81,19 @@ bb play
 ```
 
 Opens a resizable Quil window at full playfield resolution (default 800×600;
-optional `bb play 1280 720`). The window opens on the **screen of the terminal
+optional `bb play 1280 720`). Requested sizes are fitted to the largest 4:3
+playfield that fits inside them, so 1280×720 becomes 960×720 and 1920×1080
+becomes 1440×1080. The window opens on the **screen of the terminal
 where `bb play` was typed** (tmux client TTY → Terminal.app window match; then
 process TTY; then frontmost window; then pointer) and **does not steal keyboard
 focus** — the previous frontmost app (e.g. Terminal) is restored after open;
 click the game window when you want to type into it. Mouse moves the crosshair
 (clamped to the playfield). **Click** fires by horizontal third (with empty/destroyed
 fallback). Default fire keys: left `Z`/`1`, center `X`/`2`, right `C`/`3`. Esc quits.
-OS cursor is hidden; only the game crosshair is shown. Host only draws and routes
-input; rules stay in the pure core. The HUD includes ammo, score, and **wave**.
+The OS cursor is hidden only while playing; other screens show the normal cursor.
+Host only draws and routes input; rules stay in the pure core. The HUD includes ammo, score, and **wave**.
+The title, high-score, and options screens include click/tap buttons for their
+screen navigation.
 High scores and options persist under `tmp/missile-command-settings.edn`
 (override with `MC_SETTINGS_PATH`).
 
@@ -101,6 +105,8 @@ score, and submission date/time. Network reads and writes run in the background;
 slow, unavailable, or rate-limited service responses do not block play. Accepted
 network score submissions are limited by the service to one per minute and
 twenty per day for both player id and source IP.
+When a run ends with a qualifying score, the host opens a player-name dialog and
+records that name with the local and network score.
 
 Desktop overrides:
 
@@ -133,7 +139,11 @@ npx shadow-cljs watch browser
 `bb browser` compiles to `resources/public/js/main.js`. Open
 **`resources/public/index.html`** (or **http://localhost:8020** in watch mode)
 for mouse/keyboard play with the same pure core. Options and high scores
-persist in **`localStorage`**.
+persist in **`localStorage`**. On phone-sized/mobile browsers, the title screen
+shows a tappable **High Scores** button and hides/disables Options. A qualifying
+score uses the browser name prompt, which opens the phone keyboard. The normal
+mouse cursor is visible on every non-play screen; the play screen hides it and
+draws the game crosshair instead.
 
 The browser host also uses the official global leaderboard by default. To point
 at another leaderboard, define `window.MISSILE_COMMAND_LEADERBOARD` before
@@ -189,6 +199,7 @@ for focused debugging, for example `bb qa/scripts/sound-events.qa.bb`.
 | `--qa-target x,y` | Add a destroyable test target at playfield coordinates |
 | `--qa-fireball x,y,r` | Seed a live fireball at coordinates with max radius |
 | `--destroy-batteries left,center,…` | Mark listed batteries destroyed at start |
+| `--player-name <name>` | Default player name for desktop prompts and global score identity |
 
 ```sh
 bb play --qa --no-keyfocus
@@ -196,7 +207,7 @@ bb play --qa --no-keyfocus
 bb play --qa --no-keyfocus --qa-events tmp/clicks.txt
 bb play --qa --no-keyfocus --qa-scenario tmp/wave-rearm.edn
 bb play --qa --no-keyfocus --qa-speed 10 --qa-scenario tmp/setup.edn --qa-events tmp/clicks.txt
-bb play 1280 720 --qa --no-keyfocus --qa-scenario tmp/setup.edn
+bb play 1280 720 --qa --no-keyfocus --qa-scenario tmp/setup.edn  # fitted to 960x720
 bb play --qa-telemetry --no-keyfocus --qa-enemy city:0
 bb play --qa-telemetry --no-keyfocus --qa-target 400,200
 bb play --qa-telemetry --no-keyfocus --destroy-batteries left --qa-events tmp/clicks.txt

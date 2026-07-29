@@ -27,7 +27,7 @@ Examples:
   | 800   | 600    | 400   | 100   | 800            | 600             | 400        | 100        | left    | 1             |
   | 800   | 600    | 400   | 100   | 800            | 600             | 400        | 100        | center  | 1             |
   | 800   | 600    | 400   | 100   | 800            | 600             | 400        | 100        | right   | 1             |
-  | 1920  | 1080   | 960   | 200   | 1920           | 1080            | 960        | 200        | center  | 1             |
+  | 1920  | 1080   | 960   | 200   | 1440           | 1080            | 960        | 200        | center  | 1             |
 
 Scenario: Defensive missiles fireballs 02 missile becomes a fireball on arrival
   Given a new game with width <width> and height <height>
@@ -46,7 +46,7 @@ Examples:
   | 800   | 600    | 400   | 100   | 800            | 600             | 400        | 100        | left    | 0             | 1              |
   | 800   | 600    | 400   | 100   | 800            | 600             | 400        | 100        | center  | 0             | 1              |
   | 800   | 600    | 400   | 100   | 800            | 600             | 400        | 100        | right   | 0             | 1              |
-  | 1920  | 1080   | 960   | 200   | 1920           | 1080            | 960        | 200        | center  | 0             | 1              |
+  | 1920  | 1080   | 960   | 200   | 1440           | 1080            | 960        | 200        | center  | 0             | 1              |
 
 Scenario: Defensive missiles fireballs 03 fireball expands then contracts then disappears
   Given a new game with width 800 and height 600
@@ -126,4 +126,4 @@ Examples:
   | width | height | aim_x | aim_y | expected_width | expected_height | expected_x | expected_y | battery | missile_count |
   | 800   | 600    | 400   | 100   | 800            | 600             | 400        | 100        | center  | 1             |
   | 800   | 600    | 400   | 100   | 800            | 600             | 400        | 100        | left    | 1             |
-  | 1920  | 1080   | 960   | 200   | 1920           | 1080            | 960        | 200        | right   | 1             |
+  | 1920  | 1080   | 960   | 200   | 1440           | 1080            | 960        | 200        | right   | 1             |

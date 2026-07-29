@@ -20,7 +20,7 @@ Examples:
   | width | height | x    | y    | expected_width | expected_height | expected_x | expected_y |
   | 800   | 600    | 100  | 200  | 800            | 600             | 100        | 200        |
   | 800   | 600    | 400  | 300  | 800            | 600             | 400        | 300        |
-  | 1920  | 1080   | 960  | 540  | 1920           | 1080            | 960        | 540        |
+  | 1920  | 1080   | 960  | 540  | 1440           | 1080            | 960        | 540        |
   | 1024  | 768    | 1    | 1    | 1024           | 768             | 1          | 1          |
 
 Scenario: Aim crosshair 02 clamps left and right edges
@@ -43,7 +43,7 @@ Scenario: Aim crosshair 04 clamps far outside a larger playfield
   Given a new game with width 1920 and height 1080
   And the player starts the game
   When the player aims at 1920 500
-  Then the crosshair is at 1919 500
+  Then the crosshair is at 1439 500
   When the player aims at 100 1080
   Then the crosshair is at 100 1079
 
@@ -61,4 +61,4 @@ Scenario: Aim crosshair 05 aim does not change forces or score
 Examples:
   | width | height | x   | y   | expected_width | expected_height | expected_x | expected_y | city_count | ammo | score |
   | 800   | 600    | 250 | 150 | 800            | 600             | 250        | 150        | 6          | 10   | 0     |
-  | 1920  | 1080   | 10  | 20  | 1920           | 1080            | 10         | 20         | 6          | 10   | 0     |
+  | 1920  | 1080   | 10  | 20  | 1440           | 1080            | 10         | 20         | 6          | 10   | 0     |

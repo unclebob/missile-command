@@ -25,7 +25,7 @@ Scenario: Pause 01 pause from playing enters the paused screen
 Examples:
   | width | height | expected_width | expected_height |
   | 800   | 600    | 800            | 600             |
-  | 1920  | 1080   | 1920           | 1080            |
+  | 1920  | 1080   | 1440           | 1080            |
   | 1024  | 768    | 1024           | 768             |
 
 Scenario: Pause 02 while paused simulation does not advance
@@ -43,7 +43,7 @@ Examples:
   | width | height | city_index | expected_width | expected_height |
   | 800   | 600    | 0          | 800            | 600             |
   | 800   | 600    | 3          | 800            | 600             |
-  | 1920  | 1080   | 0          | 1920           | 1080            |
+  | 1920  | 1080   | 0          | 1440           | 1080            |
 
 Scenario: Pause 03 while paused fire does not launch
   When the player pauses the game
@@ -60,7 +60,7 @@ Examples:
   | 800   | 600    | left    | 10   | 800            | 600             |
   | 800   | 600    | center  | 10   | 800            | 600             |
   | 800   | 600    | right   | 10   | 800            | 600             |
-  | 1920  | 1080   | center  | 10   | 1920           | 1080            |
+  | 1920  | 1080   | center  | 10   | 1440           | 1080            |
 
 Scenario: Pause 04 resume returns to playing
   When the player pauses the game
@@ -73,7 +73,7 @@ Scenario: Pause 04 resume returns to playing
 Examples:
   | width | height | expected_width | expected_height |
   | 800   | 600    | 800            | 600             |
-  | 1920  | 1080   | 1920           | 1080            |
+  | 1920  | 1080   | 1440           | 1080            |
   | 1024  | 768    | 1024           | 768             |
 
 Scenario: Pause 05 resume continues entities from prior state
@@ -93,7 +93,7 @@ Examples:
   | width | height | city_index | expected_width | expected_height |
   | 800   | 600    | 0          | 800            | 600             |
   | 800   | 600    | 2          | 800            | 600             |
-  | 1920  | 1080   | 0          | 1920           | 1080            |
+  | 1920  | 1080   | 0          | 1440           | 1080            |
 
 Scenario: Pause 06 pause is ignored on the title screen
   Given a new game with width <width> and height <height>
@@ -106,4 +106,4 @@ Scenario: Pause 06 pause is ignored on the title screen
 Examples:
   | width | height | expected_width | expected_height |
   | 800   | 600    | 800            | 600             |
-  | 1920  | 1080   | 1920           | 1080            |
+  | 1920  | 1080   | 1440           | 1080            |

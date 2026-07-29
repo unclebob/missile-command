@@ -4,7 +4,7 @@
 **Suite:** new-game-layout  
 **Gherkin:** `features/new-game-layout.feature`, `features/playfield-resize.feature`
 
-Verify a new game places six cities and three batteries on a full-resolution playfield, layout scales with size (not a fixed low-res buffer), and resize reflows a fresh game. There is still no playable host UI for this story.
+Verify a new game places six cities and three batteries on a full-resolution 4:3 playfield, layout scales with size (not a fixed low-res buffer), and resize reflows a fresh game into the largest 4:3 playfield that fits the requested dimensions. There is still no playable host UI for this story.
 
 ## Preconditions
 

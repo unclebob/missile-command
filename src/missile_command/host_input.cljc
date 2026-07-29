@@ -6,7 +6,8 @@
   `{:command {...}}`, `{:draft next-draft}`, or nil when ignored."
   (:require [clojure.string :as str]
             [missile-command.options :as options]
-            [missile-command.screens :as screens]))
+            [missile-command.screens :as screens]
+            [missile-command.title-screen :as title-screen]))
 
 (def max-player-name-length 16)
 
@@ -67,7 +68,8 @@
 
 (defn- options-toggle
   [state key-event]
-  (when (char-matches? key-event \o)
+  (when (and (not (title-screen/phone? state))
+             (char-matches? key-event \o))
     (cond
       (screens/title? state) (command {:type :open-options})
       (screens/options? state) (command {:type :leave-options})

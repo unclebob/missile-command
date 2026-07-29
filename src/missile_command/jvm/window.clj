@@ -3,7 +3,7 @@
   (:require [clojure.string :as str])
   (:import [java.awt GraphicsEnvironment MouseInfo Window Component]
            [java.awt.event WindowAdapter]
-           [javax.swing SwingUtilities]
+           [javax.swing JFrame SwingUtilities]
            [java.lang ProcessHandle]))
 
 (defn pointer-location
@@ -244,6 +244,10 @@
                      (when (compare-and-set! exited? false true)
                        (try (exit!) (catch Exception _))))]
     (when (instance? Window awt)
+      (when (instance? JFrame awt)
+        (try
+          (.setDefaultCloseOperation ^JFrame awt JFrame/DISPOSE_ON_CLOSE)
+          (catch Exception _)))
       (.addWindowListener
        ^Window awt
        (proxy [WindowAdapter] []

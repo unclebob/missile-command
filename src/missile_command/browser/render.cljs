@@ -26,16 +26,26 @@
       (q/text-align :left :baseline)
       (q/text line 12 24))))
 
-(defn- combat-field!
-  "Enemies, flyers, missiles, ground, cities, batteries, fireballs (no HUD)."
+(defn- combat-background!
+  "Combat elements that belong behind the ground line and launch sites."
+  [state]
+  (combat/flyers! state))
+
+(defn- combat-foreground!
+  "Bomb trails, missile traces, and explosions draw over the ground."
   [state]
   (combat/enemies! state)
-  (combat/flyers! state)
   (combat/missiles! state)
+  (combat/fireballs! state))
+
+(defn- combat-field!
+  "Flyers, ground, cities, batteries, bomb trails, missiles, fireballs (no HUD)."
+  [state]
+  (combat-background! state)
   (scenery/ground! state)
   (scenery/cities! state)
   (scenery/batteries! state)
-  (combat/fireballs! state))
+  (combat-foreground! state))
 
 (defn draw-world!
   ([state]
@@ -43,6 +53,7 @@
   ([state initials-draft]
    (let [w (core/playfield-width state)
          h (core/playfield-height state)]
+     (q/background 0)
      (scenery/sky! w h)
      (cond
        (core/title? state)

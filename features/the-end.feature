@@ -29,7 +29,7 @@ Scenario: THE END 01 a new game is not at THE END
 Examples:
   | width | height | living_cities | reserve | expected_width | expected_height |
   | 800   | 600    | 6             | 0       | 800            | 600             |
-  | 1920  | 1080   | 6             | 0       | 1920           | 1080            |
+  | 1920  | 1080   | 6             | 0       | 1440           | 1080            |
 
 Scenario: THE END 02 living cities prevent THE END
   And city 0 has been destroyed
@@ -44,7 +44,7 @@ Examples:
   | width | height | living_cities | expected_width | expected_height |
   | 800   | 600    | 4             | 800            | 600             |
   | 1024  | 768    | 4             | 1024           | 768             |
-  | 1920  | 1080   | 4             | 1920           | 1080            |
+  | 1920  | 1080   | 4             | 1440           | 1080            |
 
 Scenario: THE END 03 zero living cities and zero reserve enter THE END
   And all cities have been destroyed
@@ -60,7 +60,7 @@ Scenario: THE END 03 zero living cities and zero reserve enter THE END
 Examples:
   | width | height | reserve | expected_width | expected_height |
   | 800   | 600    | 0       | 800            | 600             |
-  | 1920  | 1080   | 0       | 1920           | 1080            |
+  | 1920  | 1080   | 0       | 1440           | 1080            |
   | 1024  | 768    | 0       | 1024           | 768             |
 
 Scenario: THE END 04 reserve cities prevent THE END when all living cities are gone
@@ -79,7 +79,7 @@ Examples:
   | 800   | 600    | 1                | 1                | 800            | 600             |
   | 800   | 600    | 2                | 2                | 800            | 600             |
   | 800   | 600    | 3                | 3                | 800            | 600             |
-  | 1920  | 1080   | 1                | 1                | 1920           | 1080            |
+  | 1920  | 1080   | 1                | 1                | 1440           | 1080            |
 
 Scenario: THE END 05 THE END uses the THE END message not Game Over
   And all cities have been destroyed
@@ -93,7 +93,7 @@ Scenario: THE END 05 THE END uses the THE END message not Game Over
 Examples:
   | width | height | expected_width | expected_height |
   | 800   | 600    | 800            | 600             |
-  | 1920  | 1080   | 1920           | 1080            |
+  | 1920  | 1080   | 1440           | 1080            |
 
 Scenario: THE END 06 final score remains available at THE END
   And the score becomes <score>
@@ -111,7 +111,7 @@ Examples:
   | 800   | 600    | 0     | 0              | 800            | 600             |
   | 800   | 600    | 2500  | 2500           | 800            | 600             |
   | 800   | 600    | 12500 | 12500          | 800            | 600             |
-  | 1920  | 1080   | 999   | 999            | 1920           | 1080            |
+  | 1920  | 1080   | 999   | 999            | 1440           | 1080            |
 
 Scenario: THE END 07 fire commands do not launch after THE END
   And all cities have been destroyed
@@ -147,7 +147,7 @@ Scenario: THE END 08 THE END presents a centered screen filling fireball
 Examples:
   | width | height | expected_width | expected_height |
   | 800   | 600    | 800            | 600             |
-  | 1920  | 1080   | 1920           | 1080            |
+  | 1920  | 1080   | 1440           | 1080            |
   | 1024  | 768    | 1024           | 768             |
 
 Scenario: THE END 09 THE END letters fill the final fireball expanse
@@ -164,7 +164,7 @@ Scenario: THE END 09 THE END letters fill the final fireball expanse
 Examples:
   | width | height | expected_width | expected_height |
   | 800   | 600    | 800            | 600             |
-  | 1920  | 1080   | 1920           | 1080            |
+  | 1920  | 1080   | 1440           | 1080            |
   | 1024  | 768    | 1024           | 768             |
 
 Scenario: THE END 10 THE END letters are only visible inside the fireball
@@ -181,4 +181,4 @@ Scenario: THE END 10 THE END letters are only visible inside the fireball
 Examples:
   | width | height | expected_width | expected_height |
   | 800   | 600    | 800            | 600             |
-  | 1920  | 1080   | 1920           | 1080            |
+  | 1920  | 1080   | 1440           | 1080            |

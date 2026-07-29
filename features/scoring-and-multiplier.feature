@@ -25,7 +25,7 @@ Scenario: Scoring and multiplier 01 new game starts with zero score and one time
 Examples:
   | width | height | score | multiplier | wave | expected_width | expected_height |
   | 800   | 600    | 0     | 1          | 1    | 800            | 600             |
-  | 1920  | 1080   | 0     | 1          | 1    | 1920           | 1080            |
+  | 1920  | 1080   | 0     | 1          | 1    | 1440           | 1080            |
 
 Scenario: Scoring and multiplier 02 multiplier follows the wave schedule
   When the game is at wave <wave>
@@ -79,7 +79,7 @@ Examples:
   | 800   | 600    | 1    | 1          | 0    | 5             | 500   | 800            | 600             |
   | 800   | 600    | 1    | 1          | 5    | 5             | 575   | 800            | 600             |
   | 800   | 600    | 3    | 2          | 10   | 5             | 1300  | 800            | 600             |
-  | 1920  | 1080   | 1    | 1          | 10   | 5             | 650   | 1920           | 1080            |
+  | 1920  | 1080   | 1    | 1          | 10   | 5             | 650   | 1440           | 1080            |
 
 Scenario: Scoring and multiplier 05 score never decreases
   When the game is at wave <wave>

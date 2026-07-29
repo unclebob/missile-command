@@ -39,7 +39,7 @@ Scenario: MIRV warheads 01b MIRV parent before split on large playfield
 
 Examples:
   | width | height | expected_width | expected_height |
-  | 1920  | 1080   | 1920           | 1080            |
+  | 1920  | 1080   | 1440           | 1080            |
 
 Scenario: MIRV warheads 02 a MIRV splits into three warheads
   And a MIRV enemy missile targeting city 0 that splits into 3 warheads at progress 0.5

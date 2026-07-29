@@ -7,10 +7,46 @@
 (def left-battery-x-fraction 0.08)
 (def center-battery-x-fraction 0.50)
 (def right-battery-x-fraction 0.92)
+(def baseline-width 800.0)
+(def baseline-height 600.0)
+(def target-aspect-width 4.0)
+(def target-aspect-height 3.0)
 (def wing-missile-speed 200.0)
 (def center-missile-speed 300.0)
 (def city-starts-alive? true)
 (def battery-starts-destroyed? false)
+
+(defn- hypot
+  [x y]
+  (Math/sqrt (+ (* x x) (* y y))))
+
+(def baseline-diagonal
+  (hypot baseline-width baseline-height))
+
+(def target-aspect-ratio
+  (/ target-aspect-width target-aspect-height))
+
+(defn fit-playfield-size
+  "Largest 4:3 playfield that fits inside the available size."
+  [width height]
+  (let [available-width (max 1 (long width))
+        available-height (max 1 (long height))
+        height-from-width (long (Math/floor (/ available-width target-aspect-ratio)))]
+    (if (<= height-from-width available-height)
+      {:width available-width
+       :height (max 1 height-from-width)}
+      {:width (max 1 (long (Math/floor (* available-height target-aspect-ratio))))
+       :height available-height})))
+
+(defn dimension-speed-scale
+  "Scale pixel velocity so proportional paths take the same time as 800x600."
+  [width height]
+  (/ (hypot (double width) (double height))
+     baseline-diagonal))
+
+(defn scaled-speed
+  [base-speed width height]
+  (* (double base-speed) (dimension-speed-scale width height)))
 
 (defn ground-band
   "Ground band is the bottom fraction of the playfield height."
@@ -58,9 +94,12 @@
 (defn layout-batteries
   [width height]
   (let [y (ground-y height)]
-    [(make-battery :left (long (* width left-battery-x-fraction)) y wing-missile-speed)
-     (make-battery :center (long (* width center-battery-x-fraction)) y center-missile-speed)
-     (make-battery :right (long (* width right-battery-x-fraction)) y wing-missile-speed)]))
+    [(make-battery :left (long (* width left-battery-x-fraction)) y
+                   (scaled-speed wing-missile-speed width height))
+     (make-battery :center (long (* width center-battery-x-fraction)) y
+                   (scaled-speed center-missile-speed width height))
+     (make-battery :right (long (* width right-battery-x-fraction)) y
+                   (scaled-speed wing-missile-speed width height))]))
 
 (defn- reflow-entities
   "Keep prior entity fields, overlaying only the given layout keys from fresh entities."

@@ -90,6 +90,17 @@
                     core/open-options)]
       (should (core/mute? state))))
 
+  (it "toggles mute from the options checkbox"
+    (let [state (-> (core/new-game {:width 800 :height 600})
+                    core/open-options)
+          checkbox (core/mute-checkbox state)
+          x (+ (:x checkbox) (/ (:w checkbox) 2.0))
+          y (+ (:y checkbox) (/ (:h checkbox) 2.0))
+          muted (:state (core/handle state {:type :click :x x :y y}))
+          unmuted (:state (core/handle muted {:type :click :x x :y y}))]
+      (should (core/mute? muted))
+      (should-not (core/mute? unmuted))))
+
   (it "carries remapped fire keys into a started game"
     (let [state (-> (core/new-game {:width 800 :height 600})
                     core/open-options

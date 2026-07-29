@@ -125,6 +125,19 @@
             (q/no-stroke)))))
   (q/no-stroke))
 
+(defn- combat-background!
+  "Combat elements that belong behind the ground line and launch sites."
+  [state]
+  (flyers! state)
+  (targets! state))
+
+(defn- combat-foreground!
+  "Bomb trails, missile traces, and explosions draw over the ground."
+  [state]
+  (enemies! state)
+  (missiles! state)
+  (fireballs! state))
+
 (defn crosshair-at!
   [x y]
   (q/stroke 255 70 70)
@@ -162,6 +175,7 @@
   ([state initials-draft]
    (let [w (core/playfield-width state)
          h (core/playfield-height state)]
+     (q/background 0)
      (scenery/sky! w h)
      (cond
        (core/title? state)
@@ -186,13 +200,10 @@
            (hud! state))
 
        (core/wave-banner? state)
-       (do (missiles! state)
-           (enemies! state)
-           (flyers! state)
+       (do (combat-background! state)
            (scenery/ground! state)
            (scenery/cities! state)
            (scenery/batteries! state)
-           (fireballs! state)
            (let [pos (core/wave-banner-text-position state)
                  txt (core/wave-banner-text state)
                  sub (core/wave-banner-subtitle state)
@@ -210,17 +221,15 @@
                (q/fill 180 255 160)
                (q/text sub (:x pos) (+ (:y pos) 42.0)))
              (q/text-align :left :baseline))
+           (combat-foreground! state)
            (hud! state))
 
        :else
-       (do (enemies! state)
-           (flyers! state)
-           (missiles! state)
-           (targets! state)
+       (do (combat-background! state)
            (scenery/ground! state)
            (scenery/cities! state)
            (scenery/batteries! state)
-           (fireballs! state)
+           (combat-foreground! state)
            (hud! state)
            (when (core/paused? state)
              (render-pause/overlay! state)))))))
