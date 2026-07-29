@@ -100,27 +100,58 @@
       :created-at (:created-at e)})
    (get-in state [:global-high-scores :scores])))
 
-(def table-width 570)
-(def rank-column-width 42)
-(def name-column-width 220)
-(def score-column-width 90)
-(def column-gap 18)
+(defn- compact-score-layout?
+  [w h]
+  (or (< w 560) (< h 420)))
 
-(defn- column-x
-  []
-  (let [left (- (/ (q/width) 2.0) (/ table-width 2.0))
-        rank-x (+ left rank-column-width)
-        name-x (+ rank-x column-gap)
-        score-x (+ name-x name-column-width column-gap)
-        date-x (+ score-x score-column-width column-gap)]
-    {:rank rank-x
-     :name name-x
-     :score score-x
-     :date date-x}))
+(defn- score-layout
+  [w h global?]
+  (let [compact? (compact-score-layout? w h)
+        margin (if compact? 12 0)
+        table-width (if compact? (- w (* 2 margin)) 570)
+        gap (if compact? 8 18)
+        rank-width (if compact? 30 42)
+        score-width (if compact? 64 90)
+        date-width (if compact? 112 180)
+        name-width (max 80 (- table-width rank-width score-width date-width (* 3 gap)))
+        left (- (/ w 2.0) (/ table-width 2.0))
+        rank-x (+ left rank-width)
+        name-x (+ rank-x gap)
+        score-x (+ name-x name-width gap)
+        date-x (+ score-x score-width gap)]
+    {:compact? compact?
+     :title-size (if compact? 24 36)
+     :subtitle-size (if compact? 12 15)
+     :row-size (if compact? 12 18)
+     :row-height (if compact? 15 28)
+     :title-y (if compact? 26 (- (/ h 2.0) 120))
+     :subtitle-y (when global? (if compact? 44 (+ (- (/ h 2.0) 120) 28)))
+     :rows-y (if compact?
+               (if global? 61 48)
+               (+ (- (/ h 2.0) 120) (if global? 72 50)))
+     :empty-y (if compact? 88 (+ (- (/ h 2.0) 120) 60))
+     :name-width name-width
+     :rank-x rank-x
+     :name-x name-x
+     :score-x score-x
+     :date-x date-x}))
+
+(defn- fit-text
+  [text max-width]
+  (let [text (str text)
+        full-length (count text)]
+    (loop [n full-length]
+      (let [candidate (if (= n full-length)
+                        text
+                        (str (subs text 0 n) "..."))]
+        (cond
+          (<= (q/text-width candidate) max-width) candidate
+          (zero? n) ""
+          :else (recur (dec n)))))))
 
 (defn- dotted-name
-  [name]
-  (let [name-text (str name)
+  [name name-column-width]
+  (let [name-text (fit-text name name-column-width)
         dot-width (max 1.0 (q/text-width "."))
         gap-width (q/text-width " ")
         available (- name-column-width (q/text-width name-text) gap-width)
@@ -130,57 +161,66 @@
       dotted
       name-text)))
 
+(defn- date-label
+  [created-at compact?]
+  (let [label (global/date-time-label created-at)]
+    (if (and compact? (>= (count label) 16))
+      (subs label 5 16)
+      label)))
+
 (defn- draw-rows!
-  [rows start-y empty-text]
-  (q/text-size 18)
+  [rows layout empty-text]
+  (q/text-size (:row-size layout))
   (if (seq rows)
-    (let [{rank-x :rank name-x :name score-x :score date-x :date} (column-x)]
+    (let [{:keys [rank-x name-x score-x date-x row-height rows-y
+                  name-width compact?]} layout]
       (doseq [e rows]
         (let [i (dec (long (:rank e)))
-              y (+ start-y 50 (* i 28))]
+              y (+ rows-y (* i row-height))]
           (q/fill 230)
           (q/text-align :right :center)
           (q/text (str (:rank e) ".") rank-x y)
           (q/text-align :left :center)
-          (q/text (dotted-name (:name e)) name-x y)
+          (q/text (dotted-name (:name e) name-width) name-x y)
           (q/text (str (:score e)) score-x y)
-          (q/text (global/date-time-label (:created-at e)) date-x y))))
+          (q/text (date-label (:created-at e) compact?) date-x y))))
     (do (q/fill 200)
         (q/text-align :center :center)
-        (q/text empty-text (/ (q/width) 2.0) (+ start-y 60)))))
+        (q/text empty-text (/ (q/width) 2.0) (:empty-y layout)))))
 
 (defn- draw-global!
-  [state start-y]
+  [state layout]
   (let [g (:global-high-scores state)]
     (q/fill 180)
-    (q/text-size 15)
-    (q/text (global/display-name g) (/ (q/width) 2.0) (+ start-y 28))
+    (q/text-size (:subtitle-size layout))
+    (q/text (global/display-name g) (/ (q/width) 2.0) (:subtitle-y layout))
     (case (:status g)
-      :ready (draw-rows! (global-table state) (+ start-y 22) "No global scores yet")
+      :ready (draw-rows! (global-table state) layout "No global scores yet")
       :loading (do (q/fill 200)
                    (q/text-size 18)
-                   (q/text "Loading..." (/ (q/width) 2.0) (+ start-y 82)))
+                   (q/text "Loading..." (/ (q/width) 2.0) (:empty-y layout)))
       (do (q/fill 200)
           (q/text-size 18)
-          (q/text "Unavailable" (/ (q/width) 2.0) (+ start-y 82))))))
+          (q/text "Unavailable" (/ (q/width) 2.0) (:empty-y layout))))))
 
 (defn high-scores-table-overlay!
   [state]
   (let [w (core/playfield-width state)
         h (core/playfield-height state)
         page (or (:high-score-page state) :local)
-        start-y (- (/ h 2.0) 120)
+        global? (= :global page)
+        layout (score-layout w h global?)
         title (case page
                 :global "HIGH SCORES - GLOBAL"
                 "HIGH SCORES - LOCAL")]
     (dim! w h)
     (q/text-align :center :center)
     (q/fill 255 220 80)
-    (q/text-size 36)
-    (q/text title (/ w 2.0) start-y)
-    (if (= :global page)
-      (draw-global! state start-y)
-      (draw-rows! (local-table state) start-y "No local scores yet"))
+    (q/text-size (:title-size layout))
+    (q/text title (/ w 2.0) (:title-y layout))
+    (if global?
+      (draw-global! state layout)
+      (draw-rows! (local-table state) layout "No local scores yet"))
     (doseq [button (core/high-scores-buttons state)]
       (button! button))
     (q/text-align :left :baseline)))

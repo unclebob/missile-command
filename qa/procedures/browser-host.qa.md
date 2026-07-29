@@ -59,7 +59,7 @@ QA may use documented browser QA flags or URL params only if they are published 
 
 ### G. Phone
 
-13. Open in a phone-sized/mobile browser. Assert the title shows a tappable **High Scores** button, Options is not shown or reachable, and a qualifying score opens the browser name prompt so the phone keyboard appears.
+13. Open in a phone-sized/mobile browser. Assert the title shows a tappable **High Scores** button, Options is not shown or reachable, local/network high-score pages fit without clipped columns or hidden footer controls, and a qualifying score opens the browser name prompt so the phone keyboard appears.
 
 ## Pass criteria
 

@@ -3,6 +3,8 @@
 
 (def button-width 190)
 (def button-height 42)
+(def compact-button-width 140)
+(def compact-button-height 34)
 (def button-gap 16)
 (def checkbox-size 24)
 
@@ -17,7 +19,13 @@
 
 (defn- footer-button-y
   [state]
-  (- (:height state) 46))
+  (- (:height state) (if (phone? state) 24 46)))
+
+(defn- footer-button-size
+  [state]
+  (if (phone? state)
+    {:w compact-button-width :h compact-button-height}
+    {:w button-width :h button-height}))
 
 (defn- rect
   [state id label center-x]
@@ -41,8 +49,7 @@
 
 (defn- footer-button
   [state id label]
-  (let [w button-width
-        h button-height
+  (let [{:keys [w h]} (footer-button-size state)
         x (- (/ (:width state) 2.0) (/ w 2.0))
         y (- (footer-button-y state) (/ h 2.0))]
     {:id id

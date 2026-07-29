@@ -68,6 +68,8 @@ initials BOB
 
 ### G. View — from title open high scores with the button or `H`; ranks visible; **Title** button and `H` close the table.
 
+On phone-sized browser viewports, both local and network high-score pages fit inside the visible 4:3 playfield: no rank/name/score/date columns clip horizontally, all 10 rows and the **Title** button remain visible, and Options is not available.
+
 ### H. Escape boundary — Escape while viewing high scores is not consumed as a return-to-title action; on desktop it quits the host.
 
 ### I. Persist — write a score; quit; relaunch; table still contains it (host file/localStorage).

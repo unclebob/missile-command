@@ -39,6 +39,13 @@
       (should-not (title-screen/high-scores-command-at state 10 10))
       (should-not (title-screen/options-command-at state 10 10))))
 
+  (it "uses a compact high score footer button on phone"
+    (let [state (assoc (core/new-game {:width 390 :height 844}) :phone? true)
+          button (first (title-screen/high-scores-buttons state))]
+      (should= 140 (:w button))
+      (should= 34 (:h button))
+      (should (<= (+ (:y button) (:h button)) (:height state)))))
+
   (it "maps the options mute checkbox to a mute toggle command"
     (let [state (-> (core/new-game {:width 800 :height 600})
                     core/open-options)
