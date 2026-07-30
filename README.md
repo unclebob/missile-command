@@ -25,8 +25,8 @@ build/acceptance/ir/          Gherkin JSON IR (build product)
 resources/public/js/          generated browser JavaScript (build product)
 ```
 
-Host namespaces (`missile-command.jvm`, `missile-command.browser`) will be added
-in later stories. Core unit tests do not load host code.
+Host namespaces (`missile-command.jvm`, `missile-command.browser`) contain thin
+Quil shells around the shared core. Core unit tests do not load host code.
 
 ## Run tests
 
@@ -144,6 +144,9 @@ shows a tappable **High Scores** button and hides/disables Options. A qualifying
 score uses the browser name prompt, which opens the phone keyboard. The normal
 mouse cursor is visible on every non-play screen; the play screen hides it and
 draws the game crosshair instead.
+
+Current note: Safari on iPhone can be laggy during play. Desktop browsers and
+non-Safari mobile browsers are generally smoother.
 
 The browser host also uses the official global leaderboard by default. To point
 at another leaderboard, define `window.MISSILE_COMMAND_LEADERBOARD` before
@@ -325,8 +328,8 @@ quit
 
 #### High-score persistence
 
-Default file: `~/.missile-command/scores.edn`  
-Override for QA: `--scores-file path` (isolated EDN load/save).
+Default file: `tmp/missile-command-settings.edn`.
+Override with `MC_SETTINGS_PATH` or, for QA, `--scores-file path` (isolated EDN load/save).
 
 Host loads the table at startup; after a successful name submit, the host
 rewrites the file. Local rows preserve the display name and a short persistent
